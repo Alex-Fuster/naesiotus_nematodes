@@ -1,0 +1,170 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+
+```{r}
+df <- read.csv("sampling.csv", header = TRUE)
+df$nematode_count[which(df$nematode_count == ">100")] <- "100"
+df$nematode_count <- as.numeric(df$nematode_count)
+df <- df[1:1780,]
+hist(df$nematode_count)
+```
+
+
+```{r}
+
+df <- df %>%
+  mutate(nematode_count_categories = cut(nematode_count, 
+                          breaks = c(-Inf, 0, 10, 30, Inf), 
+                          labels = c("absence", "low", "moderate", "high"),
+                          include.lowest = TRUE)) 
+
+```
+
+```{r}
+ggplot(df, aes(x = nematode_count_categories)) +
+  geom_bar() +
+  labs(title = "Distribution of Categories",
+       x = "Categories",
+       y = "Count")+
+  theme_classic()
+
+```
+
+
+```{r}
+
+# Assuming your data frame is named 'df' and the columns are named 'spp', 'island', and 'nematode_count'
+# Count the number of species per island
+species_counts <- df %>%
+  group_by(island) %>%
+  summarise(num_species = length(unique(spp)))
+
+# Reorder the levels of the "island" factor based on the number of species
+species_counts <- species_counts %>%
+  mutate(island = factor(island, levels = island[order(num_species)]))
+
+
+# Plot the number of species per island
+nspp_island <- ggplot(species_counts, aes(x = island, y = num_species, fill = island)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = num_species), vjust = -0.5, size = 3) +  # Add text labels
+  labs(title = "Number of Species per Island",
+       x = "Island",
+       y = "Number of Species") +
+  theme_classic()
+
+nspp_island
+
+
+#ggsave("nspp_island.jpeg", height = 7, width = 10)
+
+
+
+
+
+```
+
+```{r}
+
+
+barplots_counts_spp_island <- ggplot(df, aes(x = spp, fill = nematode_count_categories)) +
+  geom_bar(position = "dodge", alpha = 0.7) +  # Use geom_bar for barplots
+  geom_jitter(aes(y = nematode_count), alpha = 0.5, position = position_dodge(width = 0.75)) +  # Add jitter with alpha
+  labs(title = "Nematode Counts per Species and Category",
+       x = "Species",
+       y = "Nematode Counts") +
+  facet_wrap(~ island, scales = "free", strip.position = "top") +
+  theme_classic() +
+  theme(
+    legend.position = "top",
+    legend.box = "horizontal",
+    legend.spacing.x = unit(0.2, "cm"),
+    axis.text.x = element_text(angle = 45, hjust = 1) 
+  )
+
+
+ggplot(df, aes(x = spp, y = 1, fill = nematode_count_categories)) +
+  geom_point(position = position_dodge(width = 0.75), alpha = 0.7, size = 3) +  # Use geom_point for dotplots
+  labs(title = "Nematode Counts per Species and Category",
+       x = "Species",
+       y = NULL) +
+  facet_wrap(~ island, scales = "free", strip.position = "top") +
+  theme_classic() +
+  theme(
+    legend.position = "top",
+    legend.box = "horizontal",
+    legend.spacing.x = unit(0.2, "cm"),
+    axis.text.x = element_text(angle = 45, hjust = 1) 
+  )
+
+
+df_plot <- df %>%
+  group_by(island,spp, nematode_count_categories) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+ggplot(df_plot, aes(x = spp, y = count, fill = nematode_count_categories)) +
+  geom_linerange(aes(ymin = 0, ymax = count), position = position_dodge(width = 0.75), alpha = 0.7, size = 1) +  # Add line ranges
+  geom_point(position = position_dodge(width = 0.75), alpha = 0.7, size = 3) +  # Use geom_point for dotplots
+  labs(title = "Nematode Count Categories per Species",
+       x = "Species",
+       y = "Count") +
+  facet_wrap(~ island, scales = "free") +  # Facet by island with free scales
+  scale_fill_manual(values = c("absence" = "red", "low" = "yellow", "moderate" = "green", "high" = "blue")) +  # Specify colors
+  theme_classic() +
+  theme(
+    legend.position = "top",
+    legend.box = "horizontal",
+    legend.spacing.x = unit(0.2, "cm"),
+    axis.text.x = element_text(angle = 45, hjust = 1) 
+  )
+
+
+
+
+ggplot(df_plot, aes(x = spp, y = count, fill = nematode_count_categories)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Nematode Count Categories per Species",
+       x = "Species",
+       y = "Count") +
+  facet_wrap(~ island, scales = "free") +  # Facet by island with free scales
+  scale_fill_manual(values = c("absence" = "gray", "low" = "blue", "moderate" = "green", "high" = "red")) +  # Specify colors
+  theme_classic() +
+  theme(
+    legend.position = "top",
+    legend.box = "horizontal",
+    legend.spacing.x = unit(0.2, "cm"),
+    axis.text.x = element_text(angle = 45, hjust = 1) 
+  )
+
+
+
+ggsave("barplots_counts_spp_island.jpeg", height = 7, width = 15)
+
+```
+
+# compute a mean parasitic load
+
+```{r}
+df_load <- df %>%
+  group_by(spp) %>%
+  summarise(mean_load = mean(nematode_count, na.rm = TRUE)) %>%
+  arrange(desc(mean_load))
+
+
+correlation_data <- df %>%
+  group_by(spp) %>%
+  summarise(mean_load = mean(nematode_count, na.rm = TRUE),
+            shell_brightness = first(shell_brightness)) %>%
+  arrange(desc(mean_load))
+
+```
+
