@@ -29,11 +29,12 @@ df <- df %>%
 ```
 
 ```{r}
-ggplot(df, aes(x = nematode_count_categories)) +
+ggplot(df, aes(x = nematode_count_categories, fill = nematode_count_categories)) +
   geom_bar() +
   labs(title = "Distribution of Categories",
        x = "Categories",
-       y = "Count")+
+       y = "Count") +
+  scale_fill_manual(values = c("absence" = "gray", "low" = "blue", "moderate" = "green", "high" = "red")) +
   theme_classic()
 
 ```
@@ -64,7 +65,7 @@ nspp_island <- ggplot(species_counts, aes(x = island, y = num_species, fill = is
 nspp_island
 
 
-#ggsave("nspp_island.jpeg", height = 7, width = 10)
+ggsave("nspp_island.jpeg", height = 7, width = 10)
 
 
 
@@ -91,41 +92,6 @@ barplots_counts_spp_island <- ggplot(df, aes(x = spp, fill = nematode_count_cate
   )
 
 
-ggplot(df, aes(x = spp, y = 1, fill = nematode_count_categories)) +
-  geom_point(position = position_dodge(width = 0.75), alpha = 0.7, size = 3) +  # Use geom_point for dotplots
-  labs(title = "Nematode Counts per Species and Category",
-       x = "Species",
-       y = NULL) +
-  facet_wrap(~ island, scales = "free", strip.position = "top") +
-  theme_classic() +
-  theme(
-    legend.position = "top",
-    legend.box = "horizontal",
-    legend.spacing.x = unit(0.2, "cm"),
-    axis.text.x = element_text(angle = 45, hjust = 1) 
-  )
-
-
-df_plot <- df %>%
-  group_by(island,spp, nematode_count_categories) %>%
-  summarise(count = n()) %>%
-  ungroup()
-
-ggplot(df_plot, aes(x = spp, y = count, fill = nematode_count_categories)) +
-  geom_linerange(aes(ymin = 0, ymax = count), position = position_dodge(width = 0.75), alpha = 0.7, size = 1) +  # Add line ranges
-  geom_point(position = position_dodge(width = 0.75), alpha = 0.7, size = 3) +  # Use geom_point for dotplots
-  labs(title = "Nematode Count Categories per Species",
-       x = "Species",
-       y = "Count") +
-  facet_wrap(~ island, scales = "free") +  # Facet by island with free scales
-  scale_fill_manual(values = c("absence" = "red", "low" = "yellow", "moderate" = "green", "high" = "blue")) +  # Specify colors
-  theme_classic() +
-  theme(
-    legend.position = "top",
-    legend.box = "horizontal",
-    legend.spacing.x = unit(0.2, "cm"),
-    axis.text.x = element_text(angle = 45, hjust = 1) 
-  )
 
 
 
@@ -147,7 +113,7 @@ ggplot(df_plot, aes(x = spp, y = count, fill = nematode_count_categories)) +
 
 
 
-ggsave("barplots_counts_spp_island.jpeg", height = 7, width = 15)
+ggsave("barplots_counts_spp_island_v2.jpeg", height = 7, width = 15)
 
 ```
 
