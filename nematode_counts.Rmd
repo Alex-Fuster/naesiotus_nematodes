@@ -13,7 +13,7 @@ library(ggplot2)
 df <- read.csv("sampling.csv", header = TRUE)
 df$nematode_count[which(df$nematode_count == ">100")] <- "100"
 df$nematode_count <- as.numeric(df$nematode_count)
-df <- df[1:1780,]
+df <- df[1:1962,]
 hist(df$nematode_count)
 ```
 
@@ -77,8 +77,7 @@ ggsave("nspp_island.jpeg", height = 7, width = 10)
 
 
 barplots_counts_spp_island <- ggplot(df, aes(x = spp, fill = nematode_count_categories)) +
-  geom_bar(position = "dodge", alpha = 0.7) +  # Use geom_bar for barplots
-  geom_jitter(aes(y = nematode_count), alpha = 0.5, position = position_dodge(width = 0.75)) +  # Add jitter with alpha
+  geom_bar(stat = "identity") +  # Use geom_bar for barplots
   labs(title = "Nematode Counts per Species and Category",
        x = "Species",
        y = "Nematode Counts") +
@@ -93,10 +92,14 @@ barplots_counts_spp_island <- ggplot(df, aes(x = spp, fill = nematode_count_cate
 
 
 
+barplots_counts_spp_island
 
 
 
-ggplot(df_plot, aes(x = spp, y = count, fill = nematode_count_categories)) +
+
+
+
+ggplot(df, aes(x = spp, y = count, fill = nematode_count_categories)) +
   geom_bar(stat = "identity") +
   labs(title = "Nematode Count Categories per Species",
        x = "Species",
@@ -112,10 +115,51 @@ ggplot(df_plot, aes(x = spp, y = count, fill = nematode_count_categories)) +
   )
 
 
+ggplot(df, aes(x = spp, y = nematode_count, fill = nematode_count_categories)) +
+  geom_bar(position = "stack", stat = "identity", alpha = 0.7) +
+  geom_jitter(position = position_dodge(width = 0.75), alpha = 0.5) +
+  labs(title = "Nematode Counts per Species and Category",
+       x = "Species",
+       y = "Nematode Counts") +
+  facet_wrap(~ island, scales = "free", strip.position = "top") +
+  theme_classic() +
+  theme(
+    legend.position = "top",
+    legend.box = "horizontal",
+    legend.spacing.x = unit(0.2, "cm"),
+    axis.text.x = element_text(angle = 45, hjust = 1) 
+  )
+
+
 
 ggsave("barplots_counts_spp_island_v2.jpeg", height = 7, width = 15)
 
 ```
+
+
+```{r}
+
+plot_counts_spp_island <- ggplot(df, aes(x = spp, fill = nematode_count_categories)) +
+  geom_bar(stat = "count", position = "stack") +  # Use position = "stack" for stacked bar plots
+  labs(title = "Nematode Counts per Species and Category",
+       x = "Species",
+       y = "Nematode Counts") +
+  facet_wrap(~ island, scales = "free", strip.position = "top") +
+  theme_classic() +
+  theme(
+    legend.position = "top",
+    legend.box = "horizontal",
+    legend.spacing.x = unit(0.2, "cm"),
+    axis.text.x = element_text(angle = 45, hjust = 1) 
+  ) +
+ scale_fill_manual(values = c("absence" = "gray", "low" = "blue", "moderate" = "green", "high" = "red"))
+
+plot_counts_spp_island
+
+
+
+```
+
 
 # compute a mean parasitic load
 
@@ -131,6 +175,7 @@ correlation_data <- df %>%
   summarise(mean_load = mean(nematode_count, na.rm = TRUE),
             shell_brightness = first(shell_brightness)) %>%
   arrange(desc(mean_load))
+
 
 ```
 
