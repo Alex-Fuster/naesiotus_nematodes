@@ -10,10 +10,22 @@ library(ggplot2)
 
 
 ```{r}
+my_theme<-theme(axis.text=element_text(size=12),
+        axis.title = element_text(size = 14),
+        legend.text=element_text(size=10),
+        legend.title = element_text(size=12),
+        plot.title = element_text(face="bold",size=14,margin=margin(0,0,20,0),hjust = 0.5),
+        axis.title.y = element_text(hjust = 0.5),
+        axis.title.x = element_text(hjust = 0.5))
+```
+
+
+
+```{r}
 df <- read.csv("sampling.csv", header = TRUE)
 df$nematode_count[which(df$nematode_count == ">100")] <- "100"
 df$nematode_count <- as.numeric(df$nematode_count)
-df <- df[1:1962,]
+#df <- df[1:2413,]
 hist(df$nematode_count)
 ```
 
@@ -29,22 +41,35 @@ df <- df %>%
 ```
 
 ```{r}
-ggplot(df, aes(x = nematode_count_categories, fill = nematode_count_categories)) +
-  geom_bar() +
+# Filter out NA values from your data frame
+filtered_df <- df %>%
+  filter(!is.na(nematode_count_categories))
+
+# Plotting the filtered data
+total_counts <- ggplot(filtered_df, aes(x = nematode_count_categories, fill = nematode_count_categories)) +
+  geom_bar(show.legend = FALSE) +
   labs(title = "Distribution of Categories",
        x = "Categories",
        y = "Count") +
   scale_fill_manual(values = c("absence" = "gray", "low" = "blue", "moderate" = "green", "high" = "red")) +
-  theme_classic()
+  xlab("") +
+  theme_classic() +
+  my_theme
+
+total_counts
+
+ggsave("total_counts.jpeg", height = 7, width = 7)
 
 ```
 
+
+# Species sampled per island
 
 ```{r}
 
 # Assuming your data frame is named 'df' and the columns are named 'spp', 'island', and 'nematode_count'
 # Count the number of species per island
-species_counts <- df %>%
+species_counts <- filtered_df %>%
   group_by(island) %>%
   summarise(num_species = length(unique(spp)))
 
@@ -54,87 +79,28 @@ species_counts <- species_counts %>%
 
 
 # Plot the number of species per island
-nspp_island <- ggplot(species_counts, aes(x = island, y = num_species, fill = island)) +
+nspp_island <- ggplot(species_counts, aes(x = island, y = num_species)) +
   geom_bar(stat = "identity") +
-  geom_text(aes(label = num_species), vjust = -0.5, size = 3) +  # Add text labels
+  geom_text(aes(label = num_species), vjust = -0.5, size = 5) +  # Add text labels
   labs(title = "Number of Species per Island",
        x = "Island",
        y = "Number of Species") +
-  theme_classic()
+  theme(axis.text.x = element_text(angle = 45, vjust = c(1, 0))) +  # Adjust angle and vjust
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
+  theme_classic()+
+  my_theme
+
 
 nspp_island
 
 
-ggsave("nspp_island.jpeg", height = 7, width = 10)
-
-
-
-
+ggsave("nspp_island.jpeg", height = 7, width = 8)
 
 ```
 
-```{r}
 
 
-barplots_counts_spp_island <- ggplot(df, aes(x = spp, fill = nematode_count_categories)) +
-  geom_bar(stat = "identity") +  # Use geom_bar for barplots
-  labs(title = "Nematode Counts per Species and Category",
-       x = "Species",
-       y = "Nematode Counts") +
-  facet_wrap(~ island, scales = "free", strip.position = "top") +
-  theme_classic() +
-  theme(
-    legend.position = "top",
-    legend.box = "horizontal",
-    legend.spacing.x = unit(0.2, "cm"),
-    axis.text.x = element_text(angle = 45, hjust = 1) 
-  )
-
-
-
-barplots_counts_spp_island
-
-
-
-
-
-
-ggplot(df, aes(x = spp, y = count, fill = nematode_count_categories)) +
-  geom_bar(stat = "identity") +
-  labs(title = "Nematode Count Categories per Species",
-       x = "Species",
-       y = "Count") +
-  facet_wrap(~ island, scales = "free") +  # Facet by island with free scales
-  scale_fill_manual(values = c("absence" = "gray", "low" = "blue", "moderate" = "green", "high" = "red")) +  # Specify colors
-  theme_classic() +
-  theme(
-    legend.position = "top",
-    legend.box = "horizontal",
-    legend.spacing.x = unit(0.2, "cm"),
-    axis.text.x = element_text(angle = 45, hjust = 1) 
-  )
-
-
-ggplot(df, aes(x = spp, y = nematode_count, fill = nematode_count_categories)) +
-  geom_bar(position = "stack", stat = "identity", alpha = 0.7) +
-  geom_jitter(position = position_dodge(width = 0.75), alpha = 0.5) +
-  labs(title = "Nematode Counts per Species and Category",
-       x = "Species",
-       y = "Nematode Counts") +
-  facet_wrap(~ island, scales = "free", strip.position = "top") +
-  theme_classic() +
-  theme(
-    legend.position = "top",
-    legend.box = "horizontal",
-    legend.spacing.x = unit(0.2, "cm"),
-    axis.text.x = element_text(angle = 45, hjust = 1) 
-  )
-
-
-
-ggsave("barplots_counts_spp_island_v2.jpeg", height = 7, width = 15)
-
-```
+# Parasitic load per species and island
 
 
 ```{r}
@@ -152,11 +118,12 @@ plot_counts_spp_island <- ggplot(df, aes(x = spp, fill = nematode_count_categori
     legend.spacing.x = unit(0.2, "cm"),
     axis.text.x = element_text(angle = 45, hjust = 1) 
   ) +
- scale_fill_manual(values = c("absence" = "gray", "low" = "blue", "moderate" = "green", "high" = "red"))
+ scale_fill_manual(values = c("absence" = "gray", "low" = "blue", "moderate" = "green", "high" = "red"))+
+  xlab("")
 
 plot_counts_spp_island
 
-
+ggsave("barplots_counts_spp_island_v2.jpeg", height = 7, width = 15)
 
 ```
 
@@ -164,18 +131,56 @@ plot_counts_spp_island
 # compute a mean parasitic load
 
 ```{r}
+
 df_load <- df %>%
   group_by(spp) %>%
   summarise(mean_load = mean(nematode_count, na.rm = TRUE)) %>%
   arrange(desc(mean_load))
 
+colnames(df_load) = c("sp", "mean_load")
 
-correlation_data <- df %>%
-  group_by(spp) %>%
-  summarise(mean_load = mean(nematode_count, na.rm = TRUE),
-            shell_brightness = first(shell_brightness)) %>%
-  arrange(desc(mean_load))
+df_load
+
+```
+
+
+# shell brightness
+
+```{r}
+df_brightness <- read.csv("kraemer2019_brightness_scores.csv")
+
+
+df_brightness <- df_brightness[,c("sp", "brightness")]
+
+# compute men brightness per spp
+
+df_brightness <- df_brightness %>% 
+  group_by(sp) %>% 
+  summarise(mean_brightness = mean(brightness, na.rm = TRUE),
+            sd_brightness = sd(brightness, na.rm = TRUE))
+
+df_brightness <- df_brightness %>%
+  filter(!(sp %in% c("AL sp.2", 
+                     "AL sp.3",
+                     "cf perspectivus FL",
+                     "cf. nesioticus 'little'",
+                     "cf. nesioticus SC E",
+                     "cf. nesioticus SC W",
+                     "unknownblack")))
+
+```
+
+
+```{r}
+merged_df <- inner_join(df_load, df_brightness, by = "sp")
+
+cor(merged_df$mean_brightness, merged_df$mean_load)
 
 
 ```
+
+
+
+
+
 
