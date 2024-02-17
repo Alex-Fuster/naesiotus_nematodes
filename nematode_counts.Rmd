@@ -128,6 +128,68 @@ ggsave("barplots_counts_spp_island_v2.jpeg", height = 7, width = 15)
 ```
 
 
+
+
+
+
+
+
+
+```{r}
+# Install and load required packages
+install.packages("ggpubr")
+
+library(ggplot2)
+library(ggpubr)
+
+# List of unique islands
+islands <- unique(df$island)
+
+# Create a list to store individual plots for each island
+plots_list <- list()
+
+# Loop through each island
+for (i in islands) {
+  # Filter dataframe for the current island
+  island_df <- df[df$island == i, ]
+  
+  # Filter species to remove any with no counts on the island
+  species <- unique(island_df$spp[island_df$nematode_count > 0])
+  
+  # Filter dataframe to include only species found on the island
+  island_df <- island_df[island_df$spp %in% species, ]
+  
+  # Create bar plot for the current island
+  plot <- ggplot(island_df, aes(x = spp, fill = nematode_count_categories)) +
+    geom_bar(stat = "count", position = "stack") +
+    labs(title = paste("Nematode Counts for", i),
+         x = "Species",
+         y = "Nematode Counts") +
+    scale_fill_manual(values = c("absence" = "gray", "low" = "blue", "moderate" = "green", "high" = "red")) +
+    xlab("") +
+    theme_classic() +
+    theme(legend.position = "top",
+          legend.box = "horizontal",
+          legend.spacing.x = unit(0.2, "cm"),
+          axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  # Append the plot to the list
+  plots_list[[i]] <- plot
+}
+
+# Arrange all the island plots using ggarrange
+ggarrange(plotlist = plots_list, nrow = 3, ncol = 2, common.legend = TRUE)
+
+```
+
+
+
+
+
+
+
+
+
 # compute a mean parasitic load
 
 ```{r}
