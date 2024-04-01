@@ -1,0 +1,359 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)# Load the ape package
+library(ape)
+library(readxl)
+library(tidyr)
+
+# Read the .nwk file
+tree <- read.tree("phylogeny_2022/22Nov_Naesiotus.nwk")
+data <- read.nexus("phylogeny_2022/22Nov_Naesiotus.nex")
+
+plot(tree)
+```
+
+
+parameters for plotting
+
+```{r}
+my_theme<-theme(axis.text=element_text(size=12),
+        axis.title = element_text(size = 14),
+        legend.text=element_text(size=10),
+        legend.title = element_text(size=12),
+        plot.title = element_text(face="bold",size=14,margin=margin(0,0,20,0),hjust = 0.5),
+        axis.title.y = element_text(hjust = 0.5),
+        axis.title.x = element_text(hjust = 0.5))
+```
+
+
+# compute phylogenetic distances
+
+
+Read data
+
+```{r}
+df_rads <- read_excel("GPS RAD snails.xlsx")
+head(df_rads)
+```
+```{r}
+# Create a mapping between Sample and Taxon
+sample_to_taxon <- setNames(df_rads$Taxon, df_rads$Sample)
+
+# Replace tip labels in the tree with corresponding taxa
+tree$tip.label <- sample_to_taxon[tree$tip.label]
+
+plot(tree)
+```
+
+
+
+```{r}
+df <- read_excel("04april24_datalab.xlsx", sheet = 2)
+df$nematode_count[which(df$nematode_count == ">100")] <- "100"
+df$nematode_count <- as.numeric(df$nematode_count)
+hist(df$nematode_count)
+```
+
+
+```{r}
+
+df <- df %>%
+  mutate(nematode_count_categories = cut(nematode_count, 
+                          breaks = c(-Inf, 0, 10, 30, Inf), 
+                          labels = c("absence", "low", "moderate", "high"),
+                          include.lowest = TRUE)) 
+
+```
+
+```{r}
+# Filter out NA values from your data frame
+filtered_df <- df %>%
+  filter(!is.na(nematode_count_categories))
+
+# Plotting the filtered data
+total_counts <- ggplot(filtered_df, aes(x = nematode_count_categories, fill = nematode_count_categories)) +
+  geom_bar(show.legend = FALSE) +
+  labs(title = "Distribution of Categories",
+       x = "Categories",
+       y = "Count") +
+  scale_fill_manual(values = c("absence" = "gray", "low" = "blue", "moderate" = "green", "high" = "red")) +
+  xlab("") +
+  theme_classic() +
+  my_theme
+
+total_counts
+
+ggsave("output/exploratory/total_counts.jpeg", height = 7, width = 7)
+
+```
+
+
+# Species sampled per island
+
+```{r}
+
+# Count the number of species per island
+species_counts <- filtered_df %>%
+  group_by(island) %>%
+  summarise(num_species = length(unique(spp)))
+
+# Reorder the levels of the "island" factor based on the number of species
+species_counts <- species_counts %>%
+  mutate(island = factor(island, levels = island[order(num_species)]))
+
+
+# Plot the number of species per island
+nspp_island <- ggplot(species_counts, aes(x = island, y = num_species)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = num_species), vjust = -0.5, size = 5) +  # Add text labels
+  labs(title = "Number of sampled species per island",
+       x = "Island",
+       y = "Number of Species") +
+  theme(axis.text.x = element_text(angle = 45, vjust = c(1, 0))) +  # Adjust angle and vjust
+  scale_x_discrete(guide = guide_axis(n.dodge=2))+
+  theme_classic()+
+  my_theme
+
+
+nspp_island
+
+
+ggsave("output/exploratory/nspp_island.jpeg", height = 7, width = 8)
+
+```
+
+
+
+# Parasitic load per species and island
+
+
+```{r}
+
+plot_counts_spp_island <- ggplot(df, aes(x = spp, fill = nematode_count_categories)) +
+  geom_bar(stat = "count", position = "stack") +  # Use position = "stack" for stacked bar plots
+  labs(title = "Nematode Counts per Species and Category",
+       x = "Species",
+       y = "Nematode Counts") +
+  facet_wrap(~ island, scales = "free", strip.position = "top") +
+  theme_classic() +
+  theme(
+    legend.position = "top",
+    legend.box = "horizontal",
+    legend.spacing.x = unit(0.2, "cm"),
+    axis.text.x = element_text(angle = 45, hjust = 1) 
+  ) +
+ scale_fill_manual(values = c("absence" = "gray", "low" = "blue", "moderate" = "green", "high" = "red"))+
+  xlab("")
+
+plot_counts_spp_island
+
+ggsave("output/exploratory/barplots_counts_spp_island_v2.jpeg", height = 9, width = 9)
+
+```
+
+
+
+```{r}
+unique_pulls <- df %>%
+  group_by(spp) %>%
+  summarize(num_unique_pulls = n_distinct(id, na.rm = TRUE))
+
+
+ggplot(unique_pulls, aes(x = num_unique_pulls)) +
+  geom_bar(fill = "grey20", color = "black") +
+  scale_y_continuous(breaks = seq(0, max(unique_pulls$num_unique_pulls), by = 1)) + 
+  labs(title = "Distribution of n locations \nof examined specimens per species",
+       x = "N locations in positive pulls",
+       y = "Frequency") +
+  theme_classic()+
+  my_theme
+
+
+ggsave("output/exploratory/barplots_nlocations_examinations.jpeg", height = 5, width = 9)
+
+```
+
+
+
+# compute a mean parasitic load
+
+```{r}
+
+df_load <- df %>%
+  group_by(spp) %>%
+  summarise(mean_load = mean(nematode_count, na.rm = TRUE)) %>%
+  arrange(desc(mean_load))
+
+colnames(df_load) = c("sp", "mean_load")
+
+df_load
+
+```
+
+
+# shell brightness
+
+```{r}
+df_brightness <- read.csv("kraemer2019/kraemer2019_brightness_scores.csv")
+
+
+df_brightness <- df_brightness[,c("sp", "brightness")]
+
+# compute men brightness per spp
+
+df_brightness <- df_brightness %>% 
+  group_by(sp) %>% 
+  summarise(mean_brightness = mean(brightness, na.rm = TRUE),
+            sd_brightness = sd(brightness, na.rm = TRUE))
+
+df_brightness <- df_brightness %>%
+  filter(!(sp %in% c("AL sp.2", 
+                     "AL sp.3",
+                     "cf perspectivus FL",
+                     "cf. nesioticus 'little'",
+                     "cf. nesioticus SC E",
+                     "cf. nesioticus SC W",
+                     "unknownblack")))
+
+```
+
+
+```{r}
+merged_df <- inner_join(df_load, df_brightness, by = "sp")
+
+cor(merged_df$mean_brightness, merged_df$mean_load)
+
+
+```
+
+
+
+# n pools
+
+```{r}
+
+data <- read_excel("04april24_datalab.xlsx", sheet = "pools")
+
+
+data <- mutate(data, id_negative_pull = ifelse(is.na(id_negative_pull), 0, id_negative_pull))
+
+# Group by species (spp) and count the number of positive and negative pools
+speciments_counts <- data %>%
+  group_by(spp) %>%
+  summarize(
+    positive_pools = sum(!is.na(id_positive_pull)),
+    negative_pools = sum(id_negative_pull > 0)
+  )
+
+
+speciments_counts
+
+
+```
+```{r}
+# Assuming your data frame is called data
+unique_pulls <- data %>%
+  group_by(spp) %>%
+  summarize(num_unique_pulls = n_distinct(id_positive_pull, na.rm = TRUE))
+
+# View the result
+print(unique_pulls)
+
+ggplot(unique_pulls, aes(x = num_unique_pulls)) +
+  geom_bar(fill = "grey20", color = "black") +
+  labs(title = "Distribution of n locations of \npositive pulls per species",
+       x = "N locations in positive pulls",
+       y = "Frequency") +
+  theme_classic()+
+  my_theme
+
+
+ggsave("output/exploratory/distrib_nlocations.jpeg", height = 6, width = 5)
+
+```
+
+
+
+```{r}
+
+# Reshape the data into a longer format
+speciments_counts_long <- pivot_longer(speciments_counts, cols = c(positive_pools, negative_pools), names_to = "pool_type", values_to = "count")
+
+# Create a grouped bar plot
+# Create a grouped bar plot with rotated x-axis labels and specified colors
+# Create a grouped bar plot with rotated x-axis labels and specified colors
+ggplot(speciments_counts_long, aes(x = spp, y = count, fill = ifelse(pool_type == "positive_pools" & count < 10, "less_than_10", pool_type))) +
+  geom_bar(stat = "identity", position = "dodge", color = "black") +
+  labs(title = "Number of Individuals in Pools per Species",
+       x = "Species",
+       y = "Number of Individuals",
+       fill = "Pool Type") +
+  scale_fill_manual(values = c("positive_pools" = "black", "negative_pools" = "gray", "less_than_10" = "red")) +  # Set colors for positive and negative pools
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))  # Rotate x-axis labels by 90 degrees
+
+
+ggsave("output/exploratory/nind_pool_spp.png", height = 6, width = 8)
+
+
+
+```
+
+
+
+
+
+```{r}
+
+unique(data$spp)
+
+pool_counts <- data %>%
+  group_by(spp) %>%
+  summarize(
+    positive_pool_types = n_distinct(id_positive_pull, na.rm = TRUE),  # Count distinct values, ignoring NA
+    negative_pool_types = ifelse(any(id_negative_pull > 0), 1, 0)
+  )
+
+# Print the result
+print(pool_counts)
+
+```
+
+Akamatus, Amastroides, and Basiplicatus do have negatives
+
+Olla, Rabidensis, spp12 are those without negatives
+
+Unifasciatus (from Floreana), and spp2 (from Wolf volcano in Isabela) are the unes used for the rarefraction analysis.
+
+
+
+
+```{r}
+# Print the result
+n_samples <- sum(pool_counts$positive_pool_types) + sum(pool_counts$negative_pool_types) + 20
+
+
+# budget calculation
+
+n_samples * 27.15
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
