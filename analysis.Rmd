@@ -377,7 +377,7 @@ combined_plot <- ggarrange(boxplot_microhabitat,
 
 combined_plot
 
-ggsave("figures/load_habitat_island.png", height = 9, width = 8)
+#ggsave("figures/load_habitat_island.png", height = 9, width = 8)
 ```
 
 
@@ -406,7 +406,7 @@ plot_island_name <- ggplot(combined_df, aes(x = factor(island, levels = ordered_
 
 plot_island_name
 
-ggsave("figures/load_islandname.png", height = 7, width = 8)
+#ggsave("figures/load_islandname.png", height = 7, width = 8)
 
 ```
 
