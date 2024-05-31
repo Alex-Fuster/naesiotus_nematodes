@@ -9,6 +9,7 @@ library(ggplot2)# Load the ape package
 library(ape)
 library(readxl)
 library(tidyr)
+library(ggpubr)
 ```
 
 
@@ -187,23 +188,37 @@ df_load
 
 
 
+# Brightness, habitat, island characteristics
+
+```{r}
+# brightness
+df_kraemer <- read.csv("kraemer2019/kraemer2019_brightness_scores.csv")
+
+# habitat
+df_microhab <- read_excel("04april24_datalab.xlsx", sheet = "spp_mynames_features")
+
+#island
+
+df_island <- read_excel("04april24_datalab.xlsx", sheet = "island_characteristics")
+```
+
+
+
 
 # shell brightness
 
 ```{r}
-df_kraemer <- read.csv("kraemer2019/kraemer2019_brightness_scores.csv")
 
 df_kraemer <- df_kraemer %>% 
-  select(sp, brightness)
+  select(spp, brightness)
 
 df_brightness <- df_kraemer %>%
-  group_by(sp) %>%
+  group_by(spp) %>%
   summarise(
     mean_brightness = mean(brightness, na.rm = TRUE),
     sd_brightness = sd(brightness, na.rm = TRUE)
   )
 
-colnames(df_brightness)[1] <- "species"
 
 df_brightness
 
@@ -212,7 +227,7 @@ df_brightness
 
 
 
-### Exploring load vs brightness
+### Load vs brightness (individual data for load)
 
 
 ```{r}
@@ -227,7 +242,7 @@ df_combined
 
 ```{r}
 # Compute summary statistics for df_load
-df_load <- df %>%
+df_load_indiv <- df %>%
   group_by(spp) %>%
   summarise(n = n(),
             mean_load = mean(nematode_count, na.rm = TRUE),
@@ -236,95 +251,164 @@ df_load <- df %>%
 
 # Merge df with df_brightness to get mean_brightness and sd_brightness
 df_combined <- df %>%
-  left_join(df_brightness, by = c("spp" = "species"))
+  left_join(df_brightness, by = "spp")
 
 # Merge df_combined with df_load to get mean_load and sd_load for each species
 df_combined <- df_combined %>%
-  left_join(df_load, by = "spp")
+  left_join(df_load_indiv, by = "spp")
 
-# Print the combined data frame to verify
-print(df_combined)
-
-# Create the scatter plot with jittered points and error bars using ggplot2
-ggplot(df_combined, aes(x = mean_brightness, y = nematode_count)) +
-  geom_jitter(width = 0.2, alpha = 0.5) + # Jittered points for distribution
+plot_brighness_load <- ggplot(df_combined, aes(x = mean_brightness, y = nematode_count)) +
+  geom_jitter(width = 0.2, alpha = 0.4) + # Jittered points for distribution
   stat_summary(aes(y = mean_load), fun = mean, geom = "point", color = "red", size = 3) + # Mean points
   stat_summary(aes(y = mean_load), fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width = 0.2, color = "red") + # Error bars
-  labs(title = "Nematode Count vs. Brightness",
-       x = "Mean Brightness",
-       y = "Nematode Count") +
-  theme_minimal()
-```
+  geom_smooth(method = "gam", se = FALSE, linetype = "dashed",color = "blue") + # Add tendency line
+  labs(x = "Mean shell brightness",
+       y = "Nematode count") +
+  theme_bw() +
+  my_theme
 
-# Microhabitat
+plot_brighness_load
 
-```{r}
-df_microhab <- read_excel("04april24_datalab.xlsx", sheet = "spp_mynames_features")
-
-
-df_microhab <- df_microhab %>% 
-  select(spp, microhabitat, vegetation_zone)
-
-
-df_combined <- df_combined %>%
-  left_join(df_microhab, by = "spp")
-
-df_combined
-
-```
-```{r}
-df_filtered <- df_combined[!is.na(df_combined$mean_load), ]
-df_filtered <- df_combined[!is.na(df_combined$microhabitat.y), ]
-
-# Group the data by species and compute the mean load for each species
-df_species_mean <- df_filtered %>%
-  group_by(spp, microhabitat.y) %>%
-  summarise(mean_load = mean(mean_load))
-
-# Create the boxplot with data points using ggplot2
-ggplot(df_filtered, aes(x = microhabitat.y, y = mean_load)) +
-  geom_boxplot(width = 0.7, outlier.shape = NA) +  # Remove outlier points from the boxplot
-  geom_point(data = df_species_mean, aes(x = microhabitat.y, y = mean_load), color = "black", size = 3, alpha = 0.6) +  # Add species-level mean points
-  labs(title = "Boxplot of Mean Load for Each Microhabitat Group",
-       x = "Microhabitat",
-       y = "Mean Load") +
-  theme_minimal()
-```
-
-# vegeation zone
-
-
-```{r}
-df_microhab <- read_excel("04april24_datalab.xlsx", sheet = "spp_mynames_features")
-
-
-df_microhab <- df_microhab %>% 
-  select(spp, microhabitat, vegetation_zone)
-
-
-df_combined <- df_combined %>%
-  left_join(df_microhab, by = "spp")
-
+ggsave("figures/brightness_load.png", height = 8, width = 7)
 ```
 
 
 ```{r}
 
-df_filtered <- df_combined[!is.na(df_combined$mean_load), ]
-df_filtered <- df_combined[!is.na(df_combined$vegetation_zone.y), ]
 
+colnames(df_brightness)[1] <- "species"
 
-df_species_mean <- df_filtered %>%
-  group_by(spp, vegetation_zone.y) %>%
-  summarise(mean_load = mean(mean_load))
+# Merge df_load with df_brightness based on species
+combined_df <- left_join(df_load, df_brightness, by = "species")
 
-# Create the boxplot with data points using ggplot2
-ggplot(df_filtered, aes(x = vegetation_zone.y, y = mean_load)) +
-  geom_boxplot(width = 0.7, outlier.shape = NA) +  # Remove outlier points from the boxplot
-  geom_point(data = df_species_mean, aes(x = vegetation_zone.y, y = mean_load), color = "black", size = 3, alpha = 0.6) +  # Add species-level mean points
-  labs(title = "Boxplot of Mean Load for Each Microhabitat Group",
-       x = "Vegetation zone",
-       y = "Mean Load") +
-  theme_minimal()
+colnames(df_microhab)[1] <- "species"
+
+# Merge combined_df with df_microhab based on additional common columns
+combined_df <- left_join(combined_df, df_microhab, by = c("species"))
+
+combined_df
 ```
+
+
+```{r}
+
+df <- df %>%
+  rename(species = spp)
+
+# Step 1: Add the island name corresponding to each species in combined_df
+combined_df <- combined_df %>%
+  left_join(df %>%
+              distinct(species, island), by = "species")
+
+# Step 2: Merge combined_df with df_island based on the island name
+combined_df <- combined_df %>%
+  left_join(df_island, by = c("island" = "island"))
+
+# Step 3: Create the new columns "island_age" and "island_area" in combined_df
+combined_df <- combined_df %>%
+  mutate(island_age = mean_emergence,
+         island_area = area)
+
+combined_df <- combined_df[-nrow(combined_df),]
+
+combined_df
+
+```
+
+
+PLOTS
+
+```{r}
+back_transform_sqrt <- function(x) {
+  return(x^2)  # Square back the transformed value
+}
+```
+
+
+```{r}
+# (1) Boxplot of mean_load in function of microhabitat
+boxplot_microhabitat <- ggplot(combined_df %>% filter(!is.na(microhabitat)), aes(x = microhabitat, y = mean_load)) +
+  geom_boxplot() +
+  geom_point(position = position_jitter(width = 0.1), alpha = 0.5) +  # Add points with jitter
+  labs(
+       x = NULL,
+       y = "Mean nematode load") +
+  theme_bw() +
+  my_theme
+
+# (2) Boxplot of mean_load in function of vegetation zone (excluding NA values)
+boxplot_vegetation <- ggplot(combined_df %>% filter(!is.na(vegetation_zone)), aes(x = vegetation_zone, y = mean_load)) +
+  geom_boxplot() +
+  geom_point(position = position_jitter(width = 0.1), alpha = 0.5) +  # Add points with jitter
+  labs(
+       x = NULL,
+       y = "Mean nematode load") +
+  theme_bw() +
+  my_theme
+
+# (3) Plot of mean_load in function of island age
+plot_island_age <- ggplot(combined_df, aes(x = island_age, y = mean_load)) +
+  geom_point() +
+  labs(
+       x = "Island age",
+       y = "Mean nematodes load")+
+  theme_bw()+
+  my_theme
+
+# (4) Plot of mean_load in function of island size
+plot_island_size <- ggplot(combined_df, aes(x = sqrt(island_area), y = mean_load)) +
+  geom_point() +
+  labs(
+       x = expression("Island area ("~km^2~")"),
+       y = "Mean nematode load") +
+  scale_x_continuous(labels = back_transform_sqrt) +
+  theme_bw() +
+  my_theme
+
+
+
+# Combine the plots using ggarrange
+combined_plot <- ggarrange(boxplot_microhabitat, 
+                           boxplot_vegetation + ylab(""), 
+                           plot_island_age, 
+                           plot_island_size + ylab(""),
+                           ncol = 2, nrow = 2,
+                           labels = LETTERS[1:4])
+
+combined_plot
+
+ggsave("figures/load_habitat_island.png", height = 9, width = 8)
+```
+
+
+```{r}
+
+# Calculate the mean load for each island
+mean_load_by_island <- combined_df %>%
+  group_by(island) %>%
+  summarize(mean_load = mean(mean_load, na.rm = TRUE))
+
+# Reorder the islands based on the mean load value
+ordered_islands <- mean_load_by_island %>%
+  arrange(desc(mean_load)) %>%
+  pull(island)
+
+# Plot with x-axis categories ordered by mean_load value
+plot_island_name <- ggplot(combined_df, aes(x = factor(island, levels = ordered_islands), y = mean_load)) +
+  geom_boxplot() +
+  geom_point(position = position_jitter(width = 0.2), alpha = 0.5, size = 2) +  # Add points with jitter
+  labs(
+       x = NULL,
+       y = "Mean nematodes load") +
+  theme_bw() +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plot_island_name
+
+ggsave("figures/load_islandname.png", height = 7, width = 8)
+
+```
+
+
 
