@@ -1,0 +1,141 @@
+---
+title: "Sequencing pools"
+---
+
+
+```{r}
+library(dplyr)
+library(ggplot2)# Load the ape package
+library(ape)
+library(readxl)
+library(tidyr)
+```
+
+
+parameters for plotting
+
+```{r}
+my_theme<-theme(axis.text=element_text(size=12),
+        axis.title = element_text(size = 14),
+        legend.text=element_text(size=10),
+        legend.title = element_text(size=12),
+        plot.title = element_text(face="bold",size=14,margin=margin(0,0,20,0),hjust = 0.5),
+        axis.title.y = element_text(hjust = 0.5),
+        axis.title.x = element_text(hjust = 0.5))
+```
+
+
+
+# n pools
+
+```{r}
+
+data <- read_excel("04april24_datalab.xlsx", sheet = "pools")
+
+
+data <- mutate(data, id_negative_pull = ifelse(is.na(id_negative_pull), 0, id_negative_pull))
+
+# Group by species (spp) and count the number of positive and negative pools
+speciments_counts <- data %>%
+  group_by(spp) %>%
+  summarize(
+    positive_pools = sum(!is.na(id_positive_pull)),
+    negative_pools = sum(id_negative_pull > 0)
+  )
+
+
+speciments_counts
+
+
+```
+
+
+
+```{r}
+# Assuming your data frame is called data
+unique_pulls <- data %>%
+  group_by(spp) %>%
+  summarize(num_unique_pulls = n_distinct(id_positive_pull, na.rm = TRUE))
+
+# View the result
+print(unique_pulls)
+
+ggplot(unique_pulls, aes(x = num_unique_pulls)) +
+  geom_bar(fill = "grey20", color = "black") +
+  labs(title = "Distribution of n locations of \npositive pulls per species",
+       x = "N locations in positive pulls",
+       y = "Frequency") +
+  theme_classic()+
+  my_theme
+
+
+#ggsave("output/exploratory/distrib_nlocations.jpeg", height = 6, width = 5)
+
+```
+
+
+
+```{r}
+
+# Reshape the data into a longer format
+speciments_counts_long <- pivot_longer(speciments_counts, cols = c(positive_pools, negative_pools), names_to = "pool_type", values_to = "count")
+
+# Create a grouped bar plot
+# Create a grouped bar plot with rotated x-axis labels and specified colors
+# Create a grouped bar plot with rotated x-axis labels and specified colors
+ggplot(speciments_counts_long, aes(x = spp, y = count, fill = ifelse(pool_type == "positive_pools" & count < 10, "less_than_10", pool_type))) +
+  geom_bar(stat = "identity", position = "dodge", color = "black") +
+  labs(title = "Number of Individuals in Pools per Species",
+       x = "Species",
+       y = "Number of Individuals",
+       fill = "Pool Type") +
+  scale_fill_manual(values = c("positive_pools" = "black", "negative_pools" = "gray", "less_than_10" = "red")) +  # Set colors for positive and negative pools
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))  # Rotate x-axis labels by 90 degrees
+
+
+#ggsave("output/exploratory/nind_pool_spp.png", height = 6, width = 8)
+
+
+
+```
+
+
+
+
+
+```{r}
+
+unique(data$spp)
+
+pool_counts <- data %>%
+  group_by(spp) %>%
+  summarize(
+    positive_pool_types = n_distinct(id_positive_pull, na.rm = TRUE),  # Count distinct values, ignoring NA
+    negative_pool_types = ifelse(any(id_negative_pull > 0), 1, 0)
+  )
+
+# Print the result
+print(pool_counts)
+
+```
+
+Akamatus, Amastroides, and Basiplicatus do have negatives
+
+Olla, Rabidensis, spp12 are those without negatives
+
+Unifasciatus (from Floreana), and spp2 (from Wolf volcano in Isabela) are the unes used for the rarefraction analysis.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

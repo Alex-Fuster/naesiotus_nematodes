@@ -1,0 +1,39 @@
+---
+title: "Compute phylogenetic distance among naesiotus species"
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)# Load the ape package
+library(ape)
+library(readxl)
+library(tidyr)
+
+# Read the .nwk file
+tree <- read.tree("phylogeny_2022/22Nov_Naesiotus.nwk")
+data <- read.nexus("phylogeny_2022/22Nov_Naesiotus.nex")
+
+plot(tree)
+```
+
+
+# compute phylogenetic distances
+
+
+Read data
+
+```{r}
+df_rads <- read_excel("GPS RAD snails.xlsx")
+head(df_rads)
+```
+
+
+```{r}
+# Create a mapping between Sample and Taxon
+sample_to_taxon <- setNames(df_rads$Taxon, df_rads$Sample)
+
+# Replace tip labels in the tree with corresponding taxa
+tree$tip.label <- sample_to_taxon[tree$tip.label]
+
+plot(tree)
+```

@@ -9,12 +9,6 @@ library(ggplot2)# Load the ape package
 library(ape)
 library(readxl)
 library(tidyr)
-
-# Read the .nwk file
-tree <- read.tree("phylogeny_2022/22Nov_Naesiotus.nwk")
-data <- read.nexus("phylogeny_2022/22Nov_Naesiotus.nex")
-
-plot(tree)
 ```
 
 
@@ -31,31 +25,14 @@ my_theme<-theme(axis.text=element_text(size=12),
 ```
 
 
-# compute phylogenetic distances
-
-
-Read data
-
-```{r}
-df_rads <- read_excel("GPS RAD snails.xlsx")
-head(df_rads)
-```
-```{r}
-# Create a mapping between Sample and Taxon
-sample_to_taxon <- setNames(df_rads$Taxon, df_rads$Sample)
-
-# Replace tip labels in the tree with corresponding taxa
-tree$tip.label <- sample_to_taxon[tree$tip.label]
-
-plot(tree)
-```
-
 
 
 ```{r}
-df <- read_excel("04april24_datalab.xlsx", sheet = 2)
+df <- read_excel("04april24_datalab.xlsx", sheet = 3)
 df$nematode_count[which(df$nematode_count == ">100")] <- "100"
 df$nematode_count <- as.numeric(df$nematode_count)
+
+
 hist(df$nematode_count)
 ```
 
@@ -186,174 +163,168 @@ ggsave("output/exploratory/barplots_nlocations_examinations.jpeg", height = 5, w
 
 df_load <- df %>%
   group_by(spp) %>%
-  summarise(mean_load = mean(nematode_count, na.rm = TRUE)) %>%
+  summarise(n = n(),
+            mean_load = mean(nematode_count, na.rm = TRUE),
+            sd_load = sd(nematode_count, na.rm = TRUE)) %>%
   arrange(desc(mean_load))
 
-colnames(df_load) = c("sp", "mean_load")
+colnames(df_load) = c("species", "n" ,"mean_load", "sd_load")
+
+df_totals <- data.frame("n" = sum(df_load$n),
+           "mean_load" = mean(df_load$mean_load),
+           "sd_load" = mean(df_load$sd_load))
+
+df_load <- bind_rows(df_load, df_totals)
+
+df_load$mean_load <- round(df_load$mean_load, 1)
+df_load$sd_load <- round(df_load$sd_load, 1)
 
 df_load
 
+#write.csv(df_load, "output/df_load.csv")
+
 ```
+
+
 
 
 # shell brightness
 
 ```{r}
-df_brightness <- read.csv("kraemer2019/kraemer2019_brightness_scores.csv")
+df_kraemer <- read.csv("kraemer2019/kraemer2019_brightness_scores.csv")
 
+df_kraemer <- df_kraemer %>% 
+  select(sp, brightness)
 
-df_brightness <- df_brightness[,c("sp", "brightness")]
-
-# compute men brightness per spp
-
-df_brightness <- df_brightness %>% 
-  group_by(sp) %>% 
-  summarise(mean_brightness = mean(brightness, na.rm = TRUE),
-            sd_brightness = sd(brightness, na.rm = TRUE))
-
-df_brightness <- df_brightness %>%
-  filter(!(sp %in% c("AL sp.2", 
-                     "AL sp.3",
-                     "cf perspectivus FL",
-                     "cf. nesioticus 'little'",
-                     "cf. nesioticus SC E",
-                     "cf. nesioticus SC W",
-                     "unknownblack")))
-
-```
-
-
-```{r}
-merged_df <- inner_join(df_load, df_brightness, by = "sp")
-
-cor(merged_df$mean_brightness, merged_df$mean_load)
-
-
-```
-
-
-
-# n pools
-
-```{r}
-
-data <- read_excel("04april24_datalab.xlsx", sheet = "pools")
-
-
-data <- mutate(data, id_negative_pull = ifelse(is.na(id_negative_pull), 0, id_negative_pull))
-
-# Group by species (spp) and count the number of positive and negative pools
-speciments_counts <- data %>%
-  group_by(spp) %>%
-  summarize(
-    positive_pools = sum(!is.na(id_positive_pull)),
-    negative_pools = sum(id_negative_pull > 0)
+df_brightness <- df_kraemer %>%
+  group_by(sp) %>%
+  summarise(
+    mean_brightness = mean(brightness, na.rm = TRUE),
+    sd_brightness = sd(brightness, na.rm = TRUE)
   )
 
+colnames(df_brightness)[1] <- "species"
 
-speciments_counts
-
+df_brightness
 
 ```
+
+
+
+
+### Exploring load vs brightness
+
+
 ```{r}
-# Assuming your data frame is called data
-unique_pulls <- data %>%
+df_combined <- df_load %>%
+  left_join(df_brightness, by = "species")
+
+df_combined
+
+```
+
+
+
+```{r}
+# Compute summary statistics for df_load
+df_load <- df %>%
   group_by(spp) %>%
-  summarize(num_unique_pulls = n_distinct(id_positive_pull, na.rm = TRUE))
+  summarise(n = n(),
+            mean_load = mean(nematode_count, na.rm = TRUE),
+            sd_load = sd(nematode_count, na.rm = TRUE)) %>%
+  arrange(desc(mean_load))
 
-# View the result
-print(unique_pulls)
+# Merge df with df_brightness to get mean_brightness and sd_brightness
+df_combined <- df %>%
+  left_join(df_brightness, by = c("spp" = "species"))
 
-ggplot(unique_pulls, aes(x = num_unique_pulls)) +
-  geom_bar(fill = "grey20", color = "black") +
-  labs(title = "Distribution of n locations of \npositive pulls per species",
-       x = "N locations in positive pulls",
-       y = "Frequency") +
-  theme_classic()+
-  my_theme
+# Merge df_combined with df_load to get mean_load and sd_load for each species
+df_combined <- df_combined %>%
+  left_join(df_load, by = "spp")
 
+# Print the combined data frame to verify
+print(df_combined)
 
-ggsave("output/exploratory/distrib_nlocations.jpeg", height = 6, width = 5)
-
+# Create the scatter plot with jittered points and error bars using ggplot2
+ggplot(df_combined, aes(x = mean_brightness, y = nematode_count)) +
+  geom_jitter(width = 0.2, alpha = 0.5) + # Jittered points for distribution
+  stat_summary(aes(y = mean_load), fun = mean, geom = "point", color = "red", size = 3) + # Mean points
+  stat_summary(aes(y = mean_load), fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width = 0.2, color = "red") + # Error bars
+  labs(title = "Nematode Count vs. Brightness",
+       x = "Mean Brightness",
+       y = "Nematode Count") +
+  theme_minimal()
 ```
 
+# Microhabitat
+
+```{r}
+df_microhab <- read_excel("04april24_datalab.xlsx", sheet = "spp_mynames_features")
+
+
+df_microhab <- df_microhab %>% 
+  select(spp, microhabitat, vegetation_zone)
+
+
+df_combined <- df_combined %>%
+  left_join(df_microhab, by = "spp")
+
+df_combined
+
+```
+```{r}
+df_filtered <- df_combined[!is.na(df_combined$mean_load), ]
+df_filtered <- df_combined[!is.na(df_combined$microhabitat.y), ]
+
+# Group the data by species and compute the mean load for each species
+df_species_mean <- df_filtered %>%
+  group_by(spp, microhabitat.y) %>%
+  summarise(mean_load = mean(mean_load))
+
+# Create the boxplot with data points using ggplot2
+ggplot(df_filtered, aes(x = microhabitat.y, y = mean_load)) +
+  geom_boxplot(width = 0.7, outlier.shape = NA) +  # Remove outlier points from the boxplot
+  geom_point(data = df_species_mean, aes(x = microhabitat.y, y = mean_load), color = "black", size = 3, alpha = 0.6) +  # Add species-level mean points
+  labs(title = "Boxplot of Mean Load for Each Microhabitat Group",
+       x = "Microhabitat",
+       y = "Mean Load") +
+  theme_minimal()
+```
+
+# vegeation zone
+
+
+```{r}
+df_microhab <- read_excel("04april24_datalab.xlsx", sheet = "spp_mynames_features")
+
+
+df_microhab <- df_microhab %>% 
+  select(spp, microhabitat, vegetation_zone)
+
+
+df_combined <- df_combined %>%
+  left_join(df_microhab, by = "spp")
+
+```
 
 
 ```{r}
 
-# Reshape the data into a longer format
-speciments_counts_long <- pivot_longer(speciments_counts, cols = c(positive_pools, negative_pools), names_to = "pool_type", values_to = "count")
-
-# Create a grouped bar plot
-# Create a grouped bar plot with rotated x-axis labels and specified colors
-# Create a grouped bar plot with rotated x-axis labels and specified colors
-ggplot(speciments_counts_long, aes(x = spp, y = count, fill = ifelse(pool_type == "positive_pools" & count < 10, "less_than_10", pool_type))) +
-  geom_bar(stat = "identity", position = "dodge", color = "black") +
-  labs(title = "Number of Individuals in Pools per Species",
-       x = "Species",
-       y = "Number of Individuals",
-       fill = "Pool Type") +
-  scale_fill_manual(values = c("positive_pools" = "black", "negative_pools" = "gray", "less_than_10" = "red")) +  # Set colors for positive and negative pools
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))  # Rotate x-axis labels by 90 degrees
+df_filtered <- df_combined[!is.na(df_combined$mean_load), ]
+df_filtered <- df_combined[!is.na(df_combined$vegetation_zone.y), ]
 
 
-ggsave("output/exploratory/nind_pool_spp.png", height = 6, width = 8)
+df_species_mean <- df_filtered %>%
+  group_by(spp, vegetation_zone.y) %>%
+  summarise(mean_load = mean(mean_load))
 
-
-
+# Create the boxplot with data points using ggplot2
+ggplot(df_filtered, aes(x = vegetation_zone.y, y = mean_load)) +
+  geom_boxplot(width = 0.7, outlier.shape = NA) +  # Remove outlier points from the boxplot
+  geom_point(data = df_species_mean, aes(x = vegetation_zone.y, y = mean_load), color = "black", size = 3, alpha = 0.6) +  # Add species-level mean points
+  labs(title = "Boxplot of Mean Load for Each Microhabitat Group",
+       x = "Vegetation zone",
+       y = "Mean Load") +
+  theme_minimal()
 ```
-
-
-
-
-
-```{r}
-
-unique(data$spp)
-
-pool_counts <- data %>%
-  group_by(spp) %>%
-  summarize(
-    positive_pool_types = n_distinct(id_positive_pull, na.rm = TRUE),  # Count distinct values, ignoring NA
-    negative_pool_types = ifelse(any(id_negative_pull > 0), 1, 0)
-  )
-
-# Print the result
-print(pool_counts)
-
-```
-
-Akamatus, Amastroides, and Basiplicatus do have negatives
-
-Olla, Rabidensis, spp12 are those without negatives
-
-Unifasciatus (from Floreana), and spp2 (from Wolf volcano in Isabela) are the unes used for the rarefraction analysis.
-
-
-
-
-```{r}
-# Print the result
-n_samples <- sum(pool_counts$positive_pool_types) + sum(pool_counts$negative_pool_types) + 20
-
-
-# budget calculation
-
-n_samples * 27.15
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
