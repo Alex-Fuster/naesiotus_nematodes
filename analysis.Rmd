@@ -10,6 +10,8 @@ library(ape)
 library(readxl)
 library(tidyr)
 library(ggpubr)
+library(ade4)
+library(vegan)
 ```
 
 
@@ -411,4 +413,91 @@ plot_island_name
 ```
 
 
+
+# Phylogenetic distance
+
+
+```{r}
+# Read the .nwk file
+tree <- read.tree("phylogeny_2022/22Nov_Naesiotus.nwk")
+data <- read.nexus("phylogeny_2022/22Nov_Naesiotus.nex")
+df_rads <- read_excel("GPS RAD snails.xlsx")
+
+plot(tree)
+```
+
+
+```{r}
+# Create a mapping between Sample and Taxon
+sample_to_taxon <- setNames(df_rads$Taxon, df_rads$Sample)
+
+# Replace tip labels in the tree with corresponding taxa
+tree$tip.label <- sample_to_taxon[tree$tip.label]
+
+plot(tree)
+```
+
+
+compute phylogenetic distances
+
+```{r}
+phylo_dist_matrix <- cophenetic.phylo(tree)
+
+```
+
+
+```{r}
+df_load
+```
+
+```{r}
+# Step 1: Calculate pairwise distances of mean_load values
+load_dist_matrix <- as.matrix(dist(df_load$mean_load, method = "euclidean"))
+rownames(load_dist_matrix) <- df_load$species
+colnames(load_dist_matrix) <- df_load$species
+
+# Step 2: Check and match species names in both matrices
+common_species <- intersect(rownames(load_dist_matrix), rownames(phylo_dist_matrix))
+
+common_species <- common_species[!is.na(common_species)]
+
+# Step 3: Subset and reorder matrices
+load_dist_matrix_subset <- load_dist_matrix[common_species, common_species]
+phylo_dist_matrix_subset <- phylo_dist_matrix[common_species, common_species]
+
+# Step 4: convert into distance objects
+load_dist <- as.dist(load_dist_matrix_subset)
+phylo_dist <- as.dist(phylo_dist_matrix_subset)
+
+# Step 5: compute an ordination of the matrices
+
+load_pco <- dudi.pco(load_dist, scannf = FALSE, nf = 2, full = TRUE)
+phylo_pco <- dudi.pco(phylo_dist, scannf = FALSE, nf = 2, full = TRUE)
+
+```
+
+PCO plots
+
+```{r}
+# Create a data frame for ggplot2 (example for load_pco)
+load_pco_data <- data.frame(Species = rownames(load_pco$li), 
+                            PCoA1 = load_pco$li[, 1])
+
+# Plot using ggplot2
+ggplot(load_pco_data, aes(x = Species, y = PCoA1)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(title = "Principal Coordinate Analysis (PCoA) of Nematode Load", 
+       x = "Species", y = "PCoA 1") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Procrustes
+
+```{r}
+protest <- protest(load_pco, phylo_pco)
+protest
+
+plot(protest)
+```
 

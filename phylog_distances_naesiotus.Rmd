@@ -37,3 +37,13 @@ tree$tip.label <- sample_to_taxon[tree$tip.label]
 
 plot(tree)
 ```
+
+compute phylogenetic distances
+
+```{r}
+mat_dist <- cophenetic.phylo(tree)
+
+
+
+```
+
