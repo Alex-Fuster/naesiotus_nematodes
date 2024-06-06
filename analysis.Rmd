@@ -1,7 +1,14 @@
 ---
-title: "R Notebook"
+title: "Analyses"
 output: html_notebook
 ---
+
+
+DOUBT NAMES JOHN
+
+Jacobinus (in my load dataset)
+Jacobi (in other datasets)
+Olla Jacobinus (?)
 
 ```{r}
 library(dplyr)
@@ -12,6 +19,9 @@ library(tidyr)
 library(ggpubr)
 library(ade4)
 library(vegan)
+library(stringr)
+library(brms)
+library(dplyr)
 ```
 
 
@@ -28,137 +38,13 @@ my_theme<-theme(axis.text=element_text(size=12),
 ```
 
 
-
-
 ```{r}
 df <- read_excel("04april24_datalab.xlsx", sheet = 3)
 df$nematode_count[which(df$nematode_count == ">100")] <- "100"
 df$nematode_count <- as.numeric(df$nematode_count)
-
-
-hist(df$nematode_count)
 ```
 
-
-```{r}
-
-df <- df %>%
-  mutate(nematode_count_categories = cut(nematode_count, 
-                          breaks = c(-Inf, 0, 10, 30, Inf), 
-                          labels = c("absence", "low", "moderate", "high"),
-                          include.lowest = TRUE)) 
-
-```
-
-```{r}
-# Filter out NA values from your data frame
-filtered_df <- df %>%
-  filter(!is.na(nematode_count_categories))
-
-# Plotting the filtered data
-total_counts <- ggplot(filtered_df, aes(x = nematode_count_categories, fill = nematode_count_categories)) +
-  geom_bar(show.legend = FALSE) +
-  labs(title = "Distribution of Categories",
-       x = "Categories",
-       y = "Count") +
-  scale_fill_manual(values = c("absence" = "gray", "low" = "blue", "moderate" = "green", "high" = "red")) +
-  xlab("") +
-  theme_classic() +
-  my_theme
-
-total_counts
-
-ggsave("output/exploratory/total_counts.jpeg", height = 7, width = 7)
-
-```
-
-
-# Species sampled per island
-
-```{r}
-
-# Count the number of species per island
-species_counts <- filtered_df %>%
-  group_by(island) %>%
-  summarise(num_species = length(unique(spp)))
-
-# Reorder the levels of the "island" factor based on the number of species
-species_counts <- species_counts %>%
-  mutate(island = factor(island, levels = island[order(num_species)]))
-
-
-# Plot the number of species per island
-nspp_island <- ggplot(species_counts, aes(x = island, y = num_species)) +
-  geom_bar(stat = "identity") +
-  geom_text(aes(label = num_species), vjust = -0.5, size = 5) +  # Add text labels
-  labs(title = "Number of sampled species per island",
-       x = "Island",
-       y = "Number of Species") +
-  theme(axis.text.x = element_text(angle = 45, vjust = c(1, 0))) +  # Adjust angle and vjust
-  scale_x_discrete(guide = guide_axis(n.dodge=2))+
-  theme_classic()+
-  my_theme
-
-
-nspp_island
-
-
-ggsave("output/exploratory/nspp_island.jpeg", height = 7, width = 8)
-
-```
-
-
-
-# Parasitic load per species and island
-
-
-```{r}
-
-plot_counts_spp_island <- ggplot(df, aes(x = spp, fill = nematode_count_categories)) +
-  geom_bar(stat = "count", position = "stack") +  # Use position = "stack" for stacked bar plots
-  labs(title = "Nematode Counts per Species and Category",
-       x = "Species",
-       y = "Nematode Counts") +
-  facet_wrap(~ island, scales = "free", strip.position = "top") +
-  theme_classic() +
-  theme(
-    legend.position = "top",
-    legend.box = "horizontal",
-    legend.spacing.x = unit(0.2, "cm"),
-    axis.text.x = element_text(angle = 45, hjust = 1) 
-  ) +
- scale_fill_manual(values = c("absence" = "gray", "low" = "blue", "moderate" = "green", "high" = "red"))+
-  xlab("")
-
-plot_counts_spp_island
-
-ggsave("output/exploratory/barplots_counts_spp_island_v2.jpeg", height = 9, width = 9)
-
-```
-
-
-
-```{r}
-unique_pulls <- df %>%
-  group_by(spp) %>%
-  summarize(num_unique_pulls = n_distinct(id, na.rm = TRUE))
-
-
-ggplot(unique_pulls, aes(x = num_unique_pulls)) +
-  geom_bar(fill = "grey20", color = "black") +
-  scale_y_continuous(breaks = seq(0, max(unique_pulls$num_unique_pulls), by = 1)) + 
-  labs(title = "Distribution of n locations \nof examined specimens per species",
-       x = "N locations in positive pulls",
-       y = "Frequency") +
-  theme_classic()+
-  my_theme
-
-
-ggsave("output/exploratory/barplots_nlocations_examinations.jpeg", height = 5, width = 9)
-
-```
-
-
+# df load
 
 # compute a mean parasitic load
 
@@ -187,6 +73,148 @@ df_load
 #write.csv(df_load, "output/df_load.csv")
 
 ```
+
+
+
+
+# habitat data
+
+
+### Habitat data from Kraemer 2019 database
+
+```{r}
+df_kraemer <- read.csv("kraemer2019/kraemer2019_brightness_scores.csv")
+
+df_kraemer <- df_kraemer %>% 
+  select(location, spp, microhab) %>% 
+  rename(id = location,
+         species = spp,
+         habitat = microhab)
+
+df_kraemer
+
+```
+
+
+### habitat data from RAD sequences database
+
+```{r}
+df_rad <- read_excel("GPS RAD snails.xlsx")
+df_rad <- df_rad %>% 
+  select(Sample, Taxon, Microhabitat) %>% 
+  rename(id = Sample,
+         species = Taxon,
+         habitat = Microhabitat)
+
+# Semi-Arboreal is considered arboreal
+df_rad <- df_rad %>%
+  mutate(habitat = str_replace(habitat, "Semi-Arboreal", "arboreal"))
+
+df_rad <- df_rad %>%
+  mutate(habitat = str_to_lower(habitat)) %>% 
+  filter(habitat %in% c("arboreal", "terrestrial"))
+
+df_rad
+  
+```
+
+
+### Merge data to obtain single habitat database
+
+```{r}
+# Remove rows from df_rad that have matching ids in df_kraemer
+df_rad_filtered <- anti_join(df_rad, df_kraemer, by = "id")
+
+# Combine df_kraemer with the filtered df_rad
+df_habitat <- bind_rows(df_kraemer, df_rad_filtered)
+
+df_habitat
+```
+
+
+Names checks
+
+```{r}
+df_habitat[which(df_habitat$species == "albermarlensis"),] <- "albemarlensis"
+df_habitat[which(df_habitat$species == "cf. albemarlensis"),] <- "albemarlensis"
+
+df_habitat[which(df_habitat$species == "ustulatus pallescens"),] <- "ustulatus"
+df_habitat[which(df_habitat$species == "ustulatus phlegonis"),] <- "ustulatus"
+df_habitat[which(df_habitat$species == "ustulatus mahogany"),] <- "ustulatus"
+
+df_habitat[which(df_habitat$species == "invalidus 1"),] <- "invalidus"
+df_habitat[which(df_habitat$species == "invalidus 2"),] <- "invalidus"
+
+df_habitat[which(df_habitat$species == "sculpturatus 1"),] <- "sculpturatus"
+df_habitat[which(df_habitat$species == "sculpturatus 2"),] <- "sculpturatus"
+df_habitat[which(df_habitat$species == "sculpturatus 3"),] <- "sculpturatus"
+
+df_habitat[which(df_habitat$species == "wolfi 1"),] <- "wolfi"
+df_habitat[which(df_habitat$species == "wolfi 2"),] <- "wolfi"
+df_habitat[which(df_habitat$species == "wolfi 3"),] <- "wolfi"
+
+df_habitat[which(df_habitat$species == "cf. perspectivus"),] <- "perspectivus"
+df_habitat[which(df_habitat$species == "perspectivus 1"),] <- "perspectivus"
+df_habitat[which(df_habitat$species == "perspectivus 2"),] <- "perspectivus"
+
+df_habitat[which(df_habitat$species == "cf. amastroides"),] <- "amastroides"
+
+df_habitat[which(df_habitat$species == "canaliferus 1"),] <- "canaliferus"
+df_habitat[which(df_habitat$species == "canaliferus 2"),] <- "canaliferus"
+
+df_habitat[which(df_habitat$species == "simrothi 1"),] <- "simrothi"
+df_habitat[which(df_habitat$species == "simrothi 2"),] <- "simrothi"
+
+df_habitat[which(df_habitat$species == "cf. tortuganus"),] <- "tortuganus"
+
+df_habitat[which(df_habitat$species == "cf. nux"),] <- "nux"
+
+```
+
+
+Only keep species with assessed load:
+
+```{r}
+
+df_habitat1 <- df_habitat
+
+# Filter df_merged to only include species that appear in df_load
+df_habitat <- df_habitat %>%
+  semi_join(df_load, by = "species")
+
+df_habitat
+```
+
+
+which species were discarded?
+
+```{r}
+discarded_species <- setdiff(unique(df_habitat1$species), unique(df_habitat$species))
+discarded_species
+```
+
+**df_habitat** is the data from which the mean_habitat will be modeled for each species
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -233,8 +261,12 @@ df_brightness
 
 
 ```{r}
+
+df_load <- df_load %>% 
+  rename(spp = species)
+
 df_combined <- df_load %>%
-  left_join(df_brightness, by = "species")
+  left_join(df_brightness, by = "spp")
 
 df_combined
 
@@ -269,6 +301,16 @@ plot_brighness_load <- ggplot(df_combined, aes(x = mean_brightness, y = nematode
   theme_bw() +
   my_theme
 
+ggplot(df_combined, aes(x = mean_brightness, y = mean_load)) +
+  geom_jitter(width = 0.2, alpha = 0.4) + # Jittered points for distribution
+  stat_summary(aes(y = mean_load), fun = mean, geom = "point", color = "red", size = 3) + # Mean points
+  stat_summary(aes(y = mean_load), fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width = 0.2, color = "red") + # Error bars
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed",color = "blue") + # Add tendency line
+  labs(x = "Mean shell brightness",
+       y = "Nematode count") +
+  theme_bw() +
+  my_theme
+
 plot_brighness_load
 
 ggsave("figures/brightness_load.png", height = 8, width = 7)
@@ -278,8 +320,8 @@ ggsave("figures/brightness_load.png", height = 8, width = 7)
 ```{r}
 
 
+colnames(df_load)[1] <- "species"
 colnames(df_brightness)[1] <- "species"
-
 # Merge df_load with df_brightness based on species
 combined_df <- left_join(df_load, df_brightness, by = "species")
 
@@ -413,6 +455,16 @@ plot_island_name
 ```
 
 
+## tests
+
+```{r}
+
+combined_df
+
+```
+
+
+
 
 # Phylogenetic distance
 
@@ -499,5 +551,55 @@ protest <- protest(load_pco, phylo_pco)
 protest
 
 plot(protest)
+```
+
+
+
+## models test
+
+```{r}
+combined_df
+```
+
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+# Convert categorical variables to factors
+combined_df$microhabitat <- as.factor(combined_df$microhabitat)
+combined_df$vegetation_zone <- as.factor(combined_df$vegetation_zone)
+
+# Define priors
+fixed_effects_prior <- set_prior("normal(0, 5)", class = "b")
+random_effects_prior <- set_prior("cauchy(0, 2)", class = "sd")
+
+# Fit the Bayesian model
+bayesian_model <- brm(mean_load ~ microhabitat + vegetation_zone + mean_emergence + area + mean_brightness + (1|species),
+                      data = combined_df, 
+                      family = gaussian(),
+                      prior = c(fixed_effects_prior, random_effects_prior),
+                      chains = 4, iter = 2000, warmup = 1000, cores = 4,
+                      control = list(adapt_delta = 0.95))
+
+# Summarize the model
+summary(bayesian_model)
+
+# Get the marginal effects
+marginal_effects <- marginal_effects(bayesian_model)
+
+# Plot the marginal effects
+plot(marginal_effects)
 ```
 
