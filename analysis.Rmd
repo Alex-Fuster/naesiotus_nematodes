@@ -22,6 +22,8 @@ library(vegan)
 library(stringr)
 library(brms)
 library(dplyr)
+library(tidyverse)
+library(cmdstanr)
 ```
 
 
@@ -38,41 +40,50 @@ my_theme<-theme(axis.text=element_text(size=12),
 ```
 
 
-```{r}
-df <- read_excel("04april24_datalab.xlsx", sheet = 3)
-df$nematode_count[which(df$nematode_count == ">100")] <- "100"
-df$nematode_count <- as.numeric(df$nematode_count)
-```
-
 # df load
 
-# compute a mean parasitic load
+```{r}
+df_load <- read_excel("04april24_datalab.xlsx", sheet = 3)
+df_load$nematode_count[which(df_load$nematode_count == ">100")] <- "100"
+df_load$nematode_count <- as.numeric(df_load$nematode_count)
+
+df_load <- df_load %>% 
+  select(id, spp, nematode_count) %>% 
+  rename(species = spp)
+
+df_load
+```
+
+### df mean load
+
 
 ```{r}
 
-df_load <- df %>%
+df_meanload <- df_load %>%
   group_by(spp) %>%
   summarise(n = n(),
             mean_load = mean(nematode_count, na.rm = TRUE),
             sd_load = sd(nematode_count, na.rm = TRUE)) %>%
   arrange(desc(mean_load))
 
-colnames(df_load) = c("species", "n" ,"mean_load", "sd_load")
+colnames(df_meanload) = c("species", "n" ,"mean_load", "sd_load")
 
-df_totals <- data.frame("n" = sum(df_load$n),
-           "mean_load" = mean(df_load$mean_load),
-           "sd_load" = mean(df_load$sd_load))
+df_totals <- data.frame("n" = sum(df_meanload$n),
+           "mean_load" = mean(df_meanload$mean_load),
+           "sd_load" = mean(df_meanload$sd_load))
 
-df_load <- bind_rows(df_load, df_totals)
+df_meanload <- bind_rows(df_meanload, df_totals)
 
-df_load$mean_load <- round(df_load$mean_load, 1)
-df_load$sd_load <- round(df_load$sd_load, 1)
+df_meanload$mean_load <- round(df_meanload$mean_load, 1)
+df_meanload$sd_load <- round(df_meanload$sd_load, 1)
 
-df_load
+df_meanload
 
 #write.csv(df_load, "output/df_load.csv")
 
 ```
+
+
 
 
 
@@ -195,6 +206,176 @@ discarded_species
 
 **df_habitat** is the data from which the mean_habitat will be modeled for each species
 
+**df_load** is the data from which nematode counts are modeled.
+
+
+### Create common species code to make sure species names coincide
+
+```{r}
+
+# Combine unique species from both dataframes
+unique_species <- unique(c(unique(df_load$species), unique(df_habitat$species)))
+
+# Create a dictionary of species to letters
+species_to_number <- setNames(1:length(unique_species), unique_species)
+
+# Add the letter codes to df_load and df_habitat
+df_load$species_code <- species_to_number[df_load$species]
+df_habitat$species_code <- species_to_number[df_habitat$species]
+
+# View the updated dataframes
+df_load
+df_habitat
+```
+
+
+
+
+# brightness data
+
+```{r}
+df_kraemer <- read.csv("kraemer2019/kraemer2019_brightness_scores.csv")
+
+df_kraemer <- df_kraemer %>% 
+  select(location, spp, brightness) %>% 
+  rename(id = location,
+         species = spp)
+
+df_kraemer
+
+```
+
+
+Names checks
+
+```{r}
+df_kraemer[which(df_kraemer$species == "albermarlensis"),] <- "albemarlensis"
+df_kraemer[which(df_kraemer$species == "cf. albemarlensis"),] <- "albemarlensis"
+
+df_kraemer[which(df_kraemer$species == "ustulatus pallescens"),] <- "ustulatus"
+df_kraemer[which(df_kraemer$species == "ustulatus phlegonis"),] <- "ustulatus"
+df_kraemer[which(df_kraemer$species == "ustulatus mahogany"),] <- "ustulatus"
+
+df_kraemer[which(df_kraemer$species == "invalidus 1"),] <- "invalidus"
+df_kraemer[which(df_kraemer$species == "invalidus 2"),] <- "invalidus"
+
+df_kraemer[which(df_kraemer$species == "sculpturatus 1"),] <- "sculpturatus"
+df_kraemer[which(df_kraemer$species == "sculpturatus 2"),] <- "sculpturatus"
+df_kraemer[which(df_kraemer$species == "sculpturatus 3"),] <- "sculpturatus"
+
+df_kraemer[which(df_kraemer$species == "wolfi 1"),] <- "wolfi"
+df_kraemer[which(df_kraemer$species == "wolfi 2"),] <- "wolfi"
+df_kraemer[which(df_kraemer$species == "wolfi 3"),] <- "wolfi"
+
+df_kraemer[which(df_kraemer$species == "cf. perspectivus"),] <- "perspectivus"
+df_kraemer[which(df_kraemer$species == "perspectivus 1"),] <- "perspectivus"
+df_kraemer[which(df_kraemer$species == "perspectivus 2"),] <- "perspectivus"
+
+df_kraemer[which(df_kraemer$species == "cf. amastroides"),] <- "amastroides"
+
+df_kraemer[which(df_kraemer$species == "canaliferus 1"),] <- "canaliferus"
+df_kraemer[which(df_kraemer$species == "canaliferus 2"),] <- "canaliferus"
+
+df_kraemer[which(df_kraemer$species == "simrothi 1"),] <- "simrothi"
+df_kraemer[which(df_kraemer$species == "simrothi 2"),] <- "simrothi"
+
+df_kraemer[which(df_kraemer$species == "cf. tortuganus"),] <- "tortuganus"
+
+df_kraemer[which(df_kraemer$species == "cf. nux"),] <- "nux"
+```
+
+
+Only keep species with assessed load:
+
+```{r}
+
+df_kraemer1 <- df_kraemer
+
+# df_kraemer df_merged to only include species that appear in df_load
+df_kraemer <- df_kraemer %>%
+  semi_join(df_load, by = "species")
+
+df_kraemer
+```
+which species were discarded?
+
+```{r}
+discarded_species <- setdiff(unique(df_kraemer1$species), unique(df_kraemer$species))
+discarded_species
+```
+
+
+### Create common species code to make sure species names coincide
+
+```{r}
+
+# Combine unique species from both dataframes
+unique_species <- unique(c(unique(df_load$species), unique(df_kraemer$species)))
+
+# Create a dictionary of species to letters
+species_to_number <- setNames(1:length(unique_species), unique_species)
+
+# Add the letter codes to df_load and df_habitat
+df_load$species_code <- species_to_number[df_load$species]
+df_kraemer$species_code <- species_to_number[df_kraemer$species]
+
+# View the updated dataframes
+df_load
+df_kraemer
+```
+
+
+
+
+
+
+
+# MODEL STAN: load ~ brightness
+
+Input data
+
+```{r}
+
+
+data_list <- list(
+  
+  # N rows
+  
+  N_nem = length(df_load$nematode_count),
+  N_bright = length(df_kraemer$brightness),  
+  
+  # N species
+  
+  N_sp_nem = length(unique(df_load$species)),
+  N_sp_bright = length(unique(df_kraemer$species)),
+  
+  # y
+  
+  load = df_load$nematode_count,
+  
+  
+  # x
+  
+  brightness = df_kraemer$brightness,
+  
+  # species id
+  
+  species_i = df_load$species_code,
+  species_k = df_habitat$species_code
+  
+)
+
+
+```
+
+
+```{r}
+stan_load_brightness <- cmdstan_model(
+  stan_file = "model_load_brightness.stan", 
+  pedantic = TRUE)
+
+stan_load_brightness
+```
 
 
 
@@ -212,10 +393,7 @@ discarded_species
 
 
 
-
-
-
-
+-----------------------------------------------------------------------------------
 
 
 # Brightness, habitat, island characteristics
