@@ -326,52 +326,31 @@ df_kraemer
 
 
 
-
-
-
-
 # MODEL STAN: load ~ brightness
 
 Input data
 
 ```{r}
-
-
 data_list <- list(
-  
-  # N rows
-  
-  N_nem = length(df_load$nematode_count),
-  N_bright = length(df_kraemer$brightness),  
-  
-  # N species
-  
+  N_nem = nrow(df_load),
+  N_bright = nrow(df_kraemer),
   N_sp_nem = length(unique(df_load$species)),
   N_sp_bright = length(unique(df_kraemer$species)),
   
-  # y
-  
   load = df_load$nematode_count,
-  
-  
-  # x
-  
-  brightness = df_kraemer$brightness,
-  
-  # species id
+  brightness = as.numeric(df_kraemer$brightness),
   
   species_i = df_load$species_code,
-  species_k = df_habitat$species_code
-  
+  species_k = df_kraemer$species_code
 )
-
 
 ```
 
 
+
 ```{r}
 stan_load_brightness <- cmdstan_model(
-  stan_file = "model_load_brightness.stan", 
+  stan_file = "load_brightness.stan", 
   pedantic = TRUE)
 
 stan_load_brightness
