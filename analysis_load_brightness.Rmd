@@ -85,39 +85,39 @@ df_kraemer
 Names checks
 
 ```{r}
-df_kraemer[which(df_kraemer$species == "albermarlensis"),] <- "albemarlensis"
-df_kraemer[which(df_kraemer$species == "cf. albemarlensis"),] <- "albemarlensis"
+df_kraemer[which(df_kraemer$species == "albermarlensis"),"species"] <- "albemarlensis"
+df_kraemer[which(df_kraemer$species == "cf. albemarlensis"),"species"] <- "albemarlensis"
 
-df_kraemer[which(df_kraemer$species == "ustulatus pallescens"),] <- "ustulatus"
-df_kraemer[which(df_kraemer$species == "ustulatus phlegonis"),] <- "ustulatus"
-df_kraemer[which(df_kraemer$species == "ustulatus mahogany"),] <- "ustulatus"
+df_kraemer[which(df_kraemer$species == "ustulatus pallescens"),"species"] <- "ustulatus"
+df_kraemer[which(df_kraemer$species == "ustulatus phlegonis"),"species"] <- "ustulatus"
+df_kraemer[which(df_kraemer$species == "ustulatus mahogany"),"species"] <- "ustulatus"
 
-df_kraemer[which(df_kraemer$species == "invalidus 1"),] <- "invalidus"
-df_kraemer[which(df_kraemer$species == "invalidus 2"),] <- "invalidus"
+df_kraemer[which(df_kraemer$species == "invalidus 1"),"species"] <- "invalidus"
+df_kraemer[which(df_kraemer$species == "invalidus 2"),"species"] <- "invalidus"
 
-df_kraemer[which(df_kraemer$species == "sculpturatus 1"),] <- "sculpturatus"
-df_kraemer[which(df_kraemer$species == "sculpturatus 2"),] <- "sculpturatus"
-df_kraemer[which(df_kraemer$species == "sculpturatus 3"),] <- "sculpturatus"
+df_kraemer[which(df_kraemer$species == "sculpturatus 1"),"species"] <- "sculpturatus"
+df_kraemer[which(df_kraemer$species == "sculpturatus 2"),"species"] <- "sculpturatus"
+df_kraemer[which(df_kraemer$species == "sculpturatus 3"),"species"] <- "sculpturatus"
 
-df_kraemer[which(df_kraemer$species == "wolfi 1"),] <- "wolfi"
-df_kraemer[which(df_kraemer$species == "wolfi 2"),] <- "wolfi"
-df_kraemer[which(df_kraemer$species == "wolfi 3"),] <- "wolfi"
+df_kraemer[which(df_kraemer$species == "wolfi 1"),"species"] <- "wolfi"
+df_kraemer[which(df_kraemer$species == "wolfi 2"),"species"] <- "wolfi"
+df_kraemer[which(df_kraemer$species == "wolfi 3"),"species"] <- "wolfi"
 
-df_kraemer[which(df_kraemer$species == "cf. perspectivus"),] <- "perspectivus"
-df_kraemer[which(df_kraemer$species == "perspectivus 1"),] <- "perspectivus"
-df_kraemer[which(df_kraemer$species == "perspectivus 2"),] <- "perspectivus"
+df_kraemer[which(df_kraemer$species == "cf. perspectivus"),"species"] <- "perspectivus"
+df_kraemer[which(df_kraemer$species == "perspectivus 1"),"species"] <- "perspectivus"
+df_kraemer[which(df_kraemer$species == "perspectivus 2"),"species"] <- "perspectivus"
 
-df_kraemer[which(df_kraemer$species == "cf. amastroides"),] <- "amastroides"
+df_kraemer[which(df_kraemer$species == "cf. amastroides"),"species"] <- "amastroides"
 
-df_kraemer[which(df_kraemer$species == "canaliferus 1"),] <- "canaliferus"
-df_kraemer[which(df_kraemer$species == "canaliferus 2"),] <- "canaliferus"
+df_kraemer[which(df_kraemer$species == "canaliferus 1"),"species"] <- "canaliferus"
+df_kraemer[which(df_kraemer$species == "canaliferus 2"),"species"] <- "canaliferus"
 
-df_kraemer[which(df_kraemer$species == "simrothi 1"),] <- "simrothi"
-df_kraemer[which(df_kraemer$species == "simrothi 2"),] <- "simrothi"
+df_kraemer[which(df_kraemer$species == "simrothi 1"),"species"] <- "simrothi"
+df_kraemer[which(df_kraemer$species == "simrothi 2"),"species"] <- "simrothi"
 
-df_kraemer[which(df_kraemer$species == "cf. tortuganus"),] <- "tortuganus"
+df_kraemer[which(df_kraemer$species == "cf. tortuganus"),"species"] <- "tortuganus"
 
-df_kraemer[which(df_kraemer$species == "cf. nux"),] <- "nux"
+df_kraemer[which(df_kraemer$species == "cf. nux"),"species"] <- "nux"
 ```
 
 
@@ -169,7 +169,7 @@ data_list <- list(
   N_sp_bright = length(unique(df_kraemer$species)),
   
   load = df_load$nematode_count,
-  brightness = as.numeric(df_kraemer$brightness),
+  brightness = df_kraemer$brightness,
   
   species_i = df_load$species_code,
   species_k = df_kraemer$species_code
@@ -184,7 +184,20 @@ stan_load_brightness <- cmdstan_model(
   stan_file = "load_brightness.stan", 
   pedantic = TRUE)
 
-stan_load_brightness
 ```
 
+
+```{r}
+
+# Fit the model using the data
+fit <- stan_load_brightness$sample(
+  data = data_list,
+  seed = 123,               # for reproducibility
+  chains = 4,               # number of Markov chains
+  parallel_chains = 4,      # number of parallel chains
+  iter_warmup = 1000,       # number of warm-up iterations per chain
+  iter_sampling = 2000      # number of sampling iterations per chain
+)
+
+```
 
