@@ -1757,105 +1757,21 @@ display: none;
 Jacobinus (?)</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShkcGx5cilcbmBgYCJ9 -->
-<pre class="r"><code>library(dplyr)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiXG5BdHRhY2hpbmcgcGFja2FnZTog4oCYZHBseXLigJlcblxuVGhlIGZvbGxvd2luZyBvYmplY3RzIGFyZSBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOnN0YXRz4oCZOlxuXG4gICAgZmlsdGVyLCBsYWdcblxuVGhlIGZvbGxvd2luZyBvYmplY3RzIGFyZSBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOmJhc2XigJk6XG5cbiAgICBpbnRlcnNlY3QsIHNldGRpZmYsIHNldGVxdWFsLCB1bmlvblxuIn0= -->
-<pre><code>
-Attaching package: ‘dplyr’
-
-The following objects are masked from ‘package:stats’:
-
-    filter, lag
-
-The following objects are masked from ‘package:base’:
-
-    intersect, setdiff, setequal, union</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShnZ3Bsb3QyKSMgTG9hZCB0aGUgYXBlIHBhY2thZ2VcbmBgYCJ9 -->
-<pre class="r"><code>library(ggplot2)# Load the ape package</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiV2FybmluZzogcGFja2FnZSDigJhnZ3Bsb3Qy4oCZIHdhcyBidWlsdCB1bmRlciBSIHZlcnNpb24gNC4zLjNcbiJ9 -->
-<pre><code>Warning: package ‘ggplot2’ was built under R version 4.3.3</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShhcGUpXG5gYGAifQ== -->
-<pre class="r"><code>library(ape)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiXG5BdHRhY2hpbmcgcGFja2FnZTog4oCYYXBl4oCZXG5cblRoZSBmb2xsb3dpbmcgb2JqZWN0IGlzIG1hc2tlZCBmcm9tIOKAmHBhY2thZ2U6ZHBseXLigJk6XG5cbiAgICB3aGVyZVxuIn0= -->
-<pre><code>
-Attaching package: ‘ape’
-
-The following object is masked from ‘package:dplyr’:
-
-    where</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShyZWFkeGwpXG5saWJyYXJ5KHRpZHlyKVxubGlicmFyeShnZ3B1YnIpXG5gYGAifQ== -->
-<pre class="r"><code>library(readxl)
-library(tidyr)
-library(ggpubr)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiV2FybmluZzogcGFja2FnZSDigJhnZ3B1YnLigJkgd2FzIGJ1aWx0IHVuZGVyIFIgdmVyc2lvbiA0LjMuMlxuQXR0YWNoaW5nIHBhY2thZ2U6IOKAmGdncHVicuKAmVxuXG5UaGUgZm9sbG93aW5nIG9iamVjdCBpcyBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOmFwZeKAmTpcblxuICAgIHJvdGF0ZVxuIn0= -->
-<pre><code>Warning: package ‘ggpubr’ was built under R version 4.3.2
-Attaching package: ‘ggpubr’
-
-The following object is masked from ‘package:ape’:
-
-    rotate</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShhZGU0KVxubGlicmFyeSh2ZWdhbilcbmBgYCJ9 -->
-<pre class="r"><code>library(ade4)
-library(vegan)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiTG9hZGluZyByZXF1aXJlZCBwYWNrYWdlOiBwZXJtdXRlXG5Mb2FkaW5nIHJlcXVpcmVkIHBhY2thZ2U6IGxhdHRpY2VcblRoaXMgaXMgdmVnYW4gMi42LTRcbiJ9 -->
-<pre><code>Loading required package: permute
-Loading required package: lattice
-This is vegan 2.6-4</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShzdHJpbmdyKVxubGlicmFyeShicm1zKVxuYGBgIn0= -->
-<pre class="r"><code>library(stringr)
-library(brms)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiV2FybmluZzogcGFja2FnZSDigJhicm1z4oCZIHdhcyBidWlsdCB1bmRlciBSIHZlcnNpb24gNC4zLjNMb2FkaW5nIHJlcXVpcmVkIHBhY2thZ2U6IFJjcHBcblJlZ2lzdGVyZWQgUzMgbWV0aG9kIG92ZXJ3cml0dGVuIGJ5ICdodG1sd2lkZ2V0cyc6XG4gIG1ldGhvZCAgICAgICAgICAgZnJvbSAgICAgICAgIFxuICBwcmludC5odG1sd2lkZ2V0IHRvb2xzOnJzdHVkaW9cbkxvYWRpbmcgJ2JybXMnIHBhY2thZ2UgKHZlcnNpb24gMi4yMC40KS4gVXNlZnVsIGluc3RydWN0aW9uc1xuY2FuIGJlIGZvdW5kIGJ5IHR5cGluZyBoZWxwKCdicm1zJykuIEEgbW9yZSBkZXRhaWxlZCBpbnRyb2R1Y3Rpb25cbnRvIHRoZSBwYWNrYWdlIGlzIGF2YWlsYWJsZSB0aHJvdWdoIHZpZ25ldHRlKCdicm1zX292ZXJ2aWV3JykuXG5cbkF0dGFjaGluZyBwYWNrYWdlOiDigJhicm1z4oCZXG5cblRoZSBmb2xsb3dpbmcgb2JqZWN0IGlzIG1hc2tlZCBmcm9tIOKAmHBhY2thZ2U6c3RhdHPigJk6XG5cbiAgICBhclxuIn0= -->
-<pre><code>Warning: package ‘brms’ was built under R version 4.3.3Loading required package: Rcpp
-Registered S3 method overwritten by &#39;htmlwidgets&#39;:
-  method           from         
-  print.htmlwidget tools:rstudio
-Loading &#39;brms&#39; package (version 2.20.4). Useful instructions
-can be found by typing help(&#39;brms&#39;). A more detailed introduction
-to the package is available through vignette(&#39;brms_overview&#39;).
-
-Attaching package: ‘brms’
-
-The following object is masked from ‘package:stats’:
-
-    ar</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShkcGx5cilcbmxpYnJhcnkodGlkeXZlcnNlKVxuYGBgIn0= -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShkcGx5cilcbmxpYnJhcnkoZ2dwbG90MikjIExvYWQgdGhlIGFwZSBwYWNrYWdlXG5saWJyYXJ5KGFwZSlcbmxpYnJhcnkocmVhZHhsKVxubGlicmFyeSh0aWR5cilcbmxpYnJhcnkoZ2dwdWJyKVxubGlicmFyeShhZGU0KVxubGlicmFyeSh2ZWdhbilcbmxpYnJhcnkoc3RyaW5ncilcbmxpYnJhcnkoYnJtcylcbmxpYnJhcnkoZHBseXIpXG5saWJyYXJ5KHRpZHl2ZXJzZSlcbmxpYnJhcnkoY21kc3RhbnIpXG5gYGAifQ== -->
 <pre class="r"><code>library(dplyr)
-library(tidyverse)</code></pre>
+library(ggplot2)# Load the ape package
+library(ape)
+library(readxl)
+library(tidyr)
+library(ggpubr)
+library(ade4)
+library(vegan)
+library(stringr)
+library(brms)
+library(dplyr)
+library(tidyverse)
+library(cmdstanr)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoi4pSA4pSAIEF0dGFjaGluZyBjb3JlIHRpZHl2ZXJzZSBwYWNrYWdlcyDilIDilIDilIDilIDilIDilIDilIDilIDilIBcbuKclCBmb3JjYXRzICAgMS4wLjAgICAgIOKclCByZWFkciAgICAgMi4xLjRcbuKclCBsdWJyaWRhdGUgMS45LjIgICAgIOKclCB0aWJibGUgICAgMy4yLjFcbuKclCBwdXJyciAgICAgMS4wLjEgICAgIOKUgOKUgCBDb25mbGljdHMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSAIHRpZHl2ZXJzZV9jb25mbGljdHMoKSDilIDilIBcbuKcliBkcGx5cjo6ZmlsdGVyKCkgbWFza3Mgc3RhdHM6OmZpbHRlcigpXG7inJYgZHBseXI6OmxhZygpICAgIG1hc2tzIHN0YXRzOjpsYWcoKVxu4pyWIGFwZTo6d2hlcmUoKSAgICBtYXNrcyBkcGx5cjo6d2hlcmUoKVxu4oS5IFVzZSB0aGUgXHUwMDFiXTg7O2h0dHA6Ly9jb25mbGljdGVkLnItbGliLm9yZy9cdTAwMDdjb25mbGljdGVkIHBhY2thZ2VcdTAwMWJdODs7XHUwMDA3IHRvIGZvcmNlIGFsbCBjb25mbGljdHMgdG8gYmVjb21lIGVycm9yc1xuIn0= -->
-<pre><code>── Attaching core tidyverse packages ─────────
-✔ forcats   1.0.0     ✔ readr     2.1.4
-✔ lubridate 1.9.2     ✔ tibble    3.2.1
-✔ purrr     1.0.1     ── Conflicts ──────── tidyverse_conflicts() ──
-✖ dplyr::filter() masks stats::filter()
-✖ dplyr::lag()    masks stats::lag()
-✖ ape::where()    masks dplyr::where()
-ℹ Use the ]8;;http://conflicted.r-lib.org/conflicted package]8;; to force all conflicts to become errors</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShjbWRzdGFucilcbmBgYCJ9 -->
-<pre class="r"><code>library(cmdstanr)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiVGhpcyBpcyBjbWRzdGFuciB2ZXJzaW9uIDAuNy4xXG4tIENtZFN0YW5SIGRvY3VtZW50YXRpb24gYW5kIHZpZ25ldHRlczogbWMtc3Rhbi5vcmcvY21kc3RhbnJcbi0gQ21kU3RhbiBwYXRoOiBDOi9Vc2Vycy9hbGV4Zi9Eb2N1bWVudHMvLmNtZHN0YW4vY21kc3Rhbi0yLjM0LjFcbi0gQ21kU3RhbiB2ZXJzaW9uOiAyLjM0LjFcblxuQSBuZXdlciB2ZXJzaW9uIG9mIENtZFN0YW4gaXMgYXZhaWxhYmxlLiBTZWUgP2luc3RhbGxfY21kc3RhbigpIHRvIGluc3RhbGwgaXQuXG5UbyBkaXNhYmxlIHRoaXMgY2hlY2sgc2V0IG9wdGlvbiBvciBlbnZpcm9ubWVudCB2YXJpYWJsZSBDTURTVEFOUl9OT19WRVJfQ0hFQ0s9VFJVRS5cbiJ9 -->
-<pre><code>This is cmdstanr version 0.7.1
-- CmdStanR documentation and vignettes: mc-stan.org/cmdstanr
-- CmdStan path: C:/Users/alexf/Documents/.cmdstan/cmdstan-2.34.1
-- CmdStan version: 2.34.1
-
-A newer version of CmdStan is available. See ?install_cmdstan() to install it.
-To disable this check set option or environment variable CMDSTANR_NO_VER_CHECK=TRUE.</code></pre>
-<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <p>parameters for plotting</p>
