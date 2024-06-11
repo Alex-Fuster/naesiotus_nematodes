@@ -16,6 +16,7 @@ library(brms)
 library(dplyr)
 library(tidyverse)
 library(cmdstanr)
+library(bayesplot)
 ```
 
 
@@ -171,25 +172,68 @@ data_list <- list(
   load = df_load$nematode_count,
   brightness = df_kraemer$brightness,
   
-  species_i = df_load$species_code,
+  species_i = unname(df_load$species_code),
   species_k = df_kraemer$species_code
 )
 
+
+range(data_list$species_k)
+data_list$N_sp_bright
+
 ```
 
 
 
 ```{r}
+# Create a mapping between species names and new IDs for df_kraemer
+kraemer_species <- unique(df_kraemer$species)
+kraemer_species_map <- setNames(seq_along(kraemer_species), kraemer_species)
+
+# Create a mapping between species names and new IDs for df_load
+load_species <- unique(df_load$species)
+load_species_map <- setNames(seq_along(load_species), load_species)
+
+# Create the species_map that maps df_load species IDs to df_kraemer species IDs
+species_map <- sapply(load_species, function(x) {
+  if (x %in% kraemer_species) {
+    kraemer_species_map[x]
+  } else {
+    NA
+  }
+})
+
+# Remove species in df_load that do not have corresponding entries in df_kraemer
+valid_species <- !is.na(species_map)
+df_load_filtered <- df_load[df_load$species %in% names(species_map)[valid_species], ]
+
+# Recreate species_map with only valid species
+species_map <- species_map[valid_species]
+
+# Create the new species IDs for df_load and df_kraemer
+df_load_filtered$new_species_id <- load_species_map[df_load_filtered$species]
+df_kraemer$new_species_id <- kraemer_species_map[df_kraemer$species]
+
+# Update species names to be unique in species_map
+names(species_map) <- sub("\\..*", "", names(species_map))
+
+data_list <- list(
+  N_nem = nrow(df_load_filtered),
+  N_bright = nrow(df_kraemer),
+  N_sp_nem = length(unique(df_load_filtered$species)),
+  N_sp_bright = length(unique(df_kraemer$species)),
+  load = df_load_filtered$nematode_count,
+  brightness = df_kraemer$brightness,
+  species_i = df_load_filtered$new_species_id,
+  species_k = df_kraemer$new_species_id,
+  species_map = as.integer(species_map)
+)
+
+# Fit the model using cmdstanr
 stan_load_brightness <- cmdstan_model(
   stan_file = "load_brightness.stan", 
-  pedantic = TRUE)
+  pedantic = TRUE
+)
 
-```
-
-
-```{r}
-
-# Fit the model using the data
 fit <- stan_load_brightness$sample(
   data = data_list,
   seed = 123,               # for reproducibility
@@ -199,5 +243,115 @@ fit <- stan_load_brightness$sample(
   iter_sampling = 2000      # number of sampling iterations per chain
 )
 
+
+
+
 ```
+
+
+# Plotting results
+
+```{r}
+# Extract the posterior samples
+posterior_samples <- fit$draws()
+
+# Convert to a data frame for easier handling
+posterior_df <- as_draws_df(posterior_samples)
+
+# Rename mu_bright parameters for easier handling
+posterior_df <- posterior_df %>%
+  rename_with(~ gsub("\\[|\\]", "", .), starts_with("mu_bright")) %>%
+  rename_with(~ gsub("\\.", "_", .), starts_with("mu_bright"))
+
+# Extract the names of the parameters of interest
+mu_bright_names <- grep("^mu_bright", names(posterior_df), value = TRUE)
+sigma_bright_names <- grep("^sigma_bright", names(posterior_df), value = TRUE)
+
+parameter_names <- c("intercept", "slope_bright", mu_bright_names, sigma_bright_names)
+```
+
+
+### Posterior all parameters
+
+```{r}
+# Plot posterior distributions of the parameters
+mcmc_areas(
+  posterior_df,
+  pars = parameter_names,
+  prob = 0.8  # 80% intervals
+)
+
+
+```
+### Posterior brightness slope
+
+```{r}
+# Extract the posterior samples of the slope of brightness
+slope_samples <- fit$draws("slope_bright")
+
+# Plot the posterior distribution of the slope of brightness
+mcmc_hist(slope_samples, prob = 0.8)
+
+```
+
+
+
+```{r}
+fit$draws(variables = c("intercept", "slope_bright")) |>
+  posterior::summarise_draws("mean", "sd", ~quantile(.x, probs = c(0.05, 0.95)), "rhat") #|>
+  #flextable::flextable()
+```
+
+
+### Plot for predicted values
+
+
+
+
+
+
+
+
+
+
+
+---------------------------------
+
+### Relationship load-brightness
+
+```{r}
+# Calculate mean brightness for each species from the posterior samples
+mu_bright_mean <- posterior_df %>%
+  summarise(across(all_of(mu_bright_names), mean)) %>%
+  unlist()
+
+# Create a data frame with species IDs and corresponding mean brightness
+brightness_df <- data.frame(
+  species_id = seq_along(mu_bright_mean),
+  mu_bright = mu_bright_mean
+)
+
+# Calculate the mean intercept and slope from the posterior samples
+intercept_mean <- mean(posterior_df$intercept)
+slope_bright_mean <- mean(posterior_df$slope_bright)
+
+# Create a data frame with the species mean parasitic load
+mean_parasitic_load <- df_load %>%
+  group_by(species_code) %>%
+  summarise(mean_load = mean(nematode_count))
+
+# Merge brightness and parasitic load data frames
+plot_df <- merge(brightness_df, mean_parasitic_load, by.x = "species_id", by.y = "species_code")
+
+# Plot the relationship
+ggplot(plot_df, aes(x = mu_bright, y = mean_load)) +
+  geom_point() +
+  geom_abline(intercept = intercept_mean, slope = slope_bright_mean, color = "blue") +
+  labs(x = "Mean Brightness", y = "Mean Parasitic Load") +
+  theme_minimal()
+
+
+
+```
+
 

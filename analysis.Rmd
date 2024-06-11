@@ -60,7 +60,7 @@ df_load
 ```{r}
 
 df_meanload <- df_load %>%
-  group_by(spp) %>%
+  group_by(species) %>%
   summarise(n = n(),
             mean_load = mean(nematode_count, na.rm = TRUE),
             sd_load = sd(nematode_count, na.rm = TRUE)) %>%
