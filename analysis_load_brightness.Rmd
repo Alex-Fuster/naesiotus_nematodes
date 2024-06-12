@@ -176,10 +176,6 @@ data_list <- list(
   species_k = df_kraemer$species_code
 )
 
-
-range(data_list$species_k)
-data_list$N_sp_bright
-
 ```
 
 
@@ -236,11 +232,11 @@ stan_load_brightness <- cmdstan_model(
 
 fit <- stan_load_brightness$sample(
   data = data_list,
-  seed = 123,               # for reproducibility
-  chains = 4,               # number of Markov chains
-  parallel_chains = 4,      # number of parallel chains
-  iter_warmup = 1000,       # number of warm-up iterations per chain
-  iter_sampling = 2000      # number of sampling iterations per chain
+  seed = 123,             
+  chains = 4,               
+  parallel_chains = 4,    
+  iter_warmup = 1000,       
+  iter_sampling = 2000   
 )
 
 
@@ -249,7 +245,46 @@ fit <- stan_load_brightness$sample(
 ```
 
 
+
 # Plotting results
+
+
+```{r}
+stan_load_brightness |> tidybayes::gather_rvars(predicted_load[i])
+```
+
+
+
+## Posterior vs predicted
+
+```{r}
+
+# Calculate observed means
+observed_means <- df_load %>%
+  group_by(species_code) %>%
+  summarise(observed_mean_load = mean(nematode_count))
+
+# Calculate predicted means
+
+
+# Merge observed and predicted means for comparison
+comparison <- merge(observed_means, predicted_means, by = "species_code")
+
+# Plot comparison
+library(ggplot2)
+
+ggplot(comparison, aes(x = observed_mean_load, y = predicted_mean_load)) +
+  geom_point(color = "blue") +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
+  labs(x = "Observed Mean Load", y = "Predicted Mean Load", 
+       title = "Comparison of Observed and Predicted Mean Load") +
+  theme_minimal()
+
+```
+
+
+
+## All posterior pars
 
 ```{r}
 # Extract the posterior samples
@@ -270,8 +305,6 @@ sigma_bright_names <- grep("^sigma_bright", names(posterior_df), value = TRUE)
 parameter_names <- c("intercept", "slope_bright", mu_bright_names, sigma_bright_names)
 ```
 
-
-### Posterior all parameters
 
 ```{r}
 # Plot posterior distributions of the parameters
@@ -306,7 +339,9 @@ fit$draws(variables = c("intercept", "slope_bright")) |>
 ### Plot for predicted values
 
 
+```{r}
 
+```
 
 
 

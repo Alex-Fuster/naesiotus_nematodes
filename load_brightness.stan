@@ -39,4 +39,14 @@ model {
   load[species_i] ~ poisson(lamda[species_i]);
 }
 
+
+generated quantities {
+  
+  array[N_nem] real predicted_load;  // Predicted nematode load
+  
+  for (n in 1:N_nem) {
+    predicted_load[n] = poisson_rng(intercept + slope_bright * mu_bright[species_i[n]]);
+  }
+}
+
   
