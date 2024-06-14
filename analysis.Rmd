@@ -1,6 +1,5 @@
 ---
 title: "Analyses"
-output: html_notebook
 ---
 
 

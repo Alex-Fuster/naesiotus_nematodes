@@ -157,76 +157,97 @@ df_kraemer
 ```
 
 
+Check brightness data
+
+```{r}
+
+ggplot(data = df_kraemer, aes(x = species, y = log(brightness)))+
+  geom_point(position = position_jitter(width =.1))
+
+```
+
+
 
 # MODEL STAN: load ~ brightness
 
-Input data
+
+**NEXT STEPS**
+
+- center brightness so that the intercept makes sense
+- Try opposite constrain on the slope (setting upper = 0 instead or lower = 0) to try assuming a negative slope
+- Do generated quantities also for brightness
+- Conduct posterior checks on the different models (let's focus on the different + or - slope options for the last model version)
+
 
 ```{r}
+
+# Prepare the data list
 data_list <- list(
   N_nem = nrow(df_load),
   N_bright = nrow(df_kraemer),
   N_sp_nem = length(unique(df_load$species)),
   N_sp_bright = length(unique(df_kraemer$species)),
-  
   load = df_load$nematode_count,
   brightness = df_kraemer$brightness,
-  
-  species_i = unname(df_load$species_code),
+  species_i = df_load$species_code,
   species_k = df_kraemer$species_code
+)
+
+
+```
+
+
+## basic model
+
+```{r}
+# Fit the model using cmdstanr
+stan_load_brightness <- cmdstan_model(
+  stan_file = "load_brightness_map.stan", 
+  pedantic = TRUE
+)
+
+fit <- stan_load_brightness$sample(
+  data = data_list,
+  seed = 123,             
+  chains = 4,               
+  parallel_chains = 4,    
+  iter_warmup = 1000,       
+  iter_sampling = 2000   
 )
 
 ```
 
 
 
+## model with log transformed brightness
+
 ```{r}
-# Create a mapping between species names and new IDs for df_kraemer
-kraemer_species <- unique(df_kraemer$species)
-kraemer_species_map <- setNames(seq_along(kraemer_species), kraemer_species)
 
-# Create a mapping between species names and new IDs for df_load
-load_species <- unique(df_load$species)
-load_species_map <- setNames(seq_along(load_species), load_species)
-
-# Create the species_map that maps df_load species IDs to df_kraemer species IDs
-species_map <- sapply(load_species, function(x) {
-  if (x %in% kraemer_species) {
-    kraemer_species_map[x]
-  } else {
-    NA
-  }
-})
-
-# Remove species in df_load that do not have corresponding entries in df_kraemer
-valid_species <- !is.na(species_map)
-df_load_filtered <- df_load[df_load$species %in% names(species_map)[valid_species], ]
-
-# Recreate species_map with only valid species
-species_map <- species_map[valid_species]
-
-# Create the new species IDs for df_load and df_kraemer
-df_load_filtered$new_species_id <- load_species_map[df_load_filtered$species]
-df_kraemer$new_species_id <- kraemer_species_map[df_kraemer$species]
-
-# Update species names to be unique in species_map
-names(species_map) <- sub("\\..*", "", names(species_map))
-
-data_list <- list(
-  N_nem = nrow(df_load_filtered),
-  N_bright = nrow(df_kraemer),
-  N_sp_nem = length(unique(df_load_filtered$species)),
-  N_sp_bright = length(unique(df_kraemer$species)),
-  load = df_load_filtered$nematode_count,
-  brightness = df_kraemer$brightness,
-  species_i = df_load_filtered$new_species_id,
-  species_k = df_kraemer$new_species_id,
-  species_map = as.integer(species_map)
+# Fit the model using cmdstanr
+stan_load_logbrightness <- cmdstan_model(
+  stan_file = "load_logbrightness.stan", 
+  pedantic = TRUE
 )
+
+fit <- stan_load_logbrightness$sample(
+  data = data_list,
+  seed = 123,             
+  chains = 4,               
+  parallel_chains = 4,    
+  iter_warmup = 1000,       
+  iter_sampling = 2000   
+)
+
+```
+
+
+## only model brightness
+
+```{r}
 
 # Fit the model using cmdstanr
 stan_load_brightness <- cmdstan_model(
-  stan_file = "load_brightness.stan", 
+  stan_file = "brightness.stan", 
   pedantic = TRUE
 )
 
@@ -240,48 +261,90 @@ fit <- stan_load_brightness$sample(
 )
 
 
+```
 
+
+## model with log brightness and slope assumed positive
+
+```{r}
+
+# Fit the model using cmdstanr
+stan_load_brightness <- cmdstan_model(
+  stan_file = "load_logbrightness_halfnormalslope.stan", 
+  pedantic = TRUE
+)
+
+fit <- stan_load_brightness$sample(
+  data = data_list,
+  seed = 123,             
+  chains = 4,               
+  parallel_chains = 4,    
+  iter_warmup = 1000,       
+  iter_sampling = 2000   
+)
 
 ```
+
+
+## model with log brightness and slope assumed positive + truncated poisson
+
+-> Truncation can't be done in poisson_log
+
+```{r}
+
+# Fit the model using cmdstanr
+stan_load_brightness <- cmdstan_model(
+  stan_file = "load_logbrightness_halfnormalslope_truncated.stan", 
+  pedantic = TRUE
+)
+
+fit <- stan_load_brightness$sample(
+  data = data_list,
+  seed = 123,             
+  chains = 4,               
+  parallel_chains = 4,    
+  iter_warmup = 1000,       
+  iter_sampling = 2000   
+)
+
+```
+
+
+## model with log brightness and slope assumed positive + truncated poisson + centered brightness
+
+
+
+```{r}
+
+# Fit the model using cmdstanr
+stan_load_brightness <- cmdstan_model(
+  stan_file = "load_logbrightness_halfnormalslope_truncated.stan", 
+  pedantic = TRUE
+)
+
+fit <- stan_load_brightness$sample(
+  data = data_list,
+  seed = 123,             
+  chains = 4,               
+  parallel_chains = 4,    
+  iter_warmup = 1000,       
+  iter_sampling = 2000   
+)
+
+```
+
 
 
 
 # Plotting results
 
 
-```{r}
-stan_load_brightness |> tidybayes::gather_rvars(predicted_load[i])
-```
-
-
 
 ## Posterior vs predicted
 
 ```{r}
-
-# Calculate observed means
-observed_means <- df_load %>%
-  group_by(species_code) %>%
-  summarise(observed_mean_load = mean(nematode_count))
-
-# Calculate predicted means
-
-
-# Merge observed and predicted means for comparison
-comparison <- merge(observed_means, predicted_means, by = "species_code")
-
-# Plot comparison
-library(ggplot2)
-
-ggplot(comparison, aes(x = observed_mean_load, y = predicted_mean_load)) +
-  geom_point(color = "blue") +
-  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
-  labs(x = "Observed Mean Load", y = "Predicted Mean Load", 
-       title = "Comparison of Observed and Predicted Mean Load") +
-  theme_minimal()
-
+stan_load_brightness |> tidybayes::gather_rvars(predicted_load[i])
 ```
-
 
 
 ## All posterior pars
@@ -312,10 +375,18 @@ mcmc_areas(
   posterior_df,
   pars = parameter_names,
   prob = 0.8  # 80% intervals
-)
+)+
+  coord_cartesian(xlim=c(-3,20))
 
 
 ```
+
+
+
+
+
+
+
 ### Posterior brightness slope
 
 ```{r}
@@ -330,6 +401,21 @@ mcmc_hist(slope_samples, prob = 0.8)
 
 
 ```{r}
+draws <- fit$draws(format = "df")
+mcmc_hist(draws, pars='slope_bright') + xlim(c(0,6))
+
+library(ggdist)
+
+draws |>
+  ggplot(aes(x=slope_bright)) + 
+  stat_dotsinterval() + 
+  xlim(c(0,2.5))
+```
+
+
+
+
+```{r}
 fit$draws(variables = c("intercept", "slope_bright")) |>
   posterior::summarise_draws("mean", "sd", ~quantile(.x, probs = c(0.05, 0.95)), "rhat") #|>
   #flextable::flextable()
@@ -340,6 +426,8 @@ fit$draws(variables = c("intercept", "slope_bright")) |>
 
 
 ```{r}
+# Extract posterior draws of predicted_brightness
+predicted_brightness_draws <- fit$draws(variables = "predicted_brightness")
 
 ```
 
@@ -389,4 +477,135 @@ ggplot(plot_df, aes(x = mu_bright, y = mean_load)) +
 
 ```
 
+
+# MODEL STAN: load ~ brightness
+
+
+
+
+```{r}
+# Create a mapping between species names and new IDs for df_kraemer
+kraemer_species <- unique(df_kraemer$species)
+kraemer_species_map <- setNames(seq_along(kraemer_species), kraemer_species)
+
+# Create a mapping between species names and new IDs for df_load
+load_species <- unique(df_load$species)
+load_species_map <- setNames(seq_along(load_species), load_species)
+
+# Create the species_map that maps df_load species IDs to df_kraemer species IDs
+species_map <- sapply(load_species, function(x) {
+  if (x %in% kraemer_species) {
+    kraemer_species_map[x]
+  } else {
+    NA
+  }
+})
+
+# Remove duplicates in species_map names by stripping everything after the first dot
+names(species_map) <- sub("\\..*", "", names(species_map))
+
+# Convert species_map to integers and handle NAs
+species_map_int <- ifelse(is.na(species_map), NA, species_map)
+
+# Create the new species IDs for df_load and df_kraemer
+df_load$new_species_id <- load_species_map[df_load$species]
+df_kraemer$new_species_id <- kraemer_species_map[df_kraemer$species]
+
+# Prepare the data list
+data_list <- list(
+  N_nem = nrow(df_load),
+  N_bright = nrow(df_kraemer),
+  N_sp_nem = length(unique(df_load$species)),
+  N_sp_bright = length(unique(df_kraemer$species)),
+  load = df_load$nematode_count,
+  brightness = df_kraemer$brightness,
+  species_i = df_load$new_species_id,
+  species_k = df_kraemer$new_species_id,
+  species_map = as.integer(species_map_int)
+)
+
+
+
+
+
+
+
+###########################################################
+
+# Fit the model using cmdstanr
+stan_load_brightness <- cmdstan_model(
+  stan_file = "load_brightness_map.stan", 
+  pedantic = TRUE
+)
+
+fit <- stan_load_brightness$sample(
+  data = data_list,
+  seed = 123,             
+  chains = 4,               
+  parallel_chains = 4,    
+  iter_warmup = 1000,       
+  iter_sampling = 2000   
+)
+
+
+species_map
+
+data_list$species_k
+
+
+
+```
+
+
+
+
+previous stan code befor eAndrew
+
+```{r}
+data {
+  int<lower=0> N_nem;               // Number of observations for nematode load
+  int<lower=0> N_bright;            // Number of observations for brightness
+  array[N_nem] int<lower=0, upper=100> load;  // Nematode load counts
+  vector[N_bright] brightness;       // Brightness scores
+  int<lower=0> N_sp_nem;             // Number of species in the nematode data
+  int<lower=0> N_sp_bright;          // Number of species in the brightness data
+  array[N_nem] int<lower=1> species_i;   // New species id for load dataset
+  array[N_bright] int<lower=1> species_k; // New species id for brightness dataset
+  array[N_sp_nem] int<lower=1, upper=N_sp_bright> species_map; // Mapping from nematode species to brightness species
+}
+
+parameters {
+  real intercept;
+  real slope_bright;
+  vector[N_sp_bright] mu_bright;       // Mean brightness for each species
+  vector<lower=0>[N_sp_bright] sigma_bright; // Standard deviation of brightness for each species
+}
+
+model {
+  vector[N_sp_nem] lambda;
+  
+  // Priors
+  intercept ~ normal(0, 10);
+  slope_bright ~ normal(0, 1);
+  mu_bright ~ normal(0, 1);
+  sigma_bright ~ exponential(1);
+  
+  // Model brightness
+  brightness ~ normal(mu_bright[species_k], sigma_bright[species_k]);
+  
+  // Model nematode load
+  lambda = intercept + slope_bright * mu_bright[species_map[species_i]];
+  load ~ poisson(lambda[species_i]);
+}
+
+generated quantities {
+  
+  array[N_nem] real predicted_load;  // Predicted nematode load
+  
+  for (n in 1:N_nem) {
+    predicted_load[n] = poisson_rng(intercept + slope_bright * mu_bright[species_map[species_i[n]]]);
+  }
+}
+
+```
 

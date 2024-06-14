@@ -1,0 +1,1634 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="707.8125"
+   height="588"
+   version="1.1"
+   id="svg458"
+   sodipodi:docname="barplot_nematodes.svg"
+   inkscape:version="1.2.1 (9c6d41e410, 2022-07-14)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs462">
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipEmfPath1">
+      <path
+         d="M 14.911496,14.911496 L 92.180157,14.911496 L 92.180157,27.111811 L 14.911496,27.111811 z"
+         id="path1671" />
+    </clipPath>
+    <pattern
+       id="EMFhbasepattern"
+       patternUnits="userSpaceOnUse"
+       width="6"
+       height="6"
+       x="0"
+       y="0" />
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipEmfPath1-6">
+      <path
+         d="M 14.911496,14.911496 H 92.180157 V 27.111811 H 14.911496 Z"
+         id="path1671-1" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipEmfPath1-6-0">
+      <path
+         d="M 14.911496,14.911496 H 92.180157 V 27.111811 H 14.911496 Z"
+         id="path1671-1-4" />
+    </clipPath>
+  </defs>
+  <sodipodi:namedview
+     id="namedview460"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="1.1825166"
+     inkscape:cx="180.96998"
+     inkscape:cy="163.21124"
+     inkscape:window-width="2560"
+     inkscape:window-height="1377"
+     inkscape:window-x="1912"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="id6-8" />
+  <g
+     transform="matrix(0.68443364,0,0,0.68443364,39.19939,132.14469)"
+     id="g456">
+    <g
+       class="x axis"
+       transform="matrix(0.80455126,0,0,0.82130231,7.7643018,349.9264)"
+       fill="none"
+       font-size="10px"
+       font-family="sans-serif"
+       text-anchor="middle"
+       id="g70">
+      <path
+         class="domain"
+         stroke="#000000"
+         d="M 0.5,6 V 0.5 h 528 V 6"
+         id="path2" />
+      <text
+         xml:space="preserve"
+         style="font-size:67.1022px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:1.79738"
+         x="57.563538"
+         y="148.8401"
+         id="text1432"
+         transform="scale(1.0103566,0.98974959)"><tspan
+           sodipodi:role="line"
+           id="tspan1430"
+           style="stroke-width:1.79738" /></text>
+      <text
+         xml:space="preserve"
+         style="font-size:67.1022px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:1.79738"
+         x="117.75101"
+         y="422.90796"
+         id="text1436"
+         transform="scale(1.0103566,0.98974959)"><tspan
+           sodipodi:role="line"
+           id="tspan1434"
+           style="stroke-width:1.79738"
+           x="117.75101"
+           y="422.90796" /></text>
+      <text
+         xml:space="preserve"
+         style="font-size:67.1022px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:1.79738"
+         x="-556.13367"
+         y="-406.81921"
+         id="text1440"
+         transform="scale(1.0103566,0.98974959)"><tspan
+           sodipodi:role="line"
+           id="tspan1438"
+           style="stroke-width:1.79738"
+           x="-556.13367"
+           y="-406.81921">b</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:67.1022px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:1.79738"
+         x="590.65253"
+         y="-110.18096"
+         id="text1504"
+         transform="scale(1.0103566,0.98974959)"><tspan
+           sodipodi:role="line"
+           id="tspan1502"
+           style="stroke-width:1.79738"
+           x="590.65253"
+           y="-110.18096" /></text>
+      <text
+         xml:space="preserve"
+         style="font-size:23.5287px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke-width:0.630234"
+         x="49.097427"
+         y="38.284641"
+         id="text1508"
+         transform="scale(1.0103566,0.98974956)"><tspan
+           sodipodi:role="line"
+           id="tspan1506"
+           style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:'Arial Italic';fill:#000000;stroke-width:0.630234"
+           x="49.097427"
+           y="38.284641">N. bauri</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:23.5287px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke-width:0.630234"
+         x="166.97244"
+         y="38.468689"
+         id="text1508-8"
+         transform="scale(1.0103566,0.98974956)"><tspan
+           sodipodi:role="line"
+           id="tspan1506-3"
+           style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:'Arial Italic';fill:#000000;stroke-width:0.630234"
+           x="166.97244"
+           y="38.468689">N. hirsutus</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:23.5287px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke-width:0.630234"
+         x="52.683956"
+         y="95.619232"
+         id="text1508-8-58"
+         transform="scale(1.0103566,0.98974956)"><tspan
+           sodipodi:role="line"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke-width:0.630234"
+           x="52.683956"
+           y="95.619232"
+           id="tspan2327">San Cristobal</tspan><tspan
+           sodipodi:role="line"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke-width:0.630234"
+           x="52.683956"
+           y="125.03011"
+           id="tspan12226">island</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:23.5287px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke-width:0.630234"
+         x="293.97656"
+         y="95.619019"
+         id="text1508-8-58-2"
+         transform="scale(1.0103566,0.98974956)"><tspan
+           sodipodi:role="line"
+           id="tspan1506-3-7-1"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke-width:0.630234"
+           x="293.97656"
+           y="95.619019">Santa Cruz</tspan><tspan
+           sodipodi:role="line"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke-width:0.630234"
+           x="293.97656"
+           y="125.02989"
+           id="tspan12228">island</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:23.5287px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke-width:0.630234"
+         x="358.44659"
+         y="36.878887"
+         id="text1508-8-5"
+         transform="scale(1.0103566,0.98974956)"><tspan
+           sodipodi:role="line"
+           id="tspan1506-3-1"
+           style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:'Arial Italic';fill:#000000;stroke-width:0.630234"
+           x="358.44659"
+           y="36.878887">N. ochsneri</tspan></text>
+      <path
+         style="fill:none;stroke:#000000;stroke-width:1.66085;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
+         d="m 9.3178655,10.620064 82.0544635,0.534455 v 0"
+         id="path2422" />
+      <path
+         style="fill:none;stroke:#000000;stroke-width:1.70684;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
+         d="m 5.4099371,63.703114 86.8084889,0.533551 v 0"
+         id="path2422-6" />
+      <path
+         style="fill:none;stroke:#000000;stroke-width:1.81379px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         d="m 105.00697,11.060651 128.68148,0.406792 v 0"
+         id="path2422-7" />
+      <path
+         style="fill:none;stroke:#000000;stroke-width:2.00293px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         d="m 248.12693,11.335125 269.69623,0.236681 v 0"
+         id="path2422-7-3" />
+      <path
+         style="fill:none;stroke:#000000;stroke-width:2.09575px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         d="m 106.55503,64.033464 413.85718,0.168865 v 0"
+         id="path2422-7-3-4" />
+    </g>
+    <g
+       class="y axis"
+       fill="none"
+       font-size="10px"
+       font-family="sans-serif"
+       text-anchor="end"
+       id="g140"
+       transform="matrix(0.98620324,0,0,0.82130231,7.5826498,-142.85498)">
+      <path
+         class="domain"
+         stroke="#000000"
+         d="M -6,600.5 H 0.5 V 0.5 H -6"
+         id="path72" />
+      <g
+         class="tick"
+         opacity="1"
+         transform="translate(0,600.5)"
+         id="g78">
+        <line
+           stroke="#000000"
+           x2="-6"
+           id="line74"
+           x1="0"
+           y1="0"
+           y2="0" />
+        <text
+           fill="#000000"
+           x="-9"
+           dy="0.31999999em"
+           id="text76">0%</text>
+      </g>
+      <g
+         class="tick"
+         opacity="1"
+         transform="translate(0,540.5)"
+         id="g84">
+        <line
+           stroke="#000000"
+           x2="-6"
+           id="line80"
+           x1="0"
+           y1="0"
+           y2="0" />
+        <text
+           fill="#000000"
+           x="-9"
+           dy="0.31999999em"
+           id="text82">10%</text>
+      </g>
+      <g
+         class="tick"
+         opacity="1"
+         transform="translate(0,480.5)"
+         id="g90">
+        <line
+           stroke="#000000"
+           x2="-6"
+           id="line86"
+           x1="0"
+           y1="0"
+           y2="0" />
+        <text
+           fill="#000000"
+           x="-9"
+           dy="0.31999999em"
+           id="text88">20%</text>
+      </g>
+      <g
+         class="tick"
+         opacity="1"
+         transform="translate(0,420.5)"
+         id="g96">
+        <line
+           stroke="#000000"
+           x2="-6"
+           id="line92"
+           x1="0"
+           y1="0"
+           y2="0" />
+        <text
+           fill="#000000"
+           x="-9"
+           dy="0.31999999em"
+           id="text94">30%</text>
+      </g>
+      <g
+         class="tick"
+         opacity="1"
+         transform="translate(0,360.5)"
+         id="g102">
+        <line
+           stroke="#000000"
+           x2="-6"
+           id="line98"
+           x1="0"
+           y1="0"
+           y2="0" />
+        <text
+           fill="#000000"
+           x="-9"
+           dy="0.31999999em"
+           id="text100">40%</text>
+      </g>
+      <g
+         class="tick"
+         opacity="1"
+         transform="translate(0,300.5)"
+         id="g108">
+        <line
+           stroke="#000000"
+           x2="-6"
+           id="line104"
+           x1="0"
+           y1="0"
+           y2="0" />
+        <text
+           fill="#000000"
+           x="-9"
+           dy="0.31999999em"
+           id="text106">50%</text>
+      </g>
+      <g
+         class="tick"
+         opacity="1"
+         transform="translate(0,240.5)"
+         id="g114">
+        <line
+           stroke="#000000"
+           x2="-6"
+           id="line110"
+           x1="0"
+           y1="0"
+           y2="0" />
+        <text
+           fill="#000000"
+           x="-9"
+           dy="0.31999999em"
+           id="text112">60%</text>
+      </g>
+      <g
+         class="tick"
+         opacity="1"
+         transform="translate(0,180.5)"
+         id="g120">
+        <line
+           stroke="#000000"
+           x2="-6"
+           id="line116"
+           x1="0"
+           y1="0"
+           y2="0" />
+        <text
+           fill="#000000"
+           x="-9"
+           dy="0.31999999em"
+           id="text118">70%</text>
+      </g>
+      <g
+         class="tick"
+         opacity="1"
+         transform="translate(0,120.5)"
+         id="g126">
+        <line
+           stroke="#000000"
+           x2="-6"
+           id="line122"
+           x1="0"
+           y1="0"
+           y2="0" />
+        <text
+           fill="#000000"
+           x="-9"
+           dy="0.31999999em"
+           id="text124">80%</text>
+      </g>
+      <g
+         class="tick"
+         opacity="1"
+         transform="translate(0,60.5)"
+         id="g132">
+        <line
+           stroke="#000000"
+           x2="-6"
+           id="line128"
+           x1="0"
+           y1="0"
+           y2="0" />
+        <text
+           fill="#000000"
+           x="-9"
+           dy="0.31999999em"
+           id="text130">90%</text>
+      </g>
+      <g
+         class="tick"
+         opacity="1"
+         transform="translate(0,0.5)"
+         id="g138">
+        <line
+           stroke="#000000"
+           x2="-6"
+           id="line134"
+           x1="0"
+           y1="0"
+           y2="0" />
+        <text
+           fill="#000000"
+           x="-9"
+           dy="0.31999999em"
+           id="text136">100%</text>
+      </g>
+    </g>
+    <text
+       id="y-label"
+       text-anchor="middle"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:17.1082px;line-height:normal;font-family:sans-serif;stroke-width:1.42569"
+       transform="matrix(0,-1.0103566,0.98974956,0,0,0)"
+       x="-88.609276"
+       y="-39.540051">Relative Frequency</text>
+    <g
+       class="layer"
+       style="fill:#e9593a"
+       id="g166"
+       transform="matrix(0.80455126,0,0,0.82130231,7.7643018,-142.85498)">
+      <rect
+         x="147.45946"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect144" />
+      <rect
+         x="385.2973"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect146" />
+      <rect
+         x="290.16217"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect148" />
+      <rect
+         x="337.72974"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect150" />
+      <rect
+         x="99.891891"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect152" />
+      <rect
+         x="242.59459"
+         y="599.32288"
+         height="0"
+         width="42.81081"
+         id="rect154" />
+      <rect
+         x="52.324326"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect156" />
+      <rect
+         x="4.7567568"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect158" />
+      <rect
+         x="195.02702"
+         y="599.40558"
+         height="0"
+         width="42.81081"
+         id="rect160" />
+      <rect
+         x="432.86487"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect162" />
+      <rect
+         x="480.43243"
+         y="594.53864"
+         height="5.46136"
+         width="42.81081"
+         id="rect164" />
+    </g>
+    <g
+       class="layer"
+       style="fill:#faf8c1"
+       id="g190"
+       transform="matrix(0.80455126,0,0,0.82130231,7.7643018,-142.85498)">
+      <rect
+         x="147.45946"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect168" />
+      <rect
+         x="385.2973"
+         y="579.8844"
+         height="0"
+         width="42.81081"
+         id="rect170" />
+      <rect
+         x="290.16217"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect172" />
+      <rect
+         x="337.72974"
+         y="596.63257"
+         height="0"
+         width="42.81081"
+         id="rect174" />
+      <rect
+         x="99.891891"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect176" />
+      <rect
+         x="242.59459"
+         y="599.32288"
+         height="0"
+         width="42.81081"
+         id="rect178" />
+      <rect
+         x="52.324326"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect180" />
+      <rect
+         x="4.7567568"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect182" />
+      <rect
+         x="195.02702"
+         y="594.51782"
+         height="0"
+         width="42.81081"
+         id="rect184" />
+      <rect
+         x="432.86487"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect186" />
+      <rect
+         x="480.43243"
+         y="535.42743"
+         height="49.045155"
+         width="42.81081"
+         id="rect188" />
+    </g>
+    <g
+       class="layer"
+       style="fill:#fee398"
+       id="g214"
+       transform="matrix(0.80455126,0,0,0.82130231,7.7643018,-142.85498)">
+      <rect
+         x="147.45946"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect192" />
+      <rect
+         x="385.2973"
+         y="579.8844"
+         height="0"
+         width="42.81081"
+         id="rect194" />
+      <rect
+         x="290.16217"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect196" />
+      <rect
+         x="337.72974"
+         y="596.63257"
+         height="0"
+         width="42.81081"
+         id="rect198" />
+      <rect
+         x="99.891891"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect200" />
+      <rect
+         x="242.59459"
+         y="599.32288"
+         height="0"
+         width="42.81081"
+         id="rect202" />
+      <rect
+         x="52.324326"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect204" />
+      <rect
+         x="4.7567568"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect206" />
+      <rect
+         x="195.02702"
+         y="594.51782"
+         height="4.8877149"
+         width="42.81081"
+         id="rect208" />
+      <rect
+         x="432.86487"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect210" />
+      <rect
+         x="480.43243"
+         y="584.4726"
+         height="0"
+         width="42.81081"
+         id="rect212" />
+    </g>
+    <g
+       class="layer"
+       style="fill:#cd2929"
+       id="g238"
+       transform="matrix(0.80455126,0,0,0.82130231,7.7643018,-142.85498)">
+      <rect
+         x="147.45946"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect216" />
+      <rect
+         x="385.2973"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect218" />
+      <rect
+         x="290.16217"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect220" />
+      <rect
+         x="337.72974"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect222" />
+      <rect
+         x="99.891891"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect224" />
+      <rect
+         x="242.59459"
+         y="599.32288"
+         height="0"
+         width="42.81081"
+         id="rect226" />
+      <rect
+         x="52.324326"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect228" />
+      <rect
+         x="4.7567568"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect230" />
+      <rect
+         x="195.02702"
+         y="599.40558"
+         height="0.59445179"
+         width="42.81081"
+         id="rect232" />
+      <rect
+         x="432.86487"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect234" />
+      <rect
+         x="480.43243"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect236" />
+    </g>
+    <g
+       class="layer"
+       style="fill:#446aaf"
+       id="g262"
+       transform="matrix(0.80455126,0,0,0.82130231,7.7643018,-142.85498)">
+      <rect
+         x="147.45946"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect240" />
+      <rect
+         x="385.2973"
+         y="273.4682"
+         height="0"
+         width="42.81081"
+         id="rect242" />
+      <rect
+         x="290.16217"
+         y="598.24487"
+         height="1.7551191"
+         width="42.81081"
+         id="rect244" />
+      <rect
+         x="337.72974"
+         y="596.63257"
+         height="0"
+         width="42.81081"
+         id="rect246" />
+      <rect
+         x="99.891891"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect248" />
+      <rect
+         x="242.59459"
+         y="599.32288"
+         height="0"
+         width="42.81081"
+         id="rect250" />
+      <rect
+         x="52.324326"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect252" />
+      <rect
+         x="4.7567568"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect254" />
+      <rect
+         x="195.02702"
+         y="594.51782"
+         height="0"
+         width="42.81081"
+         id="rect256" />
+      <rect
+         x="432.86487"
+         y="155.62376"
+         height="0"
+         width="42.81081"
+         id="rect258" />
+      <rect
+         x="480.43243"
+         y="0.32125646"
+         height="534.46368"
+         width="42.81081"
+         id="rect260" />
+    </g>
+    <g
+       class="layer"
+       style="fill:#fdbe72"
+       id="g286"
+       transform="matrix(0.80455126,0,0,0.82130231,7.7643018,-142.85498)">
+      <rect
+         x="147.45946"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect264" />
+      <rect
+         x="385.2973"
+         y="579.8844"
+         height="17.861271"
+         width="42.81081"
+         id="rect266" />
+      <rect
+         x="290.16217"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect268" />
+      <rect
+         x="337.72974"
+         y="596.63257"
+         height="3.3674481"
+         width="42.81081"
+         id="rect270" />
+      <rect
+         x="99.891891"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect272" />
+      <rect
+         x="242.59459"
+         y="599.32288"
+         height="0"
+         width="42.81081"
+         id="rect274" />
+      <rect
+         x="52.324326"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect276" />
+      <rect
+         x="4.7567568"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect278" />
+      <rect
+         x="195.02702"
+         y="599.40558"
+         height="0"
+         width="42.81081"
+         id="rect280" />
+      <rect
+         x="432.86487"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect282" />
+      <rect
+         x="480.43243"
+         y="584.4726"
+         height="0"
+         width="42.81081"
+         id="rect284" />
+    </g>
+    <g
+       class="layer"
+       style="fill:#313695"
+       id="g310"
+       transform="matrix(0.80455126,0,0,0.82130231,7.7643018,-142.85498)">
+      <rect
+         x="147.45946"
+         y="0"
+         height="600"
+         width="42.81081"
+         id="rect288" />
+      <rect
+         x="385.2973"
+         y="0"
+         height="273.4682"
+         width="42.81081"
+         id="rect290" />
+      <rect
+         x="290.16217"
+         y="0"
+         height="598.24487"
+         width="42.81081"
+         id="rect292" />
+      <rect
+         x="337.72974"
+         y="0"
+         height="596.63257"
+         width="42.81081"
+         id="rect294" />
+      <rect
+         x="99.891891"
+         y="0"
+         height="600"
+         width="42.81081"
+         id="rect296" />
+      <rect
+         x="242.59459"
+         y="0"
+         height="599.32288"
+         width="42.81081"
+         id="rect298" />
+      <rect
+         x="52.324326"
+         y="0"
+         height="600"
+         width="42.81081"
+         id="rect300" />
+      <rect
+         x="4.7567568"
+         y="0"
+         height="600"
+         width="42.81081"
+         id="rect302" />
+      <rect
+         x="195.02702"
+         y="0"
+         height="594.51782"
+         width="42.81081"
+         id="rect304" />
+      <rect
+         x="432.86487"
+         y="0"
+         height="155.62376"
+         width="42.81081"
+         id="rect306" />
+      <rect
+         x="480.43243"
+         y="0"
+         height="0.32125646"
+         width="42.81081"
+         id="rect308" />
+    </g>
+    <g
+       class="layer"
+       style="fill:#659ac7"
+       id="g334"
+       transform="matrix(0.80455126,0,0,0.82130231,7.7643018,-142.85498)">
+      <rect
+         x="147.45946"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect312" />
+      <rect
+         x="385.2973"
+         y="273.4682"
+         height="0"
+         width="42.81081"
+         id="rect314" />
+      <rect
+         x="290.16217"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect316" />
+      <rect
+         x="337.72974"
+         y="596.63257"
+         height="0"
+         width="42.81081"
+         id="rect318" />
+      <rect
+         x="99.891891"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect320" />
+      <rect
+         x="242.59459"
+         y="599.32288"
+         height="0"
+         width="42.81081"
+         id="rect322" />
+      <rect
+         x="52.324326"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect324" />
+      <rect
+         x="4.7567568"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect326" />
+      <rect
+         x="195.02702"
+         y="594.51782"
+         height="0"
+         width="42.81081"
+         id="rect328" />
+      <rect
+         x="432.86487"
+         y="155.62376"
+         height="444.37622"
+         width="42.81081"
+         id="rect330" />
+      <rect
+         x="480.43243"
+         y="534.78491"
+         height="0"
+         width="42.81081"
+         id="rect332" />
+    </g>
+    <g
+       class="layer"
+       style="fill:#f88d52"
+       id="g358"
+       transform="matrix(0.80455126,0,0,0.82130231,7.7643018,-142.85498)">
+      <rect
+         x="147.45946"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect336" />
+      <rect
+         x="385.2973"
+         y="597.74567"
+         height="2.2543352"
+         width="42.81081"
+         id="rect338" />
+      <rect
+         x="290.16217"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect340" />
+      <rect
+         x="337.72974"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect342" />
+      <rect
+         x="99.891891"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect344" />
+      <rect
+         x="242.59459"
+         y="599.32288"
+         height="0"
+         width="42.81081"
+         id="rect346" />
+      <rect
+         x="52.324326"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect348" />
+      <rect
+         x="4.7567568"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect350" />
+      <rect
+         x="195.02702"
+         y="599.40558"
+         height="0"
+         width="42.81081"
+         id="rect352" />
+      <rect
+         x="432.86487"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect354" />
+      <rect
+         x="480.43243"
+         y="584.4726"
+         height="10.066036"
+         width="42.81081"
+         id="rect356" />
+    </g>
+    <g
+       class="layer"
+       style="fill:#e3f4e8"
+       id="g382"
+       transform="matrix(0.80455126,0,0,0.82130231,7.7643018,-142.85498)">
+      <rect
+         x="147.45946"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect360" />
+      <rect
+         x="385.2973"
+         y="495.95377"
+         height="83.930634"
+         width="42.81081"
+         id="rect362" />
+      <rect
+         x="290.16217"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect364" />
+      <rect
+         x="337.72974"
+         y="596.63257"
+         height="0"
+         width="42.81081"
+         id="rect366" />
+      <rect
+         x="99.891891"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect368" />
+      <rect
+         x="242.59459"
+         y="599.32288"
+         height="0"
+         width="42.81081"
+         id="rect370" />
+      <rect
+         x="52.324326"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect372" />
+      <rect
+         x="4.7567568"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect374" />
+      <rect
+         x="195.02702"
+         y="594.51782"
+         height="0"
+         width="42.81081"
+         id="rect376" />
+      <rect
+         x="432.86487"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect378" />
+      <rect
+         x="480.43243"
+         y="534.78491"
+         height="0.64251292"
+         width="42.81081"
+         id="rect380" />
+    </g>
+    <g
+       class="layer"
+       style="fill:#bce1ed"
+       id="g406"
+       transform="matrix(0.80455126,0,0,0.82130231,7.7643018,-142.85498)">
+      <rect
+         x="147.45946"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect384" />
+      <rect
+         x="385.2973"
+         y="406.8208"
+         height="89.13295"
+         width="42.81081"
+         id="rect386" />
+      <rect
+         x="290.16217"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect388" />
+      <rect
+         x="337.72974"
+         y="596.63257"
+         height="0"
+         width="42.81081"
+         id="rect390" />
+      <rect
+         x="99.891891"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect392" />
+      <rect
+         x="242.59459"
+         y="599.32288"
+         height="0"
+         width="42.81081"
+         id="rect394" />
+      <rect
+         x="52.324326"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect396" />
+      <rect
+         x="4.7567568"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect398" />
+      <rect
+         x="195.02702"
+         y="594.51782"
+         height="0"
+         width="42.81081"
+         id="rect400" />
+      <rect
+         x="432.86487"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect402" />
+      <rect
+         x="480.43243"
+         y="534.78491"
+         height="0"
+         width="42.81081"
+         id="rect404" />
+    </g>
+    <g
+       class="layer"
+       style="fill:#a50026"
+       id="g430"
+       transform="matrix(0.80455126,0,0,0.82130231,7.7643018,-142.85498)">
+      <rect
+         x="147.45946"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect408" />
+      <rect
+         x="385.2973"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect410" />
+      <rect
+         x="290.16217"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect412" />
+      <rect
+         x="337.72974"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect414" />
+      <rect
+         x="99.891891"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect416" />
+      <rect
+         x="242.59459"
+         y="599.32288"
+         height="0.67711097"
+         width="42.81081"
+         id="rect418" />
+      <rect
+         x="52.324326"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect420" />
+      <rect
+         x="4.7567568"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect422" />
+      <rect
+         x="195.02702"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect424" />
+      <rect
+         x="432.86487"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect426" />
+      <rect
+         x="480.43243"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect428" />
+    </g>
+    <g
+       class="layer"
+       style="fill:#90c2dd"
+       id="g454"
+       transform="matrix(0.80455126,0,0,0.82130231,7.7643018,-142.85498)">
+      <rect
+         x="147.45946"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect432" />
+      <rect
+         x="385.2973"
+         y="273.4682"
+         height="133.3526"
+         width="42.81081"
+         id="rect434" />
+      <rect
+         x="290.16217"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect436" />
+      <rect
+         x="337.72974"
+         y="596.63257"
+         height="0"
+         width="42.81081"
+         id="rect438" />
+      <rect
+         x="99.891891"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect440" />
+      <rect
+         x="242.59459"
+         y="599.32288"
+         height="0"
+         width="42.81081"
+         id="rect442" />
+      <rect
+         x="52.324326"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect444" />
+      <rect
+         x="4.7567568"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect446" />
+      <rect
+         x="195.02702"
+         y="594.51782"
+         height="0"
+         width="42.81081"
+         id="rect448" />
+      <rect
+         x="432.86487"
+         y="600"
+         height="0"
+         width="42.81081"
+         id="rect450" />
+      <rect
+         x="480.43243"
+         y="534.78491"
+         height="0"
+         width="42.81081"
+         id="rect452" />
+    </g>
+    <rect
+       width="21.766285"
+       height="21.766285"
+       x="463.75415"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:normal;font-family:sans-serif;fill:#a50026;stroke-width:1.20924"
+       id="rect823"
+       y="217.64403" />
+    <text
+       y="231.4493"
+       text-anchor="start"
+       x="492.77588"
+       id="text825"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:12.0924px;line-height:normal;font-family:sans-serif;stroke-width:1.20924">Chromadorea, Desmodorida, Desmodorida, Desmodorida</text>
+    <g
+       class="legend"
+       id="id3"
+       transform="matrix(1.2092381,0,0,1.2092381,463.75416,193.45924)"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:normal;font-family:sans-serif">
+      <rect
+         width="18"
+         height="18"
+         x="0"
+         style="fill:#cd2929"
+         id="rect828"
+         y="0" />
+      <text
+         y="11.4165"
+         text-anchor="start"
+         x="24"
+         id="text830">Chromadorea, Tylenchida, Tylenchida, Tylenchida, <tspan
+   style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Italic'"
+   id="tspan1134">Aphelenchoides bicaudatus</tspan></text>
+    </g>
+    <g
+       class="legend"
+       id="id0"
+       transform="matrix(1.2092381,0,0,1.2092381,463.75416,169.27447)"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:normal;font-family:sans-serif">
+      <rect
+         width="18"
+         height="18"
+         x="0"
+         style="fill:#e9593a"
+         id="rect833"
+         y="0" />
+      <text
+         y="11.4165"
+         text-anchor="start"
+         x="24"
+         id="text835">Chromadorea, Monhysterida, Monhysterida, Monhysterida</text>
+    </g>
+    <g
+       class="legend"
+       id="id8"
+       transform="matrix(1.2092381,0,0,1.2092381,463.75416,145.08971)"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:normal;font-family:sans-serif">
+      <rect
+         width="18"
+         height="18"
+         x="0"
+         style="fill:#f88d52"
+         id="rect838"
+         y="0" />
+      <text
+         y="11.4165"
+         text-anchor="start"
+         x="24"
+         id="text840">Chromadorea, Chromadorida, Chromadorida, Chromadorida</text>
+    </g>
+    <g
+       class="legend"
+       id="id5"
+       transform="matrix(1.2092381,0,0,1.2092381,463.75416,120.90496)"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:normal;font-family:sans-serif">
+      <rect
+         width="18"
+         height="18"
+         x="0"
+         style="fill:#fdbe72"
+         id="rect843"
+         y="0" />
+      <text
+         y="11.4165"
+         text-anchor="start"
+         x="24"
+         id="text845">Chromadorea, Desmodorida, Desmodorida, Desmodorida, <tspan
+   style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Italic'"
+   id="tspan1132">Prodesmodora sp.</tspan></text>
+    </g>
+    <g
+       class="legend"
+       id="id2"
+       transform="matrix(1.2092381,0,0,1.2092381,463.75416,96.720188)"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:normal;font-family:sans-serif">
+      <rect
+         width="18"
+         height="18"
+         x="0"
+         style="fill:#fee398"
+         id="rect848"
+         y="0" />
+      <text
+         y="11.4165"
+         text-anchor="start"
+         x="24"
+         id="text850">Chromadorea, Rhabditida, Rhabditida, Rhabditida, P<tspan
+   style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Italic'"
+   id="tspan1130">rotorhabditis sp.</tspan></text>
+    </g>
+    <g
+       class="legend"
+       id="id1"
+       transform="matrix(1.2092381,0,0,1.2092381,463.75416,72.53542)"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:normal;font-family:sans-serif">
+      <rect
+         width="18"
+         height="18"
+         x="0"
+         style="fill:#faf8c1"
+         id="rect853"
+         y="0" />
+      <text
+         y="11.4165"
+         text-anchor="start"
+         x="24"
+         id="text855">Chromadorea, Rhabditida, Rhabditida, Rhabditida, <tspan
+   style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Italic'"
+   id="tspan1128">Teratocephalus lirellus</tspan></text>
+    </g>
+    <g
+       class="legend"
+       id="id9"
+       transform="matrix(1.2092381,0,0,1.2092381,463.75416,48.35067)"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:normal;font-family:sans-serif">
+      <rect
+         width="18"
+         height="18"
+         x="0"
+         style="fill:#e3f4e8"
+         id="rect858"
+         y="0" />
+      <text
+         y="11.4165"
+         text-anchor="start"
+         x="24"
+         id="text860">Chromadorea, Araeolaimida, Araeolaimida, Araeolaimida</text>
+    </g>
+    <g
+       class="legend"
+       id="id10"
+       transform="matrix(1.2092381,0,0,1.2092381,463.75416,24.16591)"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:normal;font-family:sans-serif">
+      <rect
+         width="18"
+         height="18"
+         x="0"
+         style="fill:#bce1ed"
+         id="rect863"
+         y="0" />
+      <text
+         y="11.4165"
+         text-anchor="start"
+         x="24"
+         id="text865">Chromadorea, Rhabditida, Rhabditida, Rhabditida, <tspan
+   style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Italic'"
+   id="tspan1126">Diploscapter sp</tspan>.</text>
+    </g>
+    <g
+       class="legend"
+       id="id12"
+       transform="matrix(1.2092381,0,0,1.2092381,463.75416,-0.01885957)"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:normal;font-family:sans-serif">
+      <rect
+         width="18"
+         height="18"
+         x="0"
+         style="fill:#90c2dd"
+         id="rect868"
+         y="0" />
+      <text
+         y="11.4165"
+         text-anchor="start"
+         x="24"
+         id="text870">Chromadorea, Rhabditida, Rhabditida, Rhabditida, <tspan
+   style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Italic'"
+   id="tspan1124">Bunonema reticulatum</tspan></text>
+    </g>
+    <g
+       class="legend"
+       id="id7"
+       transform="matrix(1.2092381,0,0,1.2092381,463.75416,-24.20362)"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:normal;font-family:sans-serif">
+      <rect
+         width="18"
+         height="18"
+         x="0"
+         style="fill:#659ac7"
+         id="rect873"
+         y="0" />
+      <text
+         y="11.4165"
+         text-anchor="start"
+         x="24"
+         id="text875">Chromadorea, Rhabditida, Rhabditida, Rhabditida, <tspan
+   style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Italic'"
+   id="tspan1122">Heterorhabditis indica</tspan></text>
+    </g>
+    <g
+       class="legend"
+       id="id4"
+       transform="matrix(1.2092381,0,0,1.2092381,463.75416,-48.38838)"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:normal;font-family:sans-serif">
+      <rect
+         width="18"
+         height="18"
+         x="0"
+         style="fill:#446aaf"
+         id="rect878"
+         y="0" />
+      <text
+         y="11.4165"
+         text-anchor="start"
+         x="24"
+         id="text880">Enoplea, Triplonchida, Triplonchida, Triplonchida, <tspan
+   style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Italic'"
+   id="tspan1120">Tripylina sp</tspan>.</text>
+    </g>
+    <g
+       class="legend"
+       id="id6"
+       transform="matrix(1.2092381,0,0,1.2092381,463.75416,-72.57314)"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:normal;font-family:sans-serif">
+      <rect
+         width="18"
+         height="18"
+         x="0"
+         style="fill:#313695"
+         id="rect883"
+         y="0" />
+      <text
+         y="11.4165"
+         text-anchor="start"
+         x="24"
+         id="text885">Chromadorea, Rhabditida, Rhabditida, Rhabditida</text>
+    </g>
+    <g
+       class="legend"
+       id="id6-8"
+       transform="matrix(1.2092381,0,0,1.2092381,463.95475,-98.847657)"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10px;line-height:normal;font-family:sans-serif">
+      <text
+         y="8.7445593"
+         text-anchor="start"
+         x="-0.5222798"
+         id="text885-2">Reference: Class, Order, Family, Genus, Species</text>
+      <text
+         y="-8.7661896"
+         text-anchor="start"
+         x="-3.0209472"
+         id="text885-2-7"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:12.0924px;line-height:normal;font-family:sans-serif;stroke-width:1.20924">Taxonomy assigned to nematode amplicons</text>
+    </g>
+  </g>
+</svg>

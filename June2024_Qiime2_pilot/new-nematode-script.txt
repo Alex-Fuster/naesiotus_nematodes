@@ -1,0 +1,43 @@
+#new nematode script
+cd /mnt/c/Users/'Parent Lab'/Documents/Oiler/nematodes_with_alex
+conda activate qiime2-amplicon-2024.2
+
+#filter out non-nematodes from the taxonomy
+qiime taxa filter-seqs \
+--i-sequences rep-seqs-dada2.qza \
+--i-taxonomy taxonomy.qza \
+--p-include p__Nematozoa \
+--o-filtered-sequences nema-only-seqs.qza
+
+qiime metadata tabulate \
+--m-input-file nema-only-seqs.qza \
+--o-visualization nema-only-seqs.qzv
+
+###################alpha diversity stuff
+qiime diversity alpha \
+  --i-table NematodeOnlyTable.qza \
+  --p-metric observed_features \
+  --o-alpha-diversity observed_vector.qza
+
+qiime diversity alpha \
+  --i-table NematodeOnlyTable.qza \
+  --p-metric shannon \
+  --o-alpha-diversity shannon_vector.qza
+
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity shannon_vector.qza \
+  --m-metadata-file Samples_metadata.tsv \
+  --o-visualization shannon_significance.qzv
+
+#################### taxa barplots
+#this is useful for making the feature tsv
+qiime metadata tabulate \
+  --m-input-file taxonomy.qza \
+  --o-visualization taxonomy.qzv
+
+#plot that stuff
+qiime taxa barplot \
+  --i-table NematodeOnlyTable.qza  \
+  --i-taxonomy taxonomy.qza \
+  --m-metadata-file Samples_metadata.tsv \
+  --o-visualization nematode-taxa-bar-plots.qzv
