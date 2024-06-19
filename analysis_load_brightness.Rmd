@@ -17,6 +17,18 @@ library(dplyr)
 library(tidyverse)
 library(cmdstanr)
 library(bayesplot)
+library(tidybayes)
+library(posterior)
+
+```
+```{r}
+my_theme<-theme(axis.text=element_text(size=12),
+        axis.title = element_text(size = 14),
+        legend.text=element_text(size=10),
+        legend.title = element_text(size=12),
+        plot.title = element_text(face="bold",size=14,margin=margin(0,0,20,0),hjust = 0.5),
+        axis.title.y = element_text(hjust = 0.5),
+        axis.title.x = element_text(hjust = 0.5))
 ```
 
 
@@ -154,14 +166,25 @@ df_kraemer$species_code <- species_to_number[df_kraemer$species]
 
 df_load
 df_kraemer
+
+#write_rds(df_load, "output/df_load.rds")
+#write_rds(df_kraemer, "output/df_kraemer.rds")
+#write_rds(df_meanload, "output/df_meanload.rds")
+
+df_load <- readRDS("output/df_load.rds")
+df_kraemer <- readRDS("output/df_kraemer.rds")
+df_meanload <- readRDS("output/df_meanload.rds")
+
 ```
+
+
 
 
 Check brightness data
 
 ```{r}
 
-ggplot(data = df_kraemer, aes(x = species, y = log(brightness)))+
+ggplot(data = df_kraemer, aes(x = species, y = brightness))+
   geom_point(position = position_jitter(width =.1))
 
 ```
@@ -270,7 +293,7 @@ fit <- stan_load_brightness$sample(
 
 # Fit the model using cmdstanr
 stan_load_brightness <- cmdstan_model(
-  stan_file = "load_logbrightness_halfnormalslope.stan", 
+  stan_file = "stan/load_logbrightness_halfnormalslope.stan", 
   pedantic = TRUE
 )
 
@@ -286,7 +309,7 @@ fit <- stan_load_brightness$sample(
 ```
 
 
-## model with log brightness and slope assumed positive + truncated poisson
+## model with log brightness and slope assumed positive
 
 -> Truncation can't be done in poisson_log
 
@@ -294,7 +317,7 @@ fit <- stan_load_brightness$sample(
 
 # Fit the model using cmdstanr
 stan_load_brightness <- cmdstan_model(
-  stan_file = "load_logbrightness_halfnormalslope_truncated.stan", 
+  stan_file = "stan/logbright_posslope.stan", 
   pedantic = TRUE
 )
 
@@ -310,7 +333,7 @@ fit <- stan_load_brightness$sample(
 ```
 
 
-## model with log brightness and slope assumed positive + truncated poisson + centered brightness
+## model with log brightness and slope assumed negative 
 
 
 
@@ -318,7 +341,75 @@ fit <- stan_load_brightness$sample(
 
 # Fit the model using cmdstanr
 stan_load_brightness <- cmdstan_model(
-  stan_file = "load_logbrightness_halfnormalslope_truncated.stan", 
+  stan_file = "stan/logbright_negslope.stan", 
+  pedantic = TRUE
+)
+
+fit <- stan_load_brightness$sample(
+  data = data_list,
+  seed = 123,             
+  chains = 4,               
+  parallel_chains = 4,    
+  iter_warmup = 1000,       
+  iter_sampling = 2000   
+)
+
+```
+
+
+---------------------------------------
+
+
+# Model only set of species with brightness data
+
+
+
+```{r}
+df_load_filtered <- df_load %>% 
+  filter(species %in% df_kraemer$species)
+
+df_kraemer_filtered <- df_kraemer
+
+
+# Combine unique species from both dataframes
+unique_species <- unique(c(unique(df_load_filtered$species), unique(df_kraemer$species)))
+
+# Create a dictionary of species to letters
+species_to_number <- setNames(1:length(unique_species), unique_species)
+
+# Add the letter codes to df_load and df_habitat
+df_load_filtered$species_code <- species_to_number[df_load_filtered$species]
+df_kraemer_filtered$species_code <- species_to_number[df_kraemer$species]
+```
+
+
+
+
+
+```{r}
+
+# Prepare the data list
+data_list <- list(
+  N_nem = nrow(df_load_filtered),
+  N_bright = nrow(df_kraemer_filtered),
+  N_sp_nem = length(unique(df_load_filtered$species)),
+  N_sp_bright = length(unique(df_kraemer_filtered$species)),
+  load = df_load_filtered$nematode_count,
+  brightness = df_kraemer_filtered$brightness,
+  species_i = df_load_filtered$species_code,
+  species_k = df_kraemer_filtered$species_code
+
+)
+
+```
+
+
+
+
+```{r}
+# Fit the model using cmdstanr
+stan_load_brightness <- cmdstan_model(
+  stan_file = "logbright_23spp.stan", 
   pedantic = TRUE
 )
 
@@ -376,13 +467,10 @@ mcmc_areas(
   pars = parameter_names,
   prob = 0.8  # 80% intervals
 )+
-  coord_cartesian(xlim=c(-3,20))
+  coord_cartesian(xlim=c(-0.5,11))
 
 
 ```
-
-
-
 
 
 
@@ -402,7 +490,6 @@ mcmc_hist(slope_samples, prob = 0.8)
 
 ```{r}
 draws <- fit$draws(format = "df")
-mcmc_hist(draws, pars='slope_bright') + xlim(c(0,6))
 
 library(ggdist)
 
@@ -426,11 +513,83 @@ fit$draws(variables = c("intercept", "slope_bright")) |>
 
 
 ```{r}
-# Extract posterior draws of predicted_brightness
-predicted_brightness_draws <- fit$draws(variables = "predicted_brightness")
+
+# Extract the predicted values from the Stan fit object
+predicted_brightness <- fit$draws("predicted_brightness")
+predicted_load <- fit$draws("predicted_load")
+
+# Convert the extracted predictions to a format suitable for bayesplot
+predicted_load <- as_draws_matrix(predicted_load)
+predicted_brightness <- as_draws_matrix(predicted_brightness)
+
+# Posterior predictive check for nematode load
+ppc_load <- ppc_load <- ppc_dens_overlay(y = df_load$nematode_count, yrep = predicted_load) +
+  scale_color_manual(name = "Legend",
+                     values = c("y" = "black", "yrep" = "blue"),
+                     labels = c("Observed load", "Predicted load")) +
+  scale_fill_manual(name = "Legend",
+                    values = c("y" = "black", "yrep" = "blue"),
+                    labels = c("Observed load", "Predicted load"))+
+  my_theme
+
+# Posterior predictive check for brightness
+observed_brightness <- df_kraemer$brightness
+ppc_brightness <- ppc_dens_overlay(y = observed_brightness, yrep = predicted_brightness) +
+  scale_color_manual(name = "Legend",
+                     values = c("y" = "black", "yrep" = "coral"),
+                     labels = c("Observed brightness", "Predicted brightness")) +
+  scale_fill_manual(name = "Legend",
+                    values = c("y" = "black", "yrep" = "coral"),
+                    labels = c("Observed brightness", "Predicted brightness"))+
+  my_theme
+
+
+ppc_plots_load_bright <- ggarrange(
+  
+  ppc_load,
+  ppc_brightness,
+  labels = LETTERS[1:2],
+  ncol = 1,
+  nrow = 2
+)
+
+ppc_plots_load_bright
+
+ggsave("figures/ppc_plots_load_bright.png", height = 10, width = 15)
 
 ```
 
+
+```{r}
+# Compute mean observed nematode load per species
+mean_observed_load <- df_load %>%
+  group_by(species_code) %>%
+  summarise(mean_load = mean(nematode_count, na.rm = TRUE))
+
+# Reshape predicted_load to have species_code as one of the columns
+predicted_load_df <- as.data.frame(predicted_load)
+predicted_load_df <- predicted_load_df %>%
+  pivot_longer(cols = everything(), names_to = "draw", values_to = "predicted_load")
+
+# Assume species_code is correctly ordered and repeated for each draw
+species_codes <- rep(df_load$species_code, each = dim(predicted_load)[1] / length(unique(df_load$species_code)))
+predicted_load_df$species_code <- species_codes
+
+# Compute mean predicted load per species
+mean_predicted_load <- predicted_load_df %>%
+  group_by(species_code) %>%
+  summarise(mean_predicted_load = mean(predicted_load, na.rm = TRUE))
+
+# Merge observed and predicted means
+comparison_df <- merge(mean_observed_load, mean_predicted_load, by = "species_code")
+
+# Scatter plot of observed vs. predicted load
+ggplot(comparison_df) +
+  geom_point(aes(x = mean_load, y = mean_predicted_load)) +
+  labs(x = "Observed Mean Nematode Load", y = "Predicted Mean Nematode Load") +
+  ggtitle("Observed vs. Predicted Mean Nematode Load") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red")  # Add a 
+```
 
 
 
