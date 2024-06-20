@@ -1,0 +1,363 @@
+---
+title: "Load ~ Habitat"
+
+---
+
+
+
+```{r}
+library(dplyr)
+library(ggplot2)# Load the ape package
+library(ape)
+library(readxl)
+library(tidyr)
+library(ggpubr)
+library(ade4)
+library(vegan)
+library(stringr)
+library(brms)
+library(dplyr)
+library(tidyverse)
+library(cmdstanr)
+```
+
+
+parameters for plotting
+
+```{r}
+my_theme<-theme(axis.text=element_text(size=12),
+        axis.title = element_text(size = 14),
+        legend.text=element_text(size=10),
+        legend.title = element_text(size=12),
+        plot.title = element_text(face="bold",size=14,margin=margin(0,0,20,0),hjust = 0.5),
+        axis.title.y = element_text(hjust = 0.5),
+        axis.title.x = element_text(hjust = 0.5))
+```
+
+
+# df load
+
+```{r}
+df_load <- read_excel("04april24_datalab.xlsx", sheet = 3)
+df_load$nematode_count[which(df_load$nematode_count == ">100")] <- "100"
+df_load$nematode_count <- as.numeric(df_load$nematode_count)
+
+df_load <- df_load %>% 
+  select(id, spp, nematode_count) %>% 
+  rename(species = spp)
+
+df_load
+```
+
+### df mean load
+
+
+```{r}
+
+df_meanload <- df_load %>%
+  group_by(species) %>%
+  summarise(n = n(),
+            mean_load = mean(nematode_count, na.rm = TRUE),
+            sd_load = sd(nematode_count, na.rm = TRUE)) %>%
+  arrange(desc(mean_load))
+
+colnames(df_meanload) = c("species", "n" ,"mean_load", "sd_load")
+
+df_totals <- data.frame("n" = sum(df_meanload$n),
+           "mean_load" = mean(df_meanload$mean_load),
+           "sd_load" = mean(df_meanload$sd_load))
+
+df_meanload <- bind_rows(df_meanload, df_totals)
+
+df_meanload$mean_load <- round(df_meanload$mean_load, 1)
+df_meanload$sd_load <- round(df_meanload$sd_load, 1)
+
+df_meanload
+
+#write.csv(df_load, "output/df_load.csv")
+
+```
+
+
+
+
+
+
+# habitat data
+
+
+### Habitat data from Kraemer 2019 database
+
+```{r}
+df_kraemer <- read.csv("kraemer2019/kraemer2019_brightness_scores.csv")
+
+df_kraemer <- df_kraemer %>% 
+  select(location, spp, microhab) %>% 
+  rename(id = location,
+         species = spp,
+         habitat = microhab)
+
+df_kraemer
+
+```
+
+
+### habitat data from RAD sequences database
+
+```{r}
+df_rad <- read_excel("GPS RAD snails.xlsx")
+df_rad <- df_rad %>% 
+  select(Sample, Taxon, Microhabitat) %>% 
+  rename(id = Sample,
+         species = Taxon,
+         habitat = Microhabitat)
+
+# Semi-Arboreal is considered arboreal
+df_rad <- df_rad %>%
+  mutate(habitat = str_replace(habitat, "Semi-Arboreal", "arboreal"))
+
+df_rad <- df_rad %>%
+  mutate(habitat = str_to_lower(habitat)) %>% 
+  filter(habitat %in% c("arboreal", "terrestrial"))
+
+df_rad
+  
+```
+
+
+### Merge data to obtain single habitat database
+
+```{r}
+# Remove rows from df_rad that have matching ids in df_kraemer
+df_rad_filtered <- anti_join(df_rad, df_kraemer, by = "id")
+
+# Combine df_kraemer with the filtered df_rad
+df_habitat <- bind_rows(df_kraemer, df_rad_filtered)
+
+df_habitat
+```
+
+
+Names checks
+
+```{r}
+df_habitat[which(df_habitat$species == "albermarlensis"),] <- "albemarlensis"
+df_habitat[which(df_habitat$species == "cf. albemarlensis"),] <- "albemarlensis"
+
+df_habitat[which(df_habitat$species == "ustulatus pallescens"),] <- "ustulatus"
+df_habitat[which(df_habitat$species == "ustulatus phlegonis"),] <- "ustulatus"
+df_habitat[which(df_habitat$species == "ustulatus mahogany"),] <- "ustulatus"
+
+df_habitat[which(df_habitat$species == "invalidus 1"),] <- "invalidus"
+df_habitat[which(df_habitat$species == "invalidus 2"),] <- "invalidus"
+
+df_habitat[which(df_habitat$species == "sculpturatus 1"),] <- "sculpturatus"
+df_habitat[which(df_habitat$species == "sculpturatus 2"),] <- "sculpturatus"
+df_habitat[which(df_habitat$species == "sculpturatus 3"),] <- "sculpturatus"
+
+df_habitat[which(df_habitat$species == "wolfi 1"),] <- "wolfi"
+df_habitat[which(df_habitat$species == "wolfi 2"),] <- "wolfi"
+df_habitat[which(df_habitat$species == "wolfi 3"),] <- "wolfi"
+
+df_habitat[which(df_habitat$species == "cf. perspectivus"),] <- "perspectivus"
+df_habitat[which(df_habitat$species == "perspectivus 1"),] <- "perspectivus"
+df_habitat[which(df_habitat$species == "perspectivus 2"),] <- "perspectivus"
+
+df_habitat[which(df_habitat$species == "cf. amastroides"),] <- "amastroides"
+
+df_habitat[which(df_habitat$species == "canaliferus 1"),] <- "canaliferus"
+df_habitat[which(df_habitat$species == "canaliferus 2"),] <- "canaliferus"
+
+df_habitat[which(df_habitat$species == "simrothi 1"),] <- "simrothi"
+df_habitat[which(df_habitat$species == "simrothi 2"),] <- "simrothi"
+
+df_habitat[which(df_habitat$species == "cf. tortuganus"),] <- "tortuganus"
+
+df_habitat[which(df_habitat$species == "cf. nux"),] <- "nux"
+
+```
+
+
+Only keep species with assessed load:
+
+```{r}
+
+df_habitat1 <- df_habitat
+
+# Filter df_merged to only include species that appear in df_load
+df_habitat <- df_habitat %>%
+  semi_join(df_load, by = "species")
+
+df_habitat
+```
+
+
+which species were discarded?
+
+```{r}
+discarded_species <- setdiff(unique(df_habitat1$species), unique(df_habitat$species))
+discarded_species
+```
+
+**df_habitat** is the data from which the mean_habitat will be modeled for each species
+
+**df_load** is the data from which nematode counts are modeled.
+
+
+### Create common species code to make sure species names coincide
+
+```{r}
+
+# Combine unique species from both dataframes
+unique_species <- unique(c(unique(df_load$species), unique(df_habitat$species)))
+
+# Create a dictionary of species to letters
+species_to_number <- setNames(1:length(unique_species), unique_species)
+
+# Add the letter codes to df_load and df_habitat
+df_load$species_code <- species_to_number[df_load$species]
+df_habitat$species_code <- species_to_number[df_habitat$species]
+
+# View the updated dataframes
+df_load
+df_habitat
+
+#write_rds(df_load, "output/df_load.rds")
+write_rds(df_habitat, "output/df_habitat.rds")
+
+df_habitat <- readRDS("output/df_habitat.rds")
+
+```
+
+
+Prepare data
+
+```{r}
+# Convert habitat to integer: 0 for terrestrial, 1 for arboreal
+df_habitat$habitat_code <- ifelse(df_habitat$habitat == "terrestrial", 0, 1)
+
+data_list <- list(
+  N_nem = nrow(df_load),
+  N_habitat = nrow(df_habitat),
+  N_sp_nem = length(unique(df_load$species)),
+  load = df_load$nematode_count,
+  habitat = df_habitat$habitat_code,
+  species_i = df_load$species_code,
+  species_h = df_habitat$species_code
+)
+
+```
+
+
+Model
+
+```{r}
+
+# Fit the model using cmdstanr
+stan_load_brightness <- cmdstan_model(
+  stan_file = "stan/habitat.stan", 
+  pedantic = TRUE
+)
+
+fit <- stan_load_brightness$sample(
+  data = data_list,
+  seed = 123,             
+  chains = 4,               
+  parallel_chains = 4,    
+  iter_warmup = 1000,       
+  iter_sampling = 2000   
+)
+
+```
+
+
+## All posterior pars
+
+```{r}
+# Extract the posterior samples
+posterior_samples <- fit$draws()
+
+# Convert to a data frame for easier handling
+posterior_df <- as_draws_df(posterior_samples)
+
+# Rename mu_bright parameters for easier handling
+posterior_df <- posterior_df %>%
+  rename_with(~ gsub("\\[|\\]", "", .), starts_with("habitat_prob")) %>%
+  rename_with(~ gsub("\\.", "_", .), starts_with("habitat_prob"))
+
+# Extract the names of the parameters of interest
+mu_hab_names <- grep("^habitat_prob", names(posterior_df), value = TRUE)
+#sigma_bright_names <- grep("^sigma_habitat", names(posterior_df), value = TRUE)
+
+parameter_names <- c("intercept", "slope_habitat", mu_hab_names)
+```
+
+
+```{r}
+# Plot posterior distributions of the parameters
+mcmc_areas(
+  posterior_df,
+  pars = parameter_names,
+  prob = 0.8  # 80% intervals
+)+
+  coord_cartesian(xlim=c(-6.3,4.2))
+
+
+```
+
+
+```{r}
+fit$draws(variables = c("intercept", "slope_habitat")) |>
+  posterior::summarise_draws("mean", "sd", ~quantile(.x, probs = c(0.05, 0.95)), "rhat") #|>
+  #flextable::flextable()
+```
+
+
+### Plot for predicted values
+
+
+```{r}
+
+library(bayesplot)
+
+# Extract the predicted values from the Stan fit object
+predicted_habitat <- as_draws_matrix(fit$draws("predicted_habitat"))
+predicted_load <- as_draws_matrix(fit$draws("predicted_load"))
+
+# Posterior predictive check for nematode load
+ppc_load <- ppc_dens_overlay(y = df_load$nematode_count, yrep = predicted_load) +
+  scale_color_manual(name = "Legend",
+                     values = c("y" = "black", "yrep" = "blue"),
+                     labels = c("Observed load", "Predicted load")) +
+  scale_fill_manual(name = "Legend",
+                    values = c("y" = "black", "yrep" = "blue"),
+                    labels = c("Observed load", "Predicted load"))+
+  my_theme
+
+# Posterior predictive check for habitat (categorical)
+observed_habitat <- as.numeric(df_habitat$habitat_code)  # Convert to numeric if needed
+ppc_habitat <- ppc_bars(y = observed_habitat, yrep = predicted_habitat) +
+  scale_color_manual(name = "Legend",
+                     values = c("y" = "black", "yrep" = "coral"),
+                     labels = c("Observed habitat", "Predicted habitat")) +
+  scale_fill_manual(name = "Legend",
+                    values = c("y" = "black", "yrep" = "coral"),
+                    labels = c("Observed habitat", "Predicted habitat"))+
+  my_theme
+
+# Combine the plots
+ppc_plots_load_hab <- ggarrange(
+  ppc_load,
+  ppc_habitat,
+  labels = LETTERS[1:2],
+  ncol = 1,
+  nrow = 2
+)
+
+ppc_plots_load_hab
+
+ggsave("figures/ppc_load_hab_neg.png", height = 10, width = 10)
+
+
+```
+

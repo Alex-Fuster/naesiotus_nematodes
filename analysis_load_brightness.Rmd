@@ -21,6 +21,7 @@ library(tidybayes)
 library(posterior)
 
 ```
+
 ```{r}
 my_theme<-theme(axis.text=element_text(size=12),
         axis.title = element_text(size = 14),
@@ -467,7 +468,7 @@ mcmc_areas(
   pars = parameter_names,
   prob = 0.8  # 80% intervals
 )+
-  coord_cartesian(xlim=c(-0.5,11))
+  coord_cartesian(xlim=c(-2,11))
 
 
 ```
@@ -496,7 +497,7 @@ library(ggdist)
 draws |>
   ggplot(aes(x=slope_bright)) + 
   stat_dotsinterval() + 
-  xlim(c(0,2.5))
+  xlim(c(-3,2.5))
 ```
 
 
@@ -541,6 +542,7 @@ ppc_brightness <- ppc_dens_overlay(y = observed_brightness, yrep = predicted_bri
   scale_fill_manual(name = "Legend",
                     values = c("y" = "black", "yrep" = "coral"),
                     labels = c("Observed brightness", "Predicted brightness"))+
+  xlim(0,60000)
   my_theme
 
 
@@ -555,7 +557,7 @@ ppc_plots_load_bright <- ggarrange(
 
 ppc_plots_load_bright
 
-ggsave("figures/ppc_plots_load_bright.png", height = 10, width = 15)
+ggsave("figures/ppc_load_bright_neg.png", height = 10, width = 15)
 
 ```
 
