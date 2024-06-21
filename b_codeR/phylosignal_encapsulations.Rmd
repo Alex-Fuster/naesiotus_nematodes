@@ -1,18 +1,39 @@
-#nematode phytools stuff
+---
+title: "Phylogenetic signal of nematode encapsulations"
+---
+
+
+```{r}
 library(phytools)
 library(tidyverse)
+```
 
+
+Load data
+
+```{r}
+
+# tree file
 tree <- read.tree("a_data/phylogeny_2022/22Nov_Naesiotus.nwk")
+
+tree<- as.phylo(tree)
+
+
+# codes for the tip names
 df_rads <- read_excel("a_data/GPS RAD snails.xlsx")
 
-#get the tree and load data from the 'phylog_distances_naesiotus' script from alex
-tree<- as.phylo(tree)
-#load
+# load
 df_load <- read_excel("a_data/04april24_datalab.xlsx", sheet = 3)
 df_load$nematode_count[which(df_load$nematode_count == ">100")] <- "100"
 df_load$nematode_count <- as.numeric(df_load$nematode_count)
 
-#make the table we want to use for the phylosig arguments (will need the tidyverse packages from alex's script)
+plot(tree)
+```
+
+
+Compute mean and se load per species
+
+```{r}
 df_meanload <- df_load %>%
   group_by(spp) %>%
   summarise(n = n(),
@@ -24,20 +45,21 @@ df_meanload <- df_load %>%
     species = spp
   )
 
+df_meanload
+```
 
 
-df_meanload$mean_load <- round(df_meanload$mean_load, 1)
-df_meanload$sd_load <- round(df_meanload$sd_load, 1)
-df_meanload$se_load <- round(df_meanload$se_load, 1)
 
+```{r}
 meanload<-setNames(df_meanload$mean_load, df_meanload$species)
 s.error<-setNames(df_meanload$se_load, df_meanload$species)
+```
 
 
 
-#prune the tree to match the data (71 tree tips and 47 species with data)
-plot(tree)
+Correct names in the RAD database 
 
+```{r}
 # Names checks
 
 #df_rads[which(df_rads$Taxon == "albermarlensis"),] <- "albemarlensis"
@@ -74,29 +96,71 @@ df_rads[which(df_rads$Taxon == "cf. tortuganus"),"Taxon"] <- "tortuganus"
 
 df_rads[which(df_rads$Taxon == "cf. nux"),"Taxon"] <- "nux"
 
+```
 
+
+
+```{r}
 # Create a mapping between Sample and Taxon
 sample_to_taxon <- setNames(df_rads$Taxon, df_rads$Sample)
 
+```
 
 
+```{r}
 # Replace tip labels in the tree with corresponding taxa
 tree$tip.label <- sample_to_taxon[tree$tip.label]
 
 plot(tree)
+```
 
 
+Prune tree, discarting those species not assessed for load
+
+```{r}
 pruned.tree<-drop.tip(tree, setdiff(tree$tip.label, df_meanload$species))
 
 plot(pruned.tree)
+```
 
-#should be ready to use phylosig
+Also discard those species in load that are not present in the tree
 
-K_nemaload <- phylosig(pruned.tree, meanload, method = 'K', test = TRUE, se = s.error)
+```{r}
+# Filter data to include only species present in the phylogenetic tree
+tree_species <- pruned.tree$tip.label
+meanload_filtered <- meanload[names(meanload) %in% tree_species]
+s.error_filtered <- s.error[names(s.error) %in% tree_species]
+
+# Verify data alignment
+match_indices <- match(tree_species, names(meanload_filtered))
+meanload_filtered <- meanload_filtered[match_indices]
+s.error_filtered <- s.error_filtered[match_indices]
+```
+
+
+
+
+# Blomberg's K
+
+```{r}
+K_nemaload <- phylosig(pruned.tree, meanload_filtered, method = 'K', test = TRUE, se = s.error_filtered)
 K_nemaload
 plot.phylosig(K_nemaload)
 
-#why can't I use the standard error with lambda?
-lambda_nemaload <- phylosig(tree, meanload, method = 'lambda', test = TRUE) #, se = s.error) - not sure why it doesn't like this
+```
+
+
+# Lambda
+
+```{r}
+
+lambda_nemaload <- phylosig(pruned.tree, meanload_filtered, method = 'lambda', test = TRUE, se = s.error_filtered) 
+lambda_nemaload <- phylosig(pruned.tree, meanload_filtered, method = 'lambda', test = TRUE) 
 lambda_nemaload
 plot.phylosig(lambda_nemaload)
+
+```
+
+
+
+
