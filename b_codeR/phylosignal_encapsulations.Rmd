@@ -163,4 +163,15 @@ plot.phylosig(lambda_nemaload)
 
 
 
+# Plot tree and trait values
+
+```{r}
+
+contMap(pruned.tree,meanload_filtered,
+        res = 400,
+        lwd = 4,
+        outline = FALSE,
+        sig = 0)
+
+```
 
