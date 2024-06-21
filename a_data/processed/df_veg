@@ -1,0 +1,182 @@
+"","data (MB)","Sample","species","Microhabitat","vegetation_zone","Location","Year","RAD run","Shell?","TAXON NOTES"
+"1","20","CA05_08_01_04","albemarlensis","Terrestrial","humid","CA","2005","44024","Yes","Name based on Phylogeny"
+"2","366","CA15_01_01_01","albemarlensis","Terrestrial","humid","CA","2015","43452","Yes","From Phillips et al. 2020"
+"3","91","CA16_03_01_02","albemarlensis","Terrestrial","humid","CA","2016","43452","Yes","From Phillips et al. 2020"
+"4","76","CA16_04_01_08","albemarlensis","Terrestrial","humid","CA","2016","43452","No","From Phillips et al. 2020"
+"5","113","CA16_04_01_09","albemarlensis","Terrestrial","humid","CA","2016","43452","No","From Phillips et al. 2020"
+"6","81","CA16_08_01_05","albemarlensis","Terrestrial","humid","CA","2016","43452","Yes","From Phillips et al. 2020"
+"7","61","CA16_SUM_0101","albemarlensis","Terrestrial","humid","CA","2016","43452","No","These two are sister to all other CA"
+"8","312","CA16_SUM_0102","albemarlensis","Terrestrial","humid","CA","2016","43452","No","These two are sister to all other CA"
+"9","88","ES02_03_01_01","snodgrassi","Terrestrial","arid","ES","2002","43452","Yes","From Phillips et al. 2020"
+"10","97","ES17_01_01_01","snodgrassi","Terrestrial","arid","ES","2017","43452","Yes","From Phillips et al. 2020"
+"11","75","ES17_01_01_02","snodgrassi","Terrestrial","arid","ES","2017","43452","Yes","From Phillips et al. 2020"
+"12","92","ES17_04_01_02","snodgrassi","Terrestrial","arid","ES","2017","43452","Yes","From Phillips et al. 2020"
+"13","127","ES17_04_01_03","snodgrassi","Terrestrial","arid","ES","2017","43452","Yes","From Phillips et al. 2020"
+"14","91","ES17_05_01_01","snodgrassi","Terrestrial","arid","ES","2017","43452","Yes","From Phillips et al. 2020"
+"15","133","ES17_07_01_01","snodgrassi","Terrestrial","arid","ES","2017","43452","Guts only","From Phillips et al. 2020"
+"16","21","FL14_03_01_01","calvus","terrestrial","arid","FL","2014","43452","Yes","*Dylan's excel sheet says that 'calvus' and 'calvus caryonis' have different veg zones. They are repicrically monophyletic…"
+"17","168","FL14_03_01_02","nux","arboreal","humid","FL","2014","43452","Yes","FAKE NUX - clade with Cruz house"
+"18","65","FL14_03_01_03","calvus","terrestrial","arid","FL","2014","43452","Yes","*Dylan's excel sheet says that 'calvus' and 'calvus caryonis' have different veg zones. They are repicrically monophyletic…"
+"19","74","FL14_06_01_03","calvus","terrestrial","arid","FL","2014","43452","No","*Dylan's excel sheet says that 'calvus' and 'calvus caryonis' have different veg zones. They are repicrically monophyletic…"
+"20","123","FL14_06_01_04","calvus","terrestrial","arid","FL","2014","43452","Yes","*Dylan's excel sheet says that 'calvus' and 'calvus caryonis' have different veg zones. They are repicrically monophyletic…"
+"21","36","FL14_06_02_03","nux","arboreal","humid","FL","2014","43452","No","FAKE NUX - clade with Cruz house"
+"22","34","FL14_06_02_04","nux","arboreal","humid","FL","2014","43452","Yes","FAKE NUX - clade with Cruz house"
+"23","92","FL14_10_01_01","nux","arboreal","humid","FL","2014","43452","Yes","From Phillips et al. 2020"
+"24","125","FL14_10_01_02","nux","arboreal","humid","FL","2014","43452","No","From Phillips et al. 2020"
+"25","105","FL14_17_01_08","ustulatus","terrestrial","humid","FL","2014","43452","No","From Phillips et al. 2020"
+"26","98","FL14_17_02_03","ustulatus","terrestrial","humid","FL","2014","43452","No","From Phillips et al. 2020"
+"27","356","FL14_17_02_04","ustulatus","terrestrial","humid","FL","2014","43452","No","From Phillips et al. 2020"
+"28","65","FL14_17_03_01","nux","arboreal","humid","FL","2014","43452","No","From Phillips et al. 2020"
+"29","236","FL14_17_03_04","nux","arboreal","humid","FL","2014","43452","No","From Phillips et al. 2020"
+"30","88","FL14_18_01_01","ustulatus","terrestrial","humid","FL","2014","43452","No","From Phillips et al. 2020"
+"31","27","FL14_18_01_03","ustulatus","terrestrial","humid","FL","2014","43452","No","From Phillips et al. 2020"
+"32","125","FL14_19_01_03","ustulatus","terrestrial","humid","FL","2014","43452","No","From Phillips et al. 2020"
+"33","167","FL14_19_01_04","ustulatus","terrestrial","humid","FL","2014","43452","No","From Phillips et al. 2020"
+"34","40","FL14_20_01_01","ustulatus","terrestrial","humid","FL","2014","43452","No","From Phillips et al. 2020"
+"35","51","FL15_01_01_02","ustulatus","terrestrial","humid","FL","2015","43452","Yes","From Phillips et al. 2020"
+"36","54","FL18_02_01_01","nux","arboreal","humid","FL","2018","44024","Yes","Name based on Phylogeny"
+"37","64","FL18_03_01_01","unifasciatus","Semi-Arboreal","humid","FL","2018","44024","Yes","ID for sure. Terestrial-humid?"
+"38","42","FL18_03_01_02","unifasciatus","Semi-Arboreal","humid","FL","2018","44024","Yes","ID for sure. Terestrial-humid?"
+"39","55","FL18_03_02_01","nux","arboreal","humid","FL","2018","44024","Yes","Name based on Phylogeny"
+"40","21","FL18_10_01_01","invalidus","terrestrial","humid","FL","2018","44024","Yes","Name based on Phylogeny"
+"41","60","FL18_12_01_01","invalidus","Terrestrial","humid","FL","2018","44024","Yes",NA
+"42","43","FL18_12_01_02","invalidus","Terrestrial","humid","FL","2018","44024","Yes",NA
+"43","25","FL18_13_01_01","invalidus","Terrestrial","humid","FL","2018","44024","Yes",NA
+"44","12","FL18_13_01_02","invalidus","Terrestrial","humid","FL","2018","44024","Yes",NA
+"45","22","FL19_02_02_01","invalidus","Terrestrial","humid","FL","2019","44024","Yes","These two are sister to rest of 'invalidus clade"
+"46","23","FL19_02_02_02","invalidus","Terrestrial","humid","FL","2019","44024","Yes","These two are sister to rest of 'invalidus clade"
+"47","32","FL19_03_01_01","invalidus","Terrestrial","humid","FL","2019","44024","Yes","ID for sure. Terestrial-humid?"
+"48","20","FL19_03_01_02","invalidus","Terrestrial","humid","FL","2019","44024","Yes","ID for sure. Terestrial-humid?"
+"49","16","FL19_08_02_03","nux","arboreal","humid","FL","2019","44024","Yes",NA
+"50","34","FL19_17_01_01","nux","Semi-Arboreal","arid","FL","2019","44024","Yes","Name based on Phylogeny"
+"51","48","FL19_17_01_02","nux","Semi-Arboreal","arid","FL","2019","44024","Yes","Name based on Phylogeny"
+"52","29","RA14_01_01_01","rabidensis","Semi-Arboreal","arid","RA","2014","43452","No","From Phillips et al. 2020"
+"53","55","RA14_01_01_02","rabidensis","Semi-Arboreal","arid","RA","2014","43452","No","From Phillips et al. 2020"
+"54","88","RA14_02_01_01","rabidensis","Semi-Arboreal","arid","RA","2014","43452","Yes","From Phillips et al. 2020"
+"55","50","RA14_02_01_02","rabidensis","Semi-Arboreal","arid","RA","2014","43452","Yes","From Phillips et al. 2020"
+"56","4.5999999999999996","SA01_03_02_01","rugiferus","terrestrial","arid","SA","2001","44024","Yes","Name based on Phylogeny"
+"57","28","SA01_03_02_02","rugiferus","terrestrial","arid","SA","2001","44024","Yes","Name based on Phylogeny"
+"58","15","SA01_04_02_04","sculpturatus","terrestrial","humid","SA","2001","44024","Yes","NESTED in sculpturatus 1"
+"59","25","SA01_04_02_05","sculpturatus","terrestrial","humid","SA","2001","44024","Yes","NESTED in sculpturatus 1"
+"60","38","SA16_02_01_02","rugiferus","terrestrial","arid","SA","2016","43452","Yes","From Phillips et al. 2020"
+"61","53","SA16_05_03_02","sculpturatus","terrestrial","humid","SA","2016","43452","Yes","From Phillips et al. 2020"
+"62","387","SA16_05_03_03","sculpturatus","terrestrial","humid","SA","2016","43452","Yes","From Phillips et al. 2020"
+"63","40","SA16_06_04_01","sculpturatus","terrestrial","humid","SA","2016","43452","No","From Phillips et al. 2020"
+"64","135","SA16_06_04_02","sculpturatus","terrestrial","humid","SA","2016","43452","No","From Phillips et al. 2020"
+"65","63","SA16_07_04_02","sculpturatus","terrestrial","humid","SA","2016","43452","No","From Phillips et al. 2020"
+"66","111","SA16_07_05_01","sculpturatus","terrestrial","humid","SA","2016","43452","No","From Phillips et al. 2020"
+"67","63","SA16_08_06_01","sculpturatus","terrestrial","humid","SA","2016","43452","No","From Phillips et al. 2020"
+"68","36","SA16_10_02_01","jacobinus","terrestrial","arid","SA","2016","44024","Yes","Need ecological data"
+"69","138","SA16_10_06_02","sculpturatus","terrestrial","humid","SA","2016","43452","Yes","From Phillips et al. 2020"
+"70","140","SA16_10_06_04","sculpturatus","terrestrial","humid","SA","2016","43452","No","From Phillips et al. 2020"
+"71","57","SA16_12_07_01","sculpturatus","terrestrial","humid","SA","2016","43452","No","From Phillips et al. 2020"
+"72","14","SC14_05_01_05","hirsutus","terrestrial","arid","SC","2014","44024","Yes","Good species."
+"73","106","SC14_09_01_01","wolfi","Semi-Arboreal","arid","SC","2014","43452","Yes","From Phillips et al. 2020"
+"74","41","SC14_09_01_02","wolfi","Semi-Arboreal","arid","SC","2014","43452","Yes","From Phillips et al. 2020"
+"75","90","SC14_13_01_01","wolfi","Terrestrial","humid","SC","2014","43452","Yes","From Phillips et al. 2020"
+"76","87","SC14_13_01_07","wolfi","Terrestrial","humid","SC","2014","43452","Yes","From Phillips et al. 2020"
+"77","105","SC14_13_03_01","eos","arboreal","humid","SC","2014","43452","Yes","From Phillips et al. 2020"
+"78","55","SC15_08_01_08","ochsneri","Semi-Arboreal","humid","SC","2015","44024","No","Name based on Phylogeny"
+"79","134","SC15_08_01_09","ochsneri","Semi-Arboreal","humid","SC","2015","43452","No","From Phillips et al. 2020"
+"80","75","SC15_09_01_02","ochsneri","Semi-Arboreal","humid","SC","2015","December 2018/July 2020","yes","From Phillips et al. 2020, BUT sister to ochsneri (SC15-08)"
+"81","119","SC15_13_01_03","wolfi","Terrestrial","arid","SC","2015","43452","No","From Phillips et al. 2020"
+"82","75","SC15_15_01_01","tanneri","Terrestrial","arid","SC","2015","44024","Yes","Good species. Sister to pinzonensis"
+"83","16","SC15G01_01_01","akamatus","terrestrial","arid","SC","2015","44024","No","Sister to little black"
+"84","48","SC15G01_01_02","akamatus","terrestrial","arid","SC","2015","44024","No","Sister to little black"
+"85","65","SC18_21_01_01","tanneri","Terrestrial","arid","SC","2018","44024","Yes","Good species. Sister to pinzonensis"
+"86","27","SC18_21_01_06","tanneri","Terrestrial","arid","SC","2018","44024","Yes","Good species. Sister to pinzonensis"
+"87","20","SC18_23_02_01","wolfi","Terrestrial","humid","SC","2018","44024","Yes","In clade with a ""unknown black"" (SC14-14)"
+"88","26","SC18_23_02_02","wolfi","Terrestrial","humid","SC","2018","44024","Yes","Name based on Phylogeny"
+"89","21","SC18_26_01_01","akamatus","Terrestrial","arid","SC","2018","44024","Yes","Sister to little black"
+"90","31","SC18_26_01_02","akamatus","Terrestrial","arid","SC","2018","44024","Yes","Sister to little black"
+"91","15","SC18_28_01_01","wolfi","Terrestrial","arid","SC","2018","44024","Yes","Sister to wolfi 3"
+"92","30","SC18_28_01_02","wolfi","Terrestrial","arid","SC","2018","44024","Yes","Sister to wolfi 3"
+"93","25","SC18_48_01_02","ochsneri","Semi-Arboreal","humid","SC","2018","44024","Yes","Sister to ochsneri + unknown black"
+"94","39","SL14__R_06__B","perspectivus","terrestrial","arid","SL","2014","43452","Yes","From Phillips et al. 2020"
+"95","61","SL14_02_01_01","amastroides","terrestrial","arid","SL","2014","43452","Yes","From Phillips et al. 2020"
+"96","20","SL14_02_01_02","amastroides","terrestrial","arid","SL","2014","43452","Yes","From Phillips et al. 2020"
+"97","61","SL14_04_01_01","amastroides","terrestrial","arid","SL","2014","43452","No","From Phillips et al. 2020"
+"98","88","SL14_04_01_04","amastroides","terrestrial","arid","SL","2014","43452","No","From Phillips et al. 2020"
+"99","15","SL14_05_01_02","nucula","terrestrial","humid","SL","2014","43452","Yes","From Phillips et al. 2020"
+"100","82","SL14_05_01_03","nucula","terrestrial","humid","SL","2014","43452","No","From Phillips et al. 2020"
+"101","20","SL14_06_01_02","chemnitzioides","terrestrial","arid","SL","2014","43452","Yes","From Phillips et al. 2020"
+"102","47","SL14_06_01_03","chemnitzioides","terrestrial","arid","SL","2014","44024","Yes","Name based on Phylogeny"
+"103","113","SL17_04_01_16","canaliferus","terrestrial","arid","SL","2017","43452","No","From Phillips et al. 2020"
+"104","42","SL17_06_01_01","nuciformis","arboreal","humid","SL","2017","December 2018/July 2020","No","Name based on Phylogeny"
+"105","37","SL17_06_01_02","nuciformis","arboreal","humid","SL","2017","43452","No","From Phillips et al. 2020"
+"106","79","SL17_11_01_01","nucula","terrestrial","humid","SL","2017","43452","Yes","From Phillips et al. 2020"
+"107","70","SL17_11_01_02","nucula","terrestrial","humid","SL","2017","43452","Yes","From Phillips et al. 2020"
+"108","34","SL17_12_01_02","canaliferus","terrestrial","humid","SL","2017","43452","No","From Phillips et al. 2020"
+"109","37","SL17_12_01_03","canaliferus","terrestrial","humid","SL","2017","43452","Yes","From Phillips et al. 2020"
+"110","66","SL17_14_01_10","perspectivus","terrestrial","arid","SL","2017","43452","No","From Phillips et al. 2020"
+"111","68","SL17_14_01_11","canaliferus","terrestrial","humid","SL","2017","43452","Yes","From Phillips et al. 2020"
+"112","42","SL18_01_01_01","nucula","terrestrial","humid","SL","2018","43452","Yes","From Phillips et al. 2020"
+"113","15","SL18_01_01_04","nucula","terrestrial","humid","SL","2018","43452","Yes","From Phillips et al. 2020"
+"114","57","SL18_06_01_01","perspectivus","terrestrial","arid","SL","2018","43452","Yes","From Phillips et al. 2020"
+"115","30","SL18_06_01_03","perspectivus","terrestrial","arid","SL","2018","43452","No","From Phillips et al. 2020"
+"116","12","SL19_01_01_01","bauri","terrestrial","humid","SL","2019","44024","Yes",NA
+"117","19","SL19_01_01_02","bauri","terrestrial","humid","SL","2019","44024","Yes",NA
+"118","44","SL19_02_01_01","nuciformis","arboreal","humid","SL","2019","44024","Yes","Name based on Phylogeny"
+"119","39","SL19_02_01_05","nuciformis","arboreal","humid","SL","2019","44024","Yes","Name based on Phylogeny"
+"120","27","SL19_02_02_01","perspectivus","terrestrial","humid","SL","2019","44024","Yes","Name based on Phylogeny"
+"121","42","SL19_02_03_01","bauri","terrestrial","humid","SL","2019","44024","Yes",NA
+"122","48","SL19_04_01_01","nucula","terrestrial","humid","SL","2019","44024","Yes",NA
+"123","13","SL19_04_01_02","nucula","terrestrial","humid","SL","2019","44024","Yes",NA
+"124","107","SL19_08_01_01","perspectivus","terrestrial","arid","SL","2019","44024","No",NA
+"125","54","SL19_08_01_02","perspectivus","terrestrial","arid","SL","2019","44024","No",NA
+"126","94","SL19_09_01_01","nucula","terrestrial","humid","SL","2019","44024","Yes",NA
+"127","67","SL19_09_01_02","nucula","terrestrial","humid","SL","2019","44024","Yes",NA
+"128","59","SL19_10_01_01","perspectivus","terrestrial","arid","SL","2019","44024","Yes",NA
+"129","68","SL19_10_01_02","perspectivus","terrestrial","arid","SL","2019","44024","Yes",NA
+"130","109","SL19_12_01_01","perspectivus","terrestrial","arid","SL","2019","44024","Yes",NA
+"131","29","SL19_13_01_01","perspectivus","terrestrial","arid","SL","2019","44024","Yes",NA
+"132","36","SL19_13_01_02","perspectivus","terrestrial","arid","SL","2019","44024","Yes",NA
+"133","41","SL19_14_01_01","perspectivus","terrestrial","arid","SL","2019","44024","Yes",NA
+"134","49","SL19_17_01_01","perspectivus","terrestrial","arid","SL","2019","44024","Yes",NA
+"135","29","SL19_17_01_02","perspectivus","terrestrial","arid","SL","2019","44024","Yes",NA
+"136","39","SN14_02_01_02","simrothi","arboreal","humid","SN","2014","43452","No","Mis-ID'ed by Phillips et al. (2020). Sister clade to cf. tortuganus, hereafter ""simrothi 2"""
+"137","78","SN14_02_01_03","simrothi","arboreal","humid","SN","2014","43452","Yes","Mis-ID'ed by Phillips et al. (2020). Sister clade to cf. tortuganus, hereafter ""simrothi 2"""
+"138","141","SN14_03_01_01","simrothi","arboreal","humid","SN","2014","43452","No","From Phillips et al. 2020"
+"139","51","SN14_03_01_03","simrothi","arboreal","humid","SN","2014","43452","No","From Phillips et al. 2020"
+"140","36","SN14_05_01_02","albemarlensis","arboreal","humid","SN","2014","43452","No","From Phillips et al. 2020"
+"141","143","SN15_01_01_04","albemarlensis","arboreal","humid","SN","2015","43452","Yes","From Phillips et al. 2020"
+"142","39","SN15_02_01_01","albemarlensis","arboreal","humid","SN","2015","43452","Yes","From Phillips et al. 2020"
+"143","27","SN15_02_01_05","albemarlensis","arboreal","humid","SN","2015","43452","No","From Phillips et al. 2020"
+"144","22","SN15_03_01_01","simrothi","arboreal","humid","SN","2015","43452","No","From Phillips et al. 2020"
+"145","21","SN18_05_01_01","tortuganus","arboreal","humid","SN","2018","43452","Yes",NA
+"146","51","SN18_05_01_02","tortuganus","arboreal","humid","SN","2018","43452","Yes",NA
+"147","32","SN19_03_01_01","simrothi","arboreal","humid","SN","2019","44024","Yes",NA
+"148","37","SN19_03_01_02","simrothi","arboreal","humid","SN","2019","44024","Yes",NA
+"149","24","SN19_03_01_03","simrothi","arboreal","humid","SN","2019","44024","Yes",NA
+"150","29","SN19_05_01_01","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
+"151","35","SN19_05_01_02","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
+"152","30","SN19_06_01_01","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
+"153","43","SN19_06_01_02","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
+"154","60","SN19_08_01_01","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
+"155","23","SN19_08_01_02","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
+"156","35","SN19_08_01_04","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
+"157","23","SN19_18_01_03","albemarlensis","arboreal","humid","SN","2019","44024","Yes","Name based on Phylogeny"
+"158","35","SN19_20_01_02","simrothi","arboreal","humid","SN","2019","44024","Yes",NA
+"159","32","SN19_20_01_03","simrothi","arboreal","humid","SN","2019","44024","Yes",NA
+"160","48","SN19_21_01_01","simrothi","arboreal","humid","SN","2019","44024","Yes",NA
+"161","40","SN19_21_01_02","simrothi","arboreal","humid","SN","2019","44024","Yes",NA
+"162","32","SN19_21_01_05","simrothi","arboreal","humid","SN","2019","44024","Yes",NA
+"163","32","SN19_22_01_02","simrothi","arboreal","humid","SN","2019","44024","Yes",NA
+"164","44","SN19_22_01_04","simrothi","arboreal","humid","SN","2019","44024","Yes",NA
+"165","31","SN19_23_01_01","simrothi","arboreal","humid","SN","2019","44024","Yes",NA
+"166","26","SN19_23_01_02","simrothi","arboreal","humid","SN","2019","44024","Yes",NA
+"167","38","SN19_24_01_01","simrothi","arboreal","humid","SN","2019","44024","Yes",NA
+"168","23","SN19_24_01_02","simrothi","arboreal","humid","SN","2019","44024","Yes",NA
+"169","62","SN19_32_01_01","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
+"170","48","SN19_32_01_05","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
+"171","72","SN19_33_01_02","simrothi","arboreal","humid","SN","2019","44024","Yes",NA
+"172","58","SN19_33_01_03","simrothi","arboreal","humid","SN","2019","44024","Yes",NA
+"173","24","SN19_34_01_01","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
+"174","32","SN19_34_01_04","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
+"175","25","SN19_36_01_01","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
+"176","49","SN19_36_01_03","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
+"177","45","SN19_36_01_04","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
+"178","34","SN19_38_01_03","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
+"179","7.6","SN19_38_01_05","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
+"180","57","SN19_39_01_01","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
+"181","57","SN19_39_01_03","tortuganus","arboreal","humid","SN","2019","44024","Yes",NA
