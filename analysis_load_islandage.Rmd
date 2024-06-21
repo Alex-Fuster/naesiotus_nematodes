@@ -105,7 +105,9 @@ fit <- stan_load_island$sample(
 
 ```{r}
 
-posterior_df <- as_draws_df(posterior_samples)
+posterior <- fit$draws(variables = "predicted_load")
+
+posterior_df <- as_draws_df(posterior)
 
 # Extract posterior samples
 posterior_samples <- fit$draws(c("intercept", "slope_age", "slope_area"))
@@ -149,6 +151,8 @@ ppc_load <- ppc_dens_overlay(y = df_load$nematode_count, yrep = predicted_load) 
 
 # Print the posterior predictive check plot
 print(ppc_load)
+
+ggsave("figures/ppc_load_agearea.png", height = 10, width = 15)
 
 ```
 
