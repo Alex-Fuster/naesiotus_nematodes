@@ -46,7 +46,7 @@ my_theme<-theme(axis.text=element_text(size=12),
 ```{r}
 
 #load
-df_load <- read_excel("a_data/04april24_datalab.xlsx", sheet = 3)
+df_load <- read_excel("../a_data/04april24_datalab.xlsx", sheet = 3)
 
 df_load$nematode_count[which(df_load$nematode_count == ">100")] <- "100"
 df_load$nematode_count <- as.numeric(df_load$nematode_count)
@@ -65,7 +65,7 @@ df_load
 Add island data to df_load
 
 ```{r}
-df_island <- read_excel("a_data/04april24_datalab.xlsx", sheet = "island_characteristics")
+df_island <- read_excel("../a_data/04april24_datalab.xlsx", sheet = "island_characteristics")
 ```
 
 Adding island names to df_load
@@ -80,6 +80,77 @@ df_load <- df_load %>%
   left_join(df_island %>% select(island, island_age, island_area), by = "island")
 
 df_load
+```
+
+
+
+```{r}
+# Calculate mean load per species
+mean_load <- df_load %>%
+  group_by(species) %>%
+  summarise(mean_load = mean(nematode_count)) %>%
+  arrange(mean_load) %>%
+  pull(species)
+
+# Sort df_load by mean load
+df_load_sorted <- df_load %>%
+  mutate(species = factor(species, levels = mean_load))
+
+```
+
+
+
+```{r}
+# Define function to classify load values
+classify_load <- function(load) {
+  case_when(
+    load == 0 ~ "absence",
+    load >= 1 & load <= 10 ~ "low",
+    load >= 11 & load <= 30 ~ "moderate",
+    load >= 31 & load <= 100 ~ "high",
+    TRUE ~ "unknown"
+  )
+}
+
+# Apply classification function to create a new column 'load_category'
+df_load <- df_load %>%
+  mutate(load_category = classify_load(nematode_count))
+
+# Determine species present on each island
+species_per_island <- df_load %>%
+  group_by(island) %>%
+  pull(species) %>%
+  unique()
+
+# Filter df_load to include only species present on islands
+df_load_filtered <- df_load %>%
+  filter(species %in% species_per_island)
+
+# Aggregate counts per island, species, and load category
+df_summary <- df_load_filtered %>%
+  group_by(island, species, load_category) %>%
+  summarise(count = n())
+
+# Reorder load categories for plotting consistency
+df_summary <- df_summary %>%
+  mutate(load_category = factor(load_category, levels = c("absence", "low", "moderate", "high")))
+
+# Optionally, reorder islands by some criteria (e.g., island age)
+df_summary$island <- factor(df_summary$island, levels = unique(df_summary$island[order(df_load$island_age)]))
+
+# Plotting
+ggplot(df_summary, aes(x = species, y = count, fill = load_category)) +
+  geom_bar(stat = "identity", position = "stack") +
+  facet_wrap(~ island, scales = "free") +
+  labs(x = NULL, y = "Count", fill = "Load Category") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.text = element_text(size = 12, face = "bold")) +
+  scale_fill_manual(values = c("absence" = "grey", "low" = "blue", "moderate" = "green", "high" = "red"),
+                    labels = c("absence" = "absence (n = 0)", "low" = "low (1 to 10)", "moderate" = "moderate (11 to 30)", "high" = "high (31 to >100)")) +
+  theme(legend.position = "top")
+
+ggsave("../d_output/figures/raw_data/load_island_spp.png", height = 17, width = 13)
 ```
 
 

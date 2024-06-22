@@ -1,6 +1,5 @@
 ---
 title: "Load ~ ecological factors"
-output: html_notebook
 ---
 
 ```{r}
@@ -37,16 +36,14 @@ my_theme<-theme(axis.text=element_text(size=12),
 # Load dataset
 
 ```{r}
-df_island <- read_excel("../a_data04april24_datalab.xlsx", sheet = "island_characteristics")
-df_load <- read_excel("../a_data04april24_datalab.xlsx", sheet = 3)
+df_island <- read_excel("../a_data/04april24_datalab.xlsx", sheet = "island_characteristics")
+df_load <- read_excel("../a_data/04april24_datalab.xlsx", sheet = 3)
 df_load$nematode_count[which(df_load$nematode_count == ">100")] <- "100"
 df_load$nematode_count <- as.numeric(df_load$nematode_count)
 
 df_load <- df_load %>% 
   select(id, spp, nematode_count, island) %>% 
   rename(species = spp)
-
-df_load
 ```
 
 Adding island names to df_load
@@ -123,10 +120,8 @@ Only keep species with assessed load:
 ```{r}
 
 # df_kraemer df_merged to only include species that appear in df_load
-df_kraemer <- df_kraemer %>%
+df_bright <- df_kraemer %>%
   semi_join(df_load, by = "species")
-
-df_kraemer
 ```
 
 
@@ -136,16 +131,16 @@ df_kraemer
 ```{r}
 
 # Combine unique species from both dataframes
-unique_species <- unique(c(unique(df_load$species), unique(df_kraemer$species)))
+unique_species <- unique(c(unique(df_load$species), unique(df_bright$species)))
 
 # Create a dictionary of species to letters
 species_to_number <- setNames(1:length(unique_species), unique_species)
 
 # Add the letter codes to df_load and df_habitat
 df_load$species_code <- species_to_number[df_load$species]
-df_kraemer$species_code <- species_to_number[df_kraemer$species]
+df_bright$species_code <- species_to_number[df_bright$species]
 
-df_kraemer
+df_bright
 
 ```
 
@@ -167,8 +162,6 @@ df_kraemer <- df_kraemer %>%
          species = spp,
          habitat = microhab)
 
-df_kraemer
-
 ```
 
 
@@ -189,8 +182,6 @@ df_rad <- df_rad %>%
 df_rad <- df_rad %>%
   mutate(habitat = str_to_lower(habitat)) %>% 
   filter(habitat %in% c("arboreal", "terrestrial"))
-
-df_rad
   
 ```
 
@@ -203,8 +194,6 @@ df_rad_filtered <- anti_join(df_rad, df_kraemer, by = "id")
 
 # Combine df_kraemer with the filtered df_rad
 df_habitat <- bind_rows(df_kraemer, df_rad_filtered)
-
-df_habitat
 ```
 
 
@@ -252,21 +241,9 @@ Only keep species with assessed load:
 
 ```{r}
 
-df_habitat1 <- df_habitat
-
 # Filter df_merged to only include species that appear in df_load
 df_habitat <- df_habitat %>%
   semi_join(df_load, by = "species")
-
-df_habitat
-```
-
-
-which species were discarded?
-
-```{r}
-discarded_species <- setdiff(unique(df_habitat1$species), unique(df_habitat$species))
-discarded_species
 ```
 
 
@@ -358,7 +335,6 @@ df_veg <- df_veg %>%
   rename(species = Taxon) %>% 
   semi_join(df_load, by = "species")
 
-df_veg
 ```
 
 
@@ -379,3 +355,74 @@ df_veg$species_code <- species_to_number[df_veg$species]
 df_veg
 
 ```
+
+
+
+
+# Model
+
+
+
+## Data
+
+
+```{r}
+df_habitat$habitat_code <- ifelse(df_habitat$habitat == "terrestrial", 0, 1)
+df_veg$veg_code <- ifelse(df_veg$vegetation_zone == "humid", 0, 1)
+```
+
+
+
+```{r}
+# Calculate number of observations and species
+N_nem <- nrow(df_load)             # Number of observations for nematode load
+N_bright <- nrow(df_bright)       # Number of observations for brightness
+N_habitat <- nrow(df_habitat)      # Number of observations for habitat
+N_veg <- nrow(df_veg)              # Number of observations for vegetation zone
+
+N_sp_nem <- length(unique(df_load$species))  # Number of species in the nematode data
+
+
+# Data list for Stan model
+data_list <- list(
+  N_nem = N_nem,                                     # Number of observations for nematode load
+  N_bright = N_bright,                               # Number of observations for brightness
+  N_habitat = N_habitat,                             # Number of observations for habitat
+  N_veg = N_veg,                                     # Number of observations for vegetation zone
+  N_sp_nem = N_sp_nem,                               # Number of species in the nematode data
+  load = df_load$nematode_count,                      # Nematode load counts
+  brightness = df_bright$brightness,                 # Brightness scores
+  habitat = df_habitat$habitat_code,  
+  vegetation = df_veg$veg_code,
+  island_age = df_load$island_age,                  # Island age for each observation
+  island_area = df_load$island_area,                # Island area for each observation
+  species_i = df_load$species_code,                   # Species id for load dataset
+  species_k = df_bright$species_code,                       # Species id for brightness dataset
+  species_h = df_habitat$species_code,                      # Species id for habitat dataset
+  species_v = df_veg$species_code                           # Species id for vegetation dataset
+)
+
+```
+
+
+
+## Run model
+
+```{r}
+# Fit the model using cmdstanr
+stan_model <- cmdstan_model(
+  stan_file = "../c_codeStan/full_model.stan", 
+  pedantic = TRUE
+)
+
+fit <- stan_model$sample(
+  data = data_list,
+  seed = 123,             
+  chains = 4,               
+  parallel_chains = 4,    
+  iter_warmup = 1000,       
+  iter_sampling = 2000   
+)
+
+```
+

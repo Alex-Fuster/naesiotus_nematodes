@@ -31,7 +31,9 @@ We use three different datasets:
 
 The script [raw_data.]{style="color:blue"} computes data plots:
 
-![Fig 1. (A) shows the mean brightness for each snail species in the X asis and the nematode counts in the Y axis, with individual counts in black and means for each species in red. (B) shows the data for habitat for each snail species, and the black points show the mean load. (C) as in B for vegetation zone data. (D) Nematode counts and mean for the different species within each island as a function of island age. (E) as in D for island area. (E) boxplot showing the distribution of mean load data of the species within each island](d_output/figures/raw_data/plots_load_ecol.png)
+![Fig 1. Nematode counts by categories on each species and island](d_output/figures/raw_data/load_island_spp.png)
+
+![Fig 2. (A) shows the mean brightness for each snail species in the X asis and the nematode counts in the Y axis, with individual counts in black and means for each species in red. (B) shows the data for habitat for each snail species, and the black points show the mean load. (C) as in B for vegetation zone data. (D) Nematode counts and mean for the different species within each island as a function of island age. (E) as in D for island area. (E) boxplot showing the distribution of mean load data of the species within each island](d_output/figures/raw_data/plots_load_ecol.png)
 
 <br> 
 <br>
@@ -146,7 +148,7 @@ generated quantities {
 <br>
 
 
-![Fig 2. Parameter posterior distributions for Load ~ brightness model](d_output/figures/posterior_pars/bright_negslope.png)
+![Fig 3. Parameter posterior distributions for Load ~ brightness model](d_output/figures/posterior_pars/bright_negslope.png)
 
 
 <br>
@@ -157,7 +159,7 @@ generated quantities {
 <br> 
 <br>
 
-![Fig 3. Predictive accuracy for Load ~ brightness model. (A) Predictions for load data. (B) Predictions for brightness data](d_output/figures/predictions/ppc_load_bright_neg.png)
+![Fig 4. Predictive accuracy for Load ~ brightness model. (A) Predictions for load data. (B) Predictions for brightness data](d_output/figures/predictions/ppc_load_bright_neg.png)
 
 
 
@@ -245,7 +247,7 @@ generated quantities {
 <br>
 
 
-![Fig 4. Parameter posterior distributions for Load ~ habitat model](d_output/figures/posterior_pars/posterior_habitat.png)
+![Fig 5. Parameter posterior distributions for Load ~ habitat model](d_output/figures/posterior_pars/posterior_habitat.png)
 
 
 <br>
@@ -257,7 +259,7 @@ generated quantities {
 <br> 
 <br>
 
-![Fig 5. Predictive accuracy for Load ~ habitat model. (A) Predictions for load data. (B) Predictions for habitat data](d_output/figures/predictions/ppc_load_hab_neg.png)
+![Fig 6. Predictive accuracy for Load ~ habitat model. (A) Predictions for load data. (B) Predictions for habitat data](d_output/figures/predictions/ppc_load_hab_neg.png)
 
 
 
@@ -346,7 +348,7 @@ generated quantities {
 <br>
 
 
-![Fig 6. Parameter posterior distributions for Load ~ vegetation model](d_output/figures/posterior_pars/posterior_vegetation.png)
+![Fig 7. Parameter posterior distributions for Load ~ vegetation model](d_output/figures/posterior_pars/posterior_vegetation.png)
 <br>
 <br>
 
@@ -357,7 +359,7 @@ generated quantities {
 <br> 
 <br>
 
-![Fig 7. Predictive accuracy for Load ~ vegetation model. (A) Predictions for load data. (B) Predictions for vegetation data](d_output/figures/predictions/ppc_load_veg_neg.png)
+![Fig 8. Predictive accuracy for Load ~ vegetation model. (A) Predictions for load data. (B) Predictions for vegetation data](d_output/figures/predictions/ppc_load_veg_neg.png)
 
 
 
@@ -430,7 +432,7 @@ generated quantities {
 <br>
 
 
-![Fig 8. Parameter posterior distributions for Load ~ vegetation model](d_output/figures/posterior_pars/posterior_island.png)
+![Fig 9. Parameter posterior distributions for Load ~ vegetation model](d_output/figures/posterior_pars/posterior_island.png)
 <br>
 <br>
 
@@ -439,7 +441,7 @@ generated quantities {
 <br> 
 <br>
 
-![Fig 9. Predictive accuracy for Load ~ island age + island area model](d_output/figures/predictions/ppc_load_agearea.png)
+![Fig 10. Predictive accuracy for Load ~ island age + island area model](d_output/figures/predictions/ppc_load_agearea.png)
 
 
 
