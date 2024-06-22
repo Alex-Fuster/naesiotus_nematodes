@@ -430,7 +430,7 @@ generated quantities {
 <br>
 
 
-![Fig 8. Parameter posterior distributions for Load ~ vegetation model](d_output/figures/posterior_pars/island.png)
+![Fig 8. Parameter posterior distributions for Load ~ vegetation model](d_output/figures/posterior_pars/posterior_island.png)
 <br>
 <br>
 
