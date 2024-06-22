@@ -50,36 +50,6 @@ df_load
 
 
 
-### df mean load
-
-
-```{r}
-
-df_meanload <- df_load %>%
-  group_by(species) %>%
-  summarise(n = n(),
-            mean_load = mean(nematode_count, na.rm = TRUE),
-            sd_load = sd(nematode_count, na.rm = TRUE)) %>%
-  arrange(desc(mean_load))
-
-colnames(df_meanload) = c("species", "n" ,"mean_load", "sd_load")
-
-df_totals <- data.frame("n" = sum(df_meanload$n),
-           "mean_load" = mean(df_meanload$mean_load),
-           "sd_load" = mean(df_meanload$sd_load))
-
-df_meanload <- bind_rows(df_meanload, df_totals)
-
-df_meanload$mean_load <- round(df_meanload$mean_load, 1)
-df_meanload$sd_load <- round(df_meanload$sd_load, 1)
-
-df_meanload
-
-#write.csv(df_load, "output/df_load.csv")
-
-```
-
-
 
 # brightness data
 
@@ -138,8 +108,6 @@ df_kraemer[which(df_kraemer$species == "cf. nux"),"species"] <- "nux"
 Only keep species with assessed load:
 
 ```{r}
-
-df_kraemer1 <- df_kraemer
 
 # df_kraemer df_merged to only include species that appear in df_load
 df_kraemer <- df_kraemer %>%
