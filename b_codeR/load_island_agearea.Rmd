@@ -38,8 +38,8 @@ my_theme<-theme(axis.text=element_text(size=12),
 # df load
 
 ```{r}
-df_island <- read_excel("04april24_datalab.xlsx", sheet = "island_characteristics")
-df_load <- read_excel("04april24_datalab.xlsx", sheet = 3)
+df_island <- read_excel("../a_data04april24_datalab.xlsx", sheet = "island_characteristics")
+df_load <- read_excel("../a_data04april24_datalab.xlsx", sheet = 3)
 df_load$nematode_count[which(df_load$nematode_count == ">100")] <- "100"
 df_load$nematode_count <- as.numeric(df_load$nematode_count)
 
@@ -84,7 +84,7 @@ Model
 ```{r}
 # Fit the model using cmdstanr
 stan_load_island <- cmdstan_model(
-  stan_file = "stan/island_agearea.stan", 
+  stan_file = "../c_codeStan/island_agearea.stan", 
   pedantic = TRUE
 )
 
@@ -152,7 +152,7 @@ ppc_load <- ppc_dens_overlay(y = df_load$nematode_count, yrep = predicted_load) 
 # Print the posterior predictive check plot
 print(ppc_load)
 
-ggsave("figures/ppc_load_agearea.png", height = 10, width = 15)
+ggsave("../d_output/figures/predictions/ppc_load_agearea.png", height = 10, width = 15)
 
 ```
 

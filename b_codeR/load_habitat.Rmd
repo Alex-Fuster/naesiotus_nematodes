@@ -41,7 +41,7 @@ my_theme<-theme(axis.text=element_text(size=12),
 # df load
 
 ```{r}
-df_load <- read_excel("04april24_datalab.xlsx", sheet = 3)
+df_load <- read_excel("../a_data/04april24_datalab.xlsx", sheet = 3)
 df_load$nematode_count[which(df_load$nematode_count == ">100")] <- "100"
 df_load$nematode_count <- as.numeric(df_load$nematode_count)
 
@@ -60,7 +60,7 @@ df_load
 ### Habitat data from Kraemer 2019 database
 
 ```{r}
-df_kraemer <- read.csv("kraemer2019/kraemer2019_brightness_scores.csv")
+df_kraemer <- read.csv("../a_data/kraemer2019_brightness_scores.csv")
 
 df_kraemer <- df_kraemer %>% 
   select(location, spp, microhab) %>% 
@@ -76,7 +76,7 @@ df_kraemer
 ### habitat data from RAD sequences database
 
 ```{r}
-df_rad <- read_excel("GPS RAD snails.xlsx")
+df_rad <- read_excel("../a_data/GPS RAD snails.xlsx")
 df_rad <- df_rad %>% 
   select(Sample, Taxon, Microhabitat) %>% 
   rename(id = Sample,
@@ -230,7 +230,7 @@ Model
 
 # Fit the model using cmdstanr
 stan_load_brightness <- cmdstan_model(
-  stan_file = "stan/habitat.stan", 
+  stan_file = "../c_codeStan/habitat.stan", 
   pedantic = TRUE
 )
 
@@ -330,7 +330,7 @@ ppc_plots_load_hab <- ggarrange(
 
 ppc_plots_load_hab
 
-ggsave("figures/ppc_load_hab_neg.png", height = 10, width = 10)
+ggsave("../d_output/figures/predictions/ppc_load_hab_neg.png", height = 10, width = 10)
 
 
 ```

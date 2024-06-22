@@ -39,7 +39,7 @@ my_theme<-theme(axis.text=element_text(size=12),
 # df load
 
 ```{r}
-df_load <- read_excel("04april24_datalab.xlsx", sheet = 3)
+df_load <- read_excel("../a_data/04april24_datalab.xlsx", sheet = 3)
 df_load$nematode_count[which(df_load$nematode_count == ">100")] <- "100"
 df_load$nematode_count <- as.numeric(df_load$nematode_count)
 
@@ -57,7 +57,7 @@ df_load
 ### vegetation zone data from RAD sequences database
 
 ```{r}
-df_rad <- read_excel("GPS RAD snails.xlsx")
+df_rad <- read_excel("../a_data/GPS RAD snails.xlsx")
 
 # Standardize the names to lowercase
 df_rad <- df_rad %>%
@@ -117,8 +117,6 @@ Only keep species with assessed load:
 
 ```{r}
 
-df_veg1 <- df_veg
-
 # Filter df_merged to only include species that appear in df_load
 df_veg <- df_veg %>%
   rename(species = Taxon) %>% 
@@ -174,7 +172,7 @@ Model
 
 # Fit the model using cmdstanr
 stan_load_brightness <- cmdstan_model(
-  stan_file = "stan/vegetation.stan", 
+  stan_file = "../c_codeStan/vegetation.stan", 
   pedantic = TRUE
 )
 
@@ -273,7 +271,7 @@ ppc_plots_load_veg <- ggarrange(
 
 ppc_plots_load_veg
 
-ggsave("figures/ppc_load_veg_neg.png", height = 10, width = 10)
+ggsave("../d_output/figures/predictions/ppc_load_veg_neg.png", height = 10, width = 10)
 
 
 ```
