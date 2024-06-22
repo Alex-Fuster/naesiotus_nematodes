@@ -446,3 +446,56 @@ generated quantities {
 <br> 
 <br>
 <br>
+
+
+
+# 2. Phylogenetic signal of encapsulations in the Naesiotus radiation
+
+<br>
+<br>
+
+
+Departuring from the most recent tree built using RAD seq, we use the RAD database to add the tip names:
+
+<br>
+
+![Fig X. K statistic value in null distribution](d_output/figures/phylo/tree_phillips.png)
+
+<br>
+<br>
+
+
+We prune it to keep only the species we analyzed that match the current names:
+
+<br>
+
+![Fig X. K statistic value in null distribution](d_output/figures/phylo/pruned_tree.png)
+
+<br>
+<br>
+
+> We use the **phytools** package to test for phylogenetic signal.
+
+## Klomberg's K
+
+<br>
+
+Phylogenetic signal K : **2.21319** 
+MLE(sig2) : 6.27678e-05 
+logL(sig2) : -36.6456 
+P-value (based on 1000 randomizations) : **0.001** 
+
+<br>
+
+
+![Fig X. K statistic value in null distribution](d_output/figures/phylo/k_statistic.png)
+
+<br>
+
+
+Plotting the trait value and branches using **contMap()** function:
+
+<br>
+
+
+![Fig X. K statistic value in null distribution](d_output/figures/phylo/phylo_branch_color.png)

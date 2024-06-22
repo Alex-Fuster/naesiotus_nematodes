@@ -6,6 +6,7 @@ title: "Phylogenetic signal of nematode encapsulations"
 ```{r}
 library(phytools)
 library(tidyverse)
+library(readxl)
 ```
 
 
@@ -14,16 +15,16 @@ Load data
 ```{r}
 
 # tree file
-tree <- read.tree("a_data/phylogeny_2022/22Nov_Naesiotus.nwk")
+tree <- read.tree("../a_data/phylogeny_2022/22Nov_Naesiotus.nwk")
 
 tree<- as.phylo(tree)
 
 
 # codes for the tip names
-df_rads <- read_excel("a_data/GPS RAD snails.xlsx")
+df_rads <- read_excel("../a_data/GPS RAD snails.xlsx")
 
 # load
-df_load <- read_excel("a_data/04april24_datalab.xlsx", sheet = 3)
+df_load <- read_excel("../a_data/04april24_datalab.xlsx", sheet = 3)
 df_load$nematode_count[which(df_load$nematode_count == ">100")] <- "100"
 df_load$nematode_count <- as.numeric(df_load$nematode_count)
 
