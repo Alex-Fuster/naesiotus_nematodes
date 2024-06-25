@@ -6,3 +6,410 @@ editor: visual
 
 ## load and combine data
 
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+
+# Load dataset
+
+```{r}
+df_load_raw <- read_excel(path = here::here("a_data/04april24_datalab.xlsx"), sheet = 3)
+
+# df_load |> glimpse()
+
+
+df_load_raw$nematode_count[which(df_load_raw$nematode_count == ">100")] <- "100"
+df_load_raw$nematode_count <- as.numeric(df_load_raw$nematode_count)
+
+df_load <- df_load_raw %>% 
+  select(id, spp, nematode_count, island) %>% 
+  rename(species = spp)
+
+knitr::kable(head(df_load))
+```
+
+load island info
+
+```{r}
+df_island <- read_excel(path = here::here("a_data/04april24_datalab.xlsx"), sheet = "island_characteristics")
+
+# Rename the column "mean_emergence" to "island_age" in df_island
+df_island <- df_island %>% rename(island_age = mean_emergence,
+                                  island_area = area)
+
+knitr::kable(head(df_island))
+```
+
+
+# brightness data
+
+```{r}
+
+df_kraemer <- read.csv(here::here("a_data/kraemer2019_brightness_scores.csv"))
+df_kraemer <- df_kraemer %>% 
+  select(location, spp, brightness, microhab) %>% 
+  rename(id = location,
+         species = spp)
+
+knitr::kable(head(df_kraemer))
+
+```
+
+
+Names checks
+
+```{r}
+df_kraemer[which(df_kraemer$species == "albermarlensis"),"species"] <- "albemarlensis"
+df_kraemer[which(df_kraemer$species == "cf. albemarlensis"),"species"] <- "albemarlensis"
+
+df_kraemer[which(df_kraemer$species == "ustulatus pallescens"),"species"] <- "ustulatus"
+df_kraemer[which(df_kraemer$species == "ustulatus phlegonis"),"species"] <- "ustulatus"
+df_kraemer[which(df_kraemer$species == "ustulatus mahogany"),"species"] <- "ustulatus"
+
+df_kraemer[which(df_kraemer$species == "invalidus 1"),"species"] <- "invalidus"
+df_kraemer[which(df_kraemer$species == "invalidus 2"),"species"] <- "invalidus"
+
+df_kraemer[which(df_kraemer$species == "sculpturatus 1"),"species"] <- "sculpturatus"
+df_kraemer[which(df_kraemer$species == "sculpturatus 2"),"species"] <- "sculpturatus"
+df_kraemer[which(df_kraemer$species == "sculpturatus 3"),"species"] <- "sculpturatus"
+
+df_kraemer[which(df_kraemer$species == "wolfi 1"),"species"] <- "wolfi"
+df_kraemer[which(df_kraemer$species == "wolfi 2"),"species"] <- "wolfi"
+df_kraemer[which(df_kraemer$species == "wolfi 3"),"species"] <- "wolfi"
+
+df_kraemer[which(df_kraemer$species == "cf. perspectivus"),"species"] <- "perspectivus"
+df_kraemer[which(df_kraemer$species == "perspectivus 1"),"species"] <- "perspectivus"
+df_kraemer[which(df_kraemer$species == "perspectivus 2"),"species"] <- "perspectivus"
+
+df_kraemer[which(df_kraemer$species == "cf. amastroides"),"species"] <- "amastroides"
+
+df_kraemer[which(df_kraemer$species == "canaliferus 1"),"species"] <- "canaliferus"
+df_kraemer[which(df_kraemer$species == "canaliferus 2"),"species"] <- "canaliferus"
+
+df_kraemer[which(df_kraemer$species == "simrothi 1"),"species"] <- "simrothi"
+df_kraemer[which(df_kraemer$species == "simrothi 2"),"species"] <- "simrothi"
+
+df_kraemer[which(df_kraemer$species == "cf. tortuganus"),"species"] <- "tortuganus"
+
+df_kraemer[which(df_kraemer$species == "cf. nux"),"species"] <- "nux"
+```
+
+
+### compare species-level info for all the datasets
+
+```{r}
+sp_bright <- df_kraemer |> glimpse() |> 
+  group_by(species) |> 
+  summarise(bright_mean = mean(brightness),
+            n_hab = length(microhab)) |> 
+  ungroup()
+
+sp_load <- df_load |> glimpse() |> 
+  group_by(species, island) |> 
+  summarise(load_mean = mean(nematode_count)) |> 
+  ungroup()
+
+full_df <- sp_load |> 
+  full_join(sp_bright,by = join_by(species)) |> 
+  full_join(df_island, by = join_by(island)) 
+  
+
+naniar::vis_miss(full_df)
+
+```
+
+We know where all the snails are -- there are no snails on multiple islands. However the names from Kraemer et al. don't always exactly match our biogeography data. As a result, we drop these rows with the intention of adding them back later
+
+```{r}
+full_df_nomissing_isl <- full_df |> 
+  drop_na(species, island)
+
+full_df_nomissing_isl |> 
+  naniar::vis_miss()
+```
+
+This full dataset gives us a complete list of species. We can use this to make a "species lookup table". This in turn is useful for annotating the original datasets with identical species id numbers:
+
+
+```{r}
+full_df_sp_code <- full_df_nomissing_isl |> 
+  select(species) |> 
+  distinct() |> 
+  mutate(species_code = seq_along(species))
+```
+
+
+### Create common species code to make sure species names coincide
+
+```{r}
+
+# # Combine unique species from both dataframes
+# unique_species <- unique(c(unique(df_load$species), unique(df_bright$species)))
+# 
+# # Create a dictionary of species to letters
+# species_to_number <- setNames(1:length(unique_species), unique_species)
+# 
+# # Add the letter codes to df_load and df_bright
+# df_load$species_code <- species_to_number[df_load$species]
+# df_bright$species_code <- species_to_number[df_bright$species]
+# 
+# df_bright
+
+```
+
+
+
+
+
+# habitat data
+
+
+### Habitat data from Kraemer 2019 database
+
+```{r}
+df_kraemer |> 
+  count(species, microhab) |> 
+  pivot_wider(names_from = microhab, values_from = n, values_fill = 0) |> 
+  left_join(full_df_sp_code)
+  
+
+```
+
+
+### habitat data from RAD sequences database
+
+```{r}
+df_rad <- read_excel(here::here("a_data/GPS RAD snails.xlsx"))
+df_rad <- df_rad %>% 
+  select(Sample, Taxon, 
+         habitat = Microhabitat, 
+         vegetation = `Vegetation Zone`) %>% glimpse()
+
+
+
+# Semi-Arboreal is considered arboreal
+df_rad_relevel_hab <- df_rad %>%
+  mutate(habitat = str_to_lower(habitat)) %>% 
+  mutate(habitat = str_replace(habitat, "semi-arboreal", "arboreal"))
+
+df_rad_relevel_hab |> 
+  count(habitat)
+
+## we have a SECOND source for habitat data
+df_rad_hab_filtered <- df_rad_relevel_hab %>%
+  filter(habitat %in% c("arboreal", "terrestrial")) |> 
+  select(species = Taxon, microhab = habitat)
+
+# select columns and combine
+df_hab_combo_agg <- df_kraemer |>
+  select(species, microhab) |> 
+  bind_rows()|> 
+  count(species, microhab) |> 
+  pivot_wider(values_from = n, names_from = microhab, values_fill = 0) |> 
+  mutate(total_hab = terrestrial + arboreal)
+
+```
+
+
+```{r}
+# repeat and relevel vegetation
+df_rad_veg_agg <- df_rad_relevel_hab %>% 
+  mutate(vegetation = str_to_lower(vegetation)) %>% 
+  ## filter for only legal values -- others are typos
+  filter(vegetation %in% c("humid", "arid")) |> 
+  count(Taxon, vegetation) |> 
+  pivot_wider(values_from = n, names_from = vegetation, values_fill = 0) |> 
+  mutate(total_veg = humid + arid) |> 
+  rename(species = Taxon)
+
+```
+
+## get the values to use in the analysis
+
+AND give them the correct species numbers
+
+```{r}
+df_rad_veg_agg |> 
+  left_join(full_df_sp_code)
+```
+
+
+
+
+
+### Merge data to obtain single habitat database
+
+```{r}
+# Remove rows from df_rad that have matching ids in df_kraemer
+df_rad_filtered <- anti_join(df_rad, df_kraemer, by = "id")
+
+# Combine df_kraemer with the filtered df_rad
+df_habitat <- bind_rows(df_kraemer, df_rad_filtered)
+```
+
+
+Names checks
+
+```{r}
+df_habitat[which(df_habitat$species == "albermarlensis"),"species"] <- "albemarlensis"
+df_habitat[which(df_habitat$species == "cf. albemarlensis"),"species"] <- "albemarlensis"
+
+df_habitat[which(df_habitat$species == "ustulatus pallescens"),"species"] <- "ustulatus"
+df_habitat[which(df_habitat$species == "ustulatus phlegonis"),"species"] <- "ustulatus"
+df_habitat[which(df_habitat$species == "ustulatus mahogany"),"species"] <- "ustulatus"
+
+df_habitat[which(df_habitat$species == "invalidus 1"),"species"] <- "invalidus"
+df_habitat[which(df_habitat$species == "invalidus 2"),"species"] <- "invalidus"
+
+df_habitat[which(df_habitat$species == "sculpturatus 1"),"species"] <- "sculpturatus"
+df_habitat[which(df_habitat$species == "sculpturatus 2"),"species"] <- "sculpturatus"
+df_habitat[which(df_habitat$species == "sculpturatus 3"),"species"] <- "sculpturatus"
+
+df_habitat[which(df_habitat$species == "wolfi 1"),"species"] <- "wolfi"
+df_habitat[which(df_habitat$species == "wolfi 2"),"species"] <- "wolfi"
+df_habitat[which(df_habitat$species == "wolfi 3"),"species"] <- "wolfi"
+
+df_habitat[which(df_habitat$species == "cf. perspectivus"),"species"] <- "perspectivus"
+df_habitat[which(df_habitat$species == "perspectivus 1"),"species"] <- "perspectivus"
+df_habitat[which(df_habitat$species == "perspectivus 2"),"species"] <- "perspectivus"
+
+df_habitat[which(df_habitat$species == "cf. amastroides"),"species"] <- "amastroides"
+
+df_habitat[which(df_habitat$species == "canaliferus 1"),"species"] <- "canaliferus"
+df_habitat[which(df_habitat$species == "canaliferus 2"),"species"] <- "canaliferus"
+
+df_habitat[which(df_habitat$species == "simrothi 1"),"species"] <- "simrothi"
+df_habitat[which(df_habitat$species == "simrothi 2"),"species"] <- "simrothi"
+
+df_habitat[which(df_habitat$species == "cf. tortuganus"),"species"] <- "tortuganus"
+
+df_habitat[which(df_habitat$species == "cf. nux"),"species"] <- "nux"
+
+```
+
+
+Only keep species with assessed load:
+
+```{r}
+
+# Filter df_merged to only include species that appear in df_load
+df_habitat <- df_habitat %>%
+  semi_join(df_load, by = "species")
+```
+
+
+### Create common species code to make sure species names coincide
+
+```{r}
+
+# Combine unique species from both dataframes
+unique_species <- unique(c(unique(df_load$species), unique(df_habitat$species)))
+
+# Create a dictionary of species to letters
+species_to_number <- setNames(1:length(unique_species), unique_species)
+
+# Add the letter codes to df_load and df_habitat
+df_load$species_code <- species_to_number[df_load$species]
+df_habitat$species_code <- species_to_number[df_habitat$species]
+
+
+df_habitat
+
+```
+# vegetation data
+
+### vegetation zone data from RAD sequences database
+
+```{r}
+df_rad <- read_excel("../a_data/GPS RAD snails.xlsx")
+
+# Standardize the names to lowercase
+df_rad <- df_rad %>%
+  mutate(`Vegetation Zone` = tolower(`Vegetation Zone`))
+
+# Filter out rows with unwanted values in the Vegetation Zone column
+df_rad <- df_rad %>%
+  filter(`Vegetation Zone` %in% c("humid", "arid"))
+
+# Rename the column
+df_veg <- df_rad %>%
+  rename(vegetation_zone = `Vegetation Zone`)
+  
+```
+
+Names checks
+
+```{r}
+#df_veg[which(df_veg$Taxon == "albermarlensis"),] <- "albemarlensis"
+df_veg[which(df_veg$Taxon == "cf. albemarlensis"),"Taxon"] <- "albemarlensis"
+
+#df_veg[which(df_veg$Taxon == "ustulatus pallescens"),] <- "ustulatus"
+#df_veg[which(df_veg$Taxon == "ustulatus phlegonis"),] <- "ustulatus"
+#df_veg[which(df_veg$Taxon == "ustulatus mahogany"),] <- "ustulatus"
+
+df_veg[which(df_veg$Taxon == "invalidus 1"),"Taxon"] <- "invalidus"
+df_veg[which(df_veg$Taxon == "invalidus 2"),"Taxon"] <- "invalidus"
+
+df_veg[which(df_veg$Taxon == "sculpturatus 1"),"Taxon"] <- "sculpturatus"
+df_veg[which(df_veg$Taxon == "sculpturatus 2"),"Taxon"] <- "sculpturatus"
+df_veg[which(df_veg$Taxon == "sculpturatus 3"),"Taxon"] <- "sculpturatus"
+
+df_veg[which(df_veg$Taxon == "wolfi 1"),"Taxon"] <- "wolfi"
+df_veg[which(df_veg$Taxon == "wolfi 2"),"Taxon"] <- "wolfi"
+df_veg[which(df_veg$Taxon == "wolfi 3"),"Taxon"] <- "wolfi"
+
+df_veg[which(df_veg$Taxon == "cf. perspectivus"),"Taxon"] <- "perspectivus"
+df_veg[which(df_veg$Taxon == "perspectivus 1"),"Taxon"] <- "perspectivus"
+df_veg[which(df_veg$Taxon == "perspectivus 2"),"Taxon"] <- "perspectivus"
+
+df_veg[which(df_veg$Taxon == "cf. amastroides"),"Taxon"] <- "amastroides"
+
+df_veg[which(df_veg$Taxon == "canaliferus 1"),"Taxon"] <- "canaliferus"
+df_veg[which(df_veg$Taxon == "canaliferus 2"),"Taxon"] <- "canaliferus"
+
+df_veg[which(df_veg$Taxon == "simrothi 1"),"Taxon"] <- "simrothi"
+df_veg[which(df_veg$Taxon == "simrothi 2"),"Taxon"] <- "simrothi"
+
+df_veg[which(df_veg$Taxon == "cf. tortuganus"),"Taxon"] <- "tortuganus"
+
+df_veg[which(df_veg$Taxon == "cf. nux"),"Taxon"] <- "nux"
+
+
+```
+
+Only keep species with assessed load:
+
+```{r}
+
+# Filter df_merged to only include species that appear in df_load
+df_veg <- df_veg %>%
+  rename(species = Taxon) %>% 
+  semi_join(df_load, by = "species")
+
+```
+
+
+### Create common species code to make sure species names coincide
+
+```{r}
+
+# Combine unique species from both dataframes
+unique_species <- unique(c(unique(df_load$species), unique(df_veg$species)))
+
+# Create a dictionary of species to letters
+species_to_number <- setNames(1:length(unique_species), unique_species)
+
+# Add the letter codes to df_load and df_habitat
+df_load$species_code <- species_to_number[df_load$species]
+df_veg$species_code <- species_to_number[df_veg$species]
+
+df_veg
+
+```
+
+
+
+
+# Model
