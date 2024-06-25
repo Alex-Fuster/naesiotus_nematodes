@@ -1,0 +1,8 @@
+---
+title: "brightness model"
+format: html
+editor: visual
+---
+
+## load and combine data
+

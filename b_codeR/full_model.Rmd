@@ -36,8 +36,10 @@ my_theme<-theme(axis.text=element_text(size=12),
 # Load dataset
 
 ```{r}
-df_island <- read_excel("../a_data/04april24_datalab.xlsx", sheet = "island_characteristics")
-df_load <- read_excel("../a_data/04april24_datalab.xlsx", sheet = 3)
+df_island <- read_excel(path = here::here("a_data/04april24_datalab.xlsx"), sheet = "island_characteristics")
+df_load <- read_excel(path = here::here("a_data/04april24_datalab.xlsx"), sheet = 3)
+# df_load |> glimpse()
+
 df_load$nematode_count[which(df_load$nematode_count == ">100")] <- "100"
 df_load$nematode_count <- as.numeric(df_load$nematode_count)
 
@@ -64,7 +66,7 @@ df_load
 # brightness data
 
 ```{r}
-df_kraemer <- read.csv("../a_data/kraemer2019_brightness_scores.csv")
+df_kraemer <- read.csv(here::here("a_data/kraemer2019_brightness_scores.csv"))
 
 df_kraemer <- df_kraemer %>% 
   select(location, spp, brightness) %>% 
@@ -117,12 +119,31 @@ df_kraemer[which(df_kraemer$species == "cf. nux"),"species"] <- "nux"
 
 Only keep species with assessed load:
 
-```{r}
+```{r, eval = FALSE}
 
 # df_kraemer df_merged to only include species that appear in df_load
-df_bright <- df_kraemer %>%
-  semi_join(df_load, by = "species")
+# df_bright <- df_kraemer %>%
+#   semi_join(df_load, by = "species")
 ```
+
+
+### compare species-level info for all the datasets
+
+```{r}
+sp_bright <- df_kraemer |> glimpse() |> 
+  group_by(species) |> 
+  summarise(bright_mean = mean(brightness))
+
+sp_load <- df_load |> glimpse() |> 
+  group_by(species) |> 
+  summarise(load_mean = mean(nematode_count))
+
+sp_load |> 
+  full_join(sp_bright,by = join_by(species)) |> 
+  naniar::vis_miss()
+
+```
+
 
 
 
@@ -364,6 +385,8 @@ df_veg
 
 
 ## Data
+
+<!--  RUN EVERYTHING ABOVE HERE to have analysis-ready data -->
 
 
 ```{r}
