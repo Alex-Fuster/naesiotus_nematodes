@@ -136,7 +136,7 @@ unique_species <- unique(c(unique(df_load$species), unique(df_bright$species)))
 # Create a dictionary of species to letters
 species_to_number <- setNames(1:length(unique_species), unique_species)
 
-# Add the letter codes to df_load and df_habitat
+# Add the letter codes to df_load and df_bright
 df_load$species_code <- species_to_number[df_load$species]
 df_bright$species_code <- species_to_number[df_bright$species]
 
