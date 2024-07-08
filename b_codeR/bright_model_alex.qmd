@@ -10,13 +10,11 @@ editor: visual
 library(tidyverse)
 library(readxl)
 library(naniar)
-library(dplyr)
-library(ggplot2)# Load the ape package
 library(ape)
 library(readxl)
 library(tidyr)
-library(ggpubr)
-library(ade4)
+# library(ggpubr)
+# library(ade4)
 library(vegan)
 library(stringr)
 library(brms)
@@ -94,13 +92,9 @@ df_kraemer_corrected
 
 ```
 
-
-
-
 # habitat data
 
 ### Habitat data from Kraemer 2019 database
-
 
 ### habitat data from RAD sequences database
 
@@ -144,8 +138,6 @@ df_hab_combo_agg
 
 ```
 
-
-
 ```{r}
 # repeat and relevel vegetation
 df_rad_veg_agg <- df_rad_relevel_hab %>% 
@@ -160,11 +152,7 @@ df_rad_veg_agg
 
 ```
 
-
-
-
 Only run the model for those species with brightness data.
-
 
 ```{r}
 
@@ -189,7 +177,6 @@ df_hab_combo_agg <- df_hab_combo_agg %>%
   left_join(species_names_df, by = "species_name")
 
 ```
-
 
 Add island, island age and area to brightness database
 
@@ -221,7 +208,6 @@ df_kraemer_corrected1
 
 ```
 
-
 Eliminate those species for which island = NA
 
 ```{r}
@@ -229,13 +215,7 @@ df_kraemer_corrected1 <- df_kraemer_corrected1 %>%
   filter(!is.na(island))
 ```
 
-
-
 # Model
-
-
-
-
 
 Only consider species with brightness data
 
@@ -253,10 +233,6 @@ df_hab_combo_agg_filtered <- df_hab_combo_agg %>%
   distinct(species_name, .keep_all = TRUE)
 
 ```
-
-
-
-
 
 ## Intercepts-only model
 
@@ -302,8 +278,6 @@ fit <- stan_model$sample(
 
 ```
 
-
-
 ```{r}
 sigma_post <- fit$draws(
   variables = c("sigma_spp", "sigma_islands"))
@@ -320,9 +294,6 @@ sigma_post_df |>
   geom_histogram() + 
   facet_wrap(~sigma)
 ```
-
-
-
 
 ```{r}
 spp_avg_effects_df <- fit$draws(
@@ -343,7 +314,6 @@ spp_avg_effects_df |>
 
 ## brightness model
 
-
 ```{r}
 df_rad_veg_agg # vegetation counts  (27 spp)
 df_hab_combo_agg # habitat counts   (23 spp)
@@ -359,8 +329,7 @@ df_hab_combo_filtered <- df_hab_combo_agg %>%
 
 df_rad_veg_filtered <- df_rad_veg_agg %>%
   filter(species_name %in% species_names)
-``` 
-
+```
 
 ```{r}
 
@@ -408,5 +377,4 @@ fit <- stan_model$sample(
 
 ```
 
-```
-
+\`\`\`
