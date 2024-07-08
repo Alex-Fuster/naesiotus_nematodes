@@ -44,34 +44,29 @@ parameters {
   
   vector<lower=0, upper=1>[N_spp] arboreal_prob;    // Arboreal habitat probability for each species
   vector<lower=0, upper=1>[N_spp] arid_prob;        // Arid vegetation probability for each species
-}
 
-model {
-  // Priors
-  slope_arboreal ~ normal(0, 1);
-  slope_arid ~ normal(0, 1);
-  slope_age ~ normal(0, 1);
-  slope_area ~ normal(0, 1);
-  mu ~ normal(5, 2);
-  arboreal_prob ~ beta(2, 2);
-  arid_prob ~ beta(2, 2);
-  sigma_bright ~ exponential(1);
+
+}generated quantities{
   
-  habitat_arboreal ~ binomial(total_hab, arboreal_prob[spp_id_hab]);
-  vegetation_arid ~ binomial(total_veg, arid_prob[spp_id_veg]);
+  vector[N] log_brightness_pred;
+  vector[N] brightness_pred;
   
-  // Likelihood
-  log_brightness ~ normal(
-    mu +
-    spp_effects[spp_id_bright] +
-    island_effects[island_id] +
-    slope_arboreal * arboreal_prob[spp_id_bright] +
-    slope_arid * arid_prob[spp_id_bright] +
-    slope_age * island_age[island_id] +
-    slope_area * log_island_area[island_id],
+  for (i in 1:N) {
+    
+    log_brightness_pred[i] = normal_rng(
+      mu +
+    spp_effects[spp_id_bright[i]] +
+    island_effects[island_id[i]] +
+    slope_arboreal * arboreal_prob[spp_id_bright[i]] +
+    slope_arid * arid_prob[spp_id_bright[i]] +
+    slope_age * island_age[island_id[i]] +
+    slope_area * log_island_area[island_id[i]],
     sigma_bright);
     
-    // Species and island effects
-    spp_effects ~ normal(0, sigma_spp);
-    island_effects ~ normal(0, sigma_islands);
+  }
+  
+  brightness_pred = exp(log_brightness_pred);
+  
+  
 }
+
