@@ -444,7 +444,7 @@ ppc_dens_overlay(y = df_kraemer_corrected1$brightness, yrep = predicted_brightne
                     values = c("y" = "black", "yrep" = "orange"),
                     labels = c("Observed", "Predicted"))
 ```
-<<<<<<< HEAD
+
 
 
 
@@ -468,5 +468,4 @@ fit <- stan_model$sample(
 )
 ```
 
-=======
->>>>>>> c5739ea0330c7db68c5d0ac6527fc3158584b262
+
