@@ -354,7 +354,8 @@ species_names <- unique(df_kraemer_corrected1$species_name)
 
 # Filter df_hab_combo_agg and df_rad_veg_agg
 df_hab_combo_filtered <- df_hab_combo_agg %>%
-  filter(species_name %in% species_names)
+  filter(species_name %in% species_names) %>% 
+  distinct()
 
 df_rad_veg_filtered <- df_rad_veg_agg %>%
   filter(species_name %in% species_names)
