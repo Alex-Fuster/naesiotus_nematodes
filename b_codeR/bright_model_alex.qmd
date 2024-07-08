@@ -475,3 +475,25 @@ ppc_dens_overlay(y = df_kraemer_corrected1$brightness, yrep = predicted_brightne
                     labels = c("Observed", "Predicted"))
 ```
 
+
+
+
+## v2 model
+
+```{r}
+# Fit the model using cmdstanr
+stan_model <- cmdstan_model(
+  stan_file = here::here("c_codeStan/brightness_only_v2.stan"), 
+  pedantic = TRUE
+)
+
+fit <- stan_model$sample(
+  data = data_list,
+  seed = 123,             
+  chains = 4,               
+  parallel_chains = 4,    
+  iter_warmup = 1000,       
+  iter_sampling = 2000   
+)
+```
+
