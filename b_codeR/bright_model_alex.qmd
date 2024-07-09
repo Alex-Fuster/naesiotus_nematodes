@@ -449,16 +449,17 @@ ppc_dens_overlay(y = df_kraemer_corrected1$brightness, yrep = predicted_brightne
 
 
 
-## v2 model
+## v2 model - hierarchical (prob veg, prob habitat), no constrain on slopes
+
 
 ```{r}
-# Fit the model using cmdstanr
-stan_model <- cmdstan_model(
-  stan_file = here::here("c_codeStan/brightness_only_v2.stan"), 
+
+bright_v2_NCP_model <- cmdstan_model(
+  stan_file = here::here("c_codeStan/brightness_only_v2_NCP.stan"), 
   pedantic = TRUE
 )
 
-fit <- stan_model$sample(
+fit_bright_v2_NCP <- bright_v2_NCP_model$sample(
   data = data_list,
   seed = 123,             
   chains = 4,               
@@ -469,3 +470,407 @@ fit <- stan_model$sample(
 ```
 
 
+```{r}
+# Extract the posterior samples
+posterior_samples <- fit_bright_v2_NCP$draws()
+
+
+posterior_df <- as_draws_df(posterior_samples)
+
+fit_bright_v2_NCP$diagnostic_summary()
+
+fit_bright_v2_NCP$summary()
+
+mcmc_areas(
+  posterior_df,
+  pars = vars(starts_with("slope")),
+  prob = 0.8  
+)
+
+```
+
+
+```{r}
+mcmc_areas(
+  posterior_df,
+  pars = vars(starts_with("arboreal")),
+  prob = 0.8  
+)
+```
+
+```{r}
+mcmc_areas(
+  posterior_df,
+  pars = vars(starts_with("arid")),
+  prob = 0.8  
+)
+```
+
+
+
+```{r}
+mcmc_areas(
+  posterior_df,
+  pars = vars(starts_with("slope"), 
+              starts_with("spp"), 
+              starts_with("z_"),
+              starts_with("mu"), 
+              starts_with("sigma"), 
+              starts_with("beta")),
+  prob = 0.8  
+)
+```
+
+
+
+
+
+
+
+
+
+```{r}
+posterior_samples <- fit_bright_v2_NCP$draws(variables = c("arboreal_prob", "arid_prob"))
+posterior_df <- as_draws_df(posterior_samples)
+
+# Calculate the mean or median of the posterior samples for each species
+predicted_arboreal_prob <- posterior_df %>%
+  select(starts_with("arboreal_prob")) %>%
+  summarise_all(mean) %>%
+  pivot_longer(cols = everything(), names_to = "species", values_to = "predicted_arboreal_prob")
+
+predicted_arid_prob <- posterior_df %>%
+  select(starts_with("arid_prob")) %>%
+  summarise_all(mean) %>%
+  pivot_longer(cols = everything(), names_to = "species", values_to = "predicted_arid_prob")
+
+
+# add species' names to real data as in stan code (1 to 23)
+
+df_hab_combo_agg_filtered <- df_hab_combo_agg_filtered %>% 
+  mutate(sp_id_hab = as.integer(factor(species_name)))
+
+df_rad_veg_agg_filtered <- df_rad_veg_agg_filtered %>% 
+  mutate(sp_id_veg = as.integer(factor(species_name)))
+
+# add species names that match the data (1 to 23)
+
+predicted_arboreal_prob <- predicted_arboreal_prob %>% 
+  mutate(sp_id_hab = seq_along(species))
+
+predicted_arid_prob <- predicted_arid_prob %>% 
+  mutate(sp_id_veg = seq_along(species))
+
+
+
+# combine real data
+
+df_hab_combo_agg_filtered
+df_rad_veg_agg_filtered
+
+real_data <- df_hab_combo_agg_filtered %>% 
+  left_join(df_rad_veg_agg_filtered, by = "species_name")
+
+# Merge the predicted probabilities with the real data
+comparison_data <- real_data %>%
+  left_join(predicted_arboreal_prob, by = "sp_id_hab") %>%
+  left_join(predicted_arid_prob, by = "sp_id_veg") %>% 
+
+```
+
+
+```{r}
+# Plot for arboreal probabilities
+ggplot(comparison_data, aes(x = species_name)) +
+  geom_point(aes(y = real_arboreal_prob, color = "Real"), size = 4) +
+  geom_point(aes(y = predicted_arboreal_prob, color = "Predicted", size = 4)) +
+  labs(title = "Arboreal Habitat Probabilities", y = "Probability", color = "Type") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+# Plot for arid probabilities
+ggplot(comparison_data, aes(x = species_name)) +
+  geom_point(aes(y = real_arid_prob, color = "Real"), size = 4) +
+  geom_point(aes(y = predicted_arid_prob, color = "Predicted"), size = 4) +
+  labs(title = "Arid Vegetation Probabilities", y = "Probability", color = "Type") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Model for generated quantities
+
+```{r}
+
+
+# Fit the model using cmdstanr
+bright_v2_NCP_gq <- cmdstan_model(
+  stan_file = here::here("c_codeStan/generate_quantities_brightness_V2_NCP.stan"), 
+  pedantic = TRUE
+)
+
+
+gq_V2_NCP <- bright_v2_NCP_gq$generate_quantities(
+  fitted_params = fit,
+  data = data_list
+)
+
+
+
+```
+
+
+
+```{r}
+
+gq_V2_NCP$summary()
+# Extract the predicted values from the Stan fit object
+predicted_brightness <- gq_V2_NCP$draws("brightness_pred")
+
+# Convert the extracted predictions to a format suitable for bayesplot
+
+predicted_brightness <- gq_V2_NCP$draws("brightness_pred")
+predicted_habitat_arboreal <- gq_V2_NCP$draws("habitat_arboreal_pred")
+predicted_vegetation_arid <- gq_V2_NCP$draws("vegetation_arid_pred")
+
+# Posterior predictive check for nematode load
+ppc_dens_overlay(y = df_kraemer_corrected1$brightness, yrep = predicted_brightness) +
+  scale_color_manual(name = "Legend",
+                     values = c("y" = "black", "yrep" = "orange"),
+                     labels = c("Observed", "Predicted")) +
+  scale_fill_manual(name = "Legend",
+                    values = c("y" = "black", "yrep" = "orange"),
+                    labels = c("Observed", "Predicted"))
+```
+
+
+## v2 logit model - hierarchical (prob veg, prob habitat), no constrain on slopes, logit distrib for spp and island random effects
+
+
+```{r}
+
+bright_logit_model <- cmdstan_model(
+  stan_file = here::here("c_codeStan/brightness_only_logit.stan"), 
+  pedantic = TRUE
+)
+
+fit_bright_logit <- bright_logit_model$sample(
+  data = data_list,
+  seed = 123,             
+  chains = 4,               
+  parallel_chains = 4,    
+  iter_warmup = 1000,       
+  iter_sampling = 2000   
+)
+```
+
+
+```{r}
+# Extract the posterior samples
+posterior_samples <- fit_bright_logit$draws()
+
+
+posterior_df <- as_draws_df(posterior_samples)
+
+fit_bright_v2_NCP$diagnostic_summary()
+
+fit_bright_v2_NCP$summary()
+
+mcmc_areas(
+  posterior_df,
+  pars = vars(starts_with("slope")),
+  prob = 0.8  
+)
+
+```
+
+```{r}
+mcmc_areas(
+  posterior_df,
+  pars = vars(contains("arboreal_prob[")),
+  prob = 0.8  
+)
+```
+
+```{r}
+mcmc_areas(
+  posterior_df,
+  pars = vars(starts_with("arid_prob[")),
+  prob = 0.8  
+)
+```
+
+
+
+
+## logit_NCP model - hierarchical (prob veg, prob habitat), no constrain on slopes, logit distrib for spp and NCP correction for island random effects
+
+
+```{r}
+
+bright_logit_NCP_model <- cmdstan_model(
+  stan_file = here::here("c_codeStan/brightness_logit_NCP.stan"), 
+  pedantic = TRUE
+)
+
+fit_bright_logit_NCP <- bright_logit_NCP_model$sample(
+  data = data_list,
+  seed = 123,             
+  chains = 4,               
+  parallel_chains = 4,    
+  iter_warmup = 1000,       
+  iter_sampling = 2000   
+)
+```
+
+
+```{r}
+# Extract the posterior samples
+posterior_samples <- fit_bright_logit_NCP$draws()
+
+
+posterior_df <- as_draws_df(posterior_samples)
+
+fit_bright_logit_NCP$diagnostic_summary()
+
+fit_bright_logit_NCP$summary()
+
+mcmc_areas(
+  posterior_df,
+  pars = vars(starts_with("slope")),
+  prob = 0.8  
+)
+
+```
+
+```{r}
+mcmc_areas(
+  posterior_df,
+  pars = vars(starts_with("arboreal_prob[")),
+  prob = 0.8  
+)
+```
+
+```{r}
+mcmc_areas(
+  posterior_df,
+  pars = vars(starts_with("arid_prob[")),
+  prob = 0.8  
+)
+```
+
+
+
+Generate quantities
+
+Model for generated quantities
+
+```{r}
+
+
+# Fit the model using cmdstanr
+bright_logit_NCP_gq <- cmdstan_model(
+  stan_file = here::here("c_codeStan/gq_brightness_logit_NCP.stan"), 
+  pedantic = TRUE
+)
+
+
+gq_logit_NCP <- bright_logit_NCP_gq$generate_quantities(
+  fitted_params = fit,
+  data = data_list
+)
+
+
+
+```
+
+
+
+```{r}
+
+gq_V2_NCP$summary()
+# Extract the predicted values from the Stan fit object
+predicted_brightness <- gq_V2_NCP$draws("brightness_pred")
+
+# Convert the extracted predictions to a format suitable for bayesplot
+
+predicted_brightness <- gq_V2_NCP$draws("brightness_pred")
+predicted_habitat_arboreal <- gq_V2_NCP$draws("habitat_arboreal_pred")
+predicted_vegetation_arid <- gq_V2_NCP$draws("vegetation_arid_pred")
+
+# Posterior predictive check for nematode load
+ppc_dens_overlay(y = df_kraemer_corrected1$brightness, yrep = predicted_brightness) +
+  scale_color_manual(name = "Legend",
+                     values = c("y" = "black", "yrep" = "orange"),
+                     labels = c("Observed", "Predicted")) +
+  scale_fill_manual(name = "Legend",
+                    values = c("y" = "black", "yrep" = "orange"),
+                    labels = c("Observed", "Predicted"))
+```
+
+
+
+
+
+```{r}
+posterior_samples <- fit_bright_logit_NCP$draws(variables = c("arboreal_prob", "arid_prob"))
+posterior_df <- as_draws_df(posterior_samples)
+
+# Calculate the mean or median of the posterior samples for each species
+predicted_arboreal_prob <- posterior_df %>%
+  select(starts_with("arboreal_prob")) %>%
+  summarise_all(mean) %>%
+  pivot_longer(cols = everything(), names_to = "species", values_to = "arboreal_prob")
+
+predicted_arid_prob <- posterior_df %>%
+  select(starts_with("arid_prob")) %>%
+  summarise_all(mean) %>%
+  pivot_longer(cols = everything(), names_to = "species", values_to = "arid_prob")
+
+
+# add species' names to real data as in stan code (1 to 23)
+
+df_hab_combo_agg_filtered <- df_hab_combo_agg_filtered %>% 
+  mutate(sp_id_hab = as.integer(factor(species_name)))
+
+df_rad_veg_agg_filtered <- df_rad_veg_agg_filtered %>% 
+  mutate(sp_id_veg = as.integer(factor(species_name)))
+
+# add species names that match the data (1 to 23)
+
+predicted_arboreal_prob <- predicted_arboreal_prob %>% 
+  mutate(sp_id_hab = seq_along(species))
+
+predicted_arid_prob <- predicted_arid_prob %>% 
+  mutate(sp_id_veg = seq_along(species))
+
+
+
+# combine real data
+
+df_hab_combo_agg_filtered
+df_rad_veg_agg_filtered
+
+real_data <- df_hab_combo_agg_filtered %>% 
+  left_join(df_rad_veg_agg_filtered, by = "species_name")
+
+# Merge the predicted probabilities with the real data
+comparison_data <- real_data %>%
+  left_join(predicted_arboreal_prob, by = "sp_id_hab") %>%
+  left_join(predicted_arid_prob, by = "sp_id_veg")
+
+```
+
+
+```{r}
+# Plot for arboreal probabilities
+ggplot(comparison_data, aes(x = species_name)) +
+  geom_point(aes(y = real_arboreal_prob, color = "Real"), size = 4) +
+  geom_point(aes(y = predicted_arboreal_prob, color = "Predicted", size = 4)) +
+  labs(title = "Arboreal Habitat Probabilities", y = "Probability", color = "Type") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+# Plot for arid probabilities
+ggplot(comparison_data, aes(x = species_name)) +
+  geom_point(aes(y = real_arid_prob, color = "Real"), size = 4) +
+  geom_point(aes(y = predicted_arid_prob, color = "Predicted"), size = 4) +
+  labs(title = "Arid Vegetation Probabilities", y = "Probability", color = "Type") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
