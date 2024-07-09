@@ -84,8 +84,11 @@ generated quantities {
   
   brightness_pred = exp(log_brightness_pred);
   
-  for (s in 1:N_spp) {
+  for (s in 1:N_habitat) {
     habitat_arboreal_pred[s] = binomial_rng(total_hab[s], arboreal_prob[s]);
+  }
+  
+    for (s in 1:N_veg) {
     vegetation_arid_pred[s] = binomial_rng(total_veg[s], arid_prob[s]);
   }
 }

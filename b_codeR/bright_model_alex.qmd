@@ -769,7 +769,7 @@ bright_logit_NCP_gq <- cmdstan_model(
 
 
 gq_logit_NCP <- bright_logit_NCP_gq$generate_quantities(
-  fitted_params = fit,
+  fitted_params = fit_bright_logit_NCP,
   data = data_list
 )
 
@@ -781,18 +781,18 @@ gq_logit_NCP <- bright_logit_NCP_gq$generate_quantities(
 
 ```{r}
 
-gq_V2_NCP$summary()
+gq_logit_NCP$summary()
 # Extract the predicted values from the Stan fit object
-predicted_brightness <- gq_V2_NCP$draws("brightness_pred")
+predicted_brightness <- gq_logit_NCP$draws("brightness_pred")
 
 # Convert the extracted predictions to a format suitable for bayesplot
 
-predicted_brightness <- gq_V2_NCP$draws("brightness_pred")
-predicted_habitat_arboreal <- gq_V2_NCP$draws("habitat_arboreal_pred")
-predicted_vegetation_arid <- gq_V2_NCP$draws("vegetation_arid_pred")
+predicted_brightness <- gq_logit_NCP$draws("brightness_pred")
+predicted_habitat_arboreal <- gq_logit_NCP$draws("habitat_arboreal_pred")
+predicted_vegetation_arid <- gq_logit_NCP$draws("vegetation_arid_pred")
 
 # Posterior predictive check for nematode load
-ppc_dens_overlay(y = df_kraemer_corrected1$brightness, yrep = predicted_brightness) +
+ppc_dens_overlay(y = df_kraemer_corrected1$brightness, yrep = as_draws_matrix(predicted_brightness)) +
   scale_color_manual(name = "Legend",
                      values = c("y" = "black", "yrep" = "orange"),
                      labels = c("Observed", "Predicted")) +
@@ -801,72 +801,48 @@ ppc_dens_overlay(y = df_kraemer_corrected1$brightness, yrep = predicted_brightne
                     labels = c("Observed", "Predicted"))
 ```
 
-
-
-
-
 ```{r}
-posterior_samples <- fit_bright_logit_NCP$draws(variables = c("arboreal_prob", "arid_prob"))
-posterior_df <- as_draws_df(posterior_samples)
+# Assuming the `multi_trip` object contains the generated quantities
+# Extract the predicted values
+habitat_arboreal_pred <- gq_logit_NCP$draws("habitat_arboreal_pred")
+vegetation_arid_pred <- gq_logit_NCP$draws("vegetation_arid_pred")
 
-# Calculate the mean or median of the posterior samples for each species
-predicted_arboreal_prob <- posterior_df %>%
-  select(starts_with("arboreal_prob")) %>%
-  summarise_all(mean) %>%
-  pivot_longer(cols = everything(), names_to = "species", values_to = "arboreal_prob")
+# Convert the extracted predictions to a format suitable for plotting
+habitat_arboreal_pred_matrix <- as_draws_matrix(habitat_arboreal_pred)
+vegetation_arid_pred_matrix <- as_draws_matrix(vegetation_arid_pred)
 
-predicted_arid_prob <- posterior_df %>%
-  select(starts_with("arid_prob")) %>%
-  summarise_all(mean) %>%
-  pivot_longer(cols = everything(), names_to = "species", values_to = "arid_prob")
+# Calculate the mean predicted values
+habitat_arboreal_pred_mean <- colMeans(habitat_arboreal_pred_matrix)
+vegetation_arid_pred_mean <- colMeans(vegetation_arid_pred_matrix)
 
+# Create a dataframe for plotting
+df_habitat <- data.frame(
+  observed = data_list$habitat_arboreal,
+  predicted = habitat_arboreal_pred_mean
+)
 
-# add species' names to real data as in stan code (1 to 23)
+df_vegetation <- data.frame(
+  observed = data_list$vegetation_arid,
+  predicted = vegetation_arid_pred_mean[-c(20:23)]
+)
 
-df_hab_combo_agg_filtered <- df_hab_combo_agg_filtered %>% 
-  mutate(sp_id_hab = as.integer(factor(species_name)))
+# Plot observed vs. predicted for habitat_arboreal_pred
+ggplot(df_habitat, aes(x = observed, y = predicted)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Observed vs Predicted: Arboreal Habitat",
+       x = "Observed",
+       y = "Predicted") +
+  theme_minimal()
 
-df_rad_veg_agg_filtered <- df_rad_veg_agg_filtered %>% 
-  mutate(sp_id_veg = as.integer(factor(species_name)))
-
-# add species names that match the data (1 to 23)
-
-predicted_arboreal_prob <- predicted_arboreal_prob %>% 
-  mutate(sp_id_hab = seq_along(species))
-
-predicted_arid_prob <- predicted_arid_prob %>% 
-  mutate(sp_id_veg = seq_along(species))
-
-
-
-# combine real data
-
-df_hab_combo_agg_filtered
-df_rad_veg_agg_filtered
-
-real_data <- df_hab_combo_agg_filtered %>% 
-  left_join(df_rad_veg_agg_filtered, by = "species_name")
-
-# Merge the predicted probabilities with the real data
-comparison_data <- real_data %>%
-  left_join(predicted_arboreal_prob, by = "sp_id_hab") %>%
-  left_join(predicted_arid_prob, by = "sp_id_veg")
-
+# Plot observed vs. predicted for vegetation_arid_pred
+ggplot(df_vegetation, aes(x = observed, y = predicted)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Observed vs Predicted: Arid Vegetation",
+       x = "Observed",
+       y = "Predicted") +
+  theme_minimal()
 ```
 
 
-```{r}
-# Plot for arboreal probabilities
-ggplot(comparison_data, aes(x = species_name)) +
-  geom_point(aes(y = real_arboreal_prob, color = "Real"), size = 4) +
-  geom_point(aes(y = predicted_arboreal_prob, color = "Predicted", size = 4)) +
-  labs(title = "Arboreal Habitat Probabilities", y = "Probability", color = "Type") +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-# Plot for arid probabilities
-ggplot(comparison_data, aes(x = species_name)) +
-  geom_point(aes(y = real_arid_prob, color = "Real"), size = 4) +
-  geom_point(aes(y = predicted_arid_prob, color = "Predicted"), size = 4) +
-  labs(title = "Arid Vegetation Probabilities", y = "Probability", color = "Type") +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-```
