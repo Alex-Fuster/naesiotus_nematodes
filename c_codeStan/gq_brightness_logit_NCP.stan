@@ -48,14 +48,16 @@ parameters {
  
   // Hyperparameters for the species-specific probabilities
   real mu_arboreal;
-  real sd_arboreal;
+  real<lower=0> sd_arboreal;
   real mu_arid;
-  real sd_arid;
+  real<lower=0> sd_arid;
   
 }
 transformed parameters{
   vector[N_spp] arboreal_prob = inv_logit(arboreal_prob_logit);
   vector[N_spp] arid_prob = inv_logit(arid_prob_logit);
+  vector[N_islands] island_effects;
+  island_effects = z_island_effects * sigma_islands;
   
 }
 generated quantities {
@@ -65,8 +67,8 @@ generated quantities {
   vector[N_spp] habitat_arboreal_pred;
   vector[N_spp] vegetation_arid_pred;
   
-  vector[N_islands] island_effects;
-  island_effects = z_island_effects * sigma_islands;
+ // vector[N_islands] island_effects;
+ // island_effects = z_island_effects * sigma_islands;
   
   for (i in 1:N) {
     log_brightness_pred[i] = normal_rng(

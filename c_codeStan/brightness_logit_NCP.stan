@@ -48,9 +48,9 @@ parameters {
  
   // Hyperparameters for the species-specific probabilities
   real mu_arboreal;
-  real sd_arboreal;
+  real<lower=0> sd_arboreal;
   real mu_arid;
-  real sd_arid;
+  real<lower=0> sd_arid;
   
 }
 transformed parameters{
@@ -70,6 +70,9 @@ model {
   arboreal_prob ~ beta(2, 2);
   arid_prob ~ beta(2, 2);
   sigma_bright ~ exponential(1);
+  sigma_islands ~ exponential(1);
+  sd_arboreal ~ exponential(1);
+  sd_arid ~ exponential(1);
   
   
   // Species and island effects
