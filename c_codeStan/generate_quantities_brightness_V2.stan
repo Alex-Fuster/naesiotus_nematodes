@@ -52,43 +52,28 @@ parameters {
   real<lower=0> alpha_arid;
   real<lower=0> beta_arid;
   
-}
+}generated quantities {
+  vector[N] log_brightness_pred;
+  vector[N] brightness_pred;
+  vector[N_spp] habitat_arboreal_pred;
+  vector[N_spp] vegetation_arid_pred;
 
-model {
-  // Priors
-  slope_arboreal ~ normal(0, 1);
-  slope_arid ~ normal(0, 1);
-  slope_age ~ normal(0, 1);
-  slope_area ~ normal(0, 1);
-  mu ~ normal(5, 2);
-  arboreal_prob ~ beta(2, 2);
-  arid_prob ~ beta(2, 2);
-  sigma_bright ~ exponential(1);
+  for (i in 1:N) {
+    log_brightness_pred[i] = normal_rng(
+      mu +
+      spp_effects[spp_id_bright[i]] +
+      island_effects[island_id[i]] +
+      slope_arboreal * arboreal_prob[spp_id_bright[i]] +
+      slope_arid * arid_prob[spp_id_bright[i]] +
+      slope_age * island_age[island_id[i]] +
+      slope_area * log_island_area[island_id[i]],
+      sigma_bright);
+  }
   
+  brightness_pred = exp(log_brightness_pred);
   
-  // Hierarchical priors for the probabilities
-  arboreal_prob ~ beta(alpha_arboreal, beta_arboreal);
-  arid_prob ~ beta(alpha_arid, beta_arid);
-  
-  
-  // Likelihood
-  
-  habitat_arboreal ~ binomial(total_hab, arboreal_prob[spp_id_hab]);
-  vegetation_arid ~ binomial(total_veg, arid_prob[spp_id_veg]);
-  
-  log_brightness ~ normal(
-    mu +
-    spp_effects[spp_id_bright] +
-    island_effects[island_id] +
-    slope_arboreal * arboreal_prob[spp_id_bright] +
-    slope_arid * arid_prob[spp_id_bright] +
-    slope_age * island_age[island_id] +
-    slope_area * log_island_area[island_id],
-    sigma_bright);
-    
-    // Species and island effects
-    spp_effects ~ normal(0, sigma_spp);
-    island_effects ~ normal(0, sigma_islands);
-    
-    
+  for (s in 1:N_spp) {
+    habitat_arboreal_pred[s] = binomial_rng(total_hab[s], arboreal_prob[s]);
+    vegetation_arid_pred[s] = binomial_rng(total_veg[s], arid_prob[s]);
+  }
 }
