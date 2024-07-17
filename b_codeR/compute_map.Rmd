@@ -1,0 +1,58 @@
+---
+title: "R Notebook"
+---
+
+
+```{r}
+# Install and load necessary packages
+install.packages(c("raster", "sf", "ggplot2", "ggspatial"))
+library(raster)
+library(sf)
+library(ggplot2)
+library(ggspatial)
+
+# Specify the directory containing the .asc files
+asc_files_directory <- here::here("../maps/elevation_finer")
+
+# List all .asc files in the directory
+asc_files <- list.files(path = asc_files_directory, pattern = "\\.asc$", full.names = TRUE)
+
+# Load the .asc files into a list of raster objects
+rasters <- lapply(asc_files, raster)
+
+# Combine the raster objects into a single raster
+combined_raster <- do.call(merge, rasters)
+
+# Set the projection to UTM Zone 15
+crs(combined_raster) <- CRS("+proj=utm +zone=15 +datum=WGS84")
+
+# Convert the raster to a data frame for ggplot2
+raster_df <- as.data.frame(combined_raster, xy = TRUE)
+colnames(raster_df) <- c("x", "y", "elevation")
+
+# Plot the map using ggplot2
+map_galapagos <- ggplot() +
+  geom_raster(data = raster_df, aes(x = x, y = y, fill = elevation)) +
+  scale_fill_viridis_c(option = "viridis") +
+  coord_sf(crs = st_crs("+proj=utm +zone=15 +datum=WGS84")) +
+  labs(fill = "Elevation (m)") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill = "white", color = "white"), 
+        plot.background = element_rect(fill = "white", color =  "white"),
+        legend.background = element_rect(fill = "white", color = NA),
+        legend.key = element_rect(fill = "white", color = NA),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black")) +
+  annotation_scale(location = "bl") +
+  annotation_north_arrow(location = "bl", which_north = "true", 
+                         pad_x = unit(0.75, "in"), pad_y = unit(0.5, "in"))
+
+map_galapagos
+
+
+ggsave("map_galapagos.png", height = 7, width = 8)
+
+```
+
