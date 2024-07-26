@@ -1,5 +1,7 @@
 ---
 title: "R Notebook"
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## load and combine data
@@ -23,10 +25,9 @@ library(posterior)
 # load csv with species names for checks
 
 ```{r}
-species_names_df <- read.csv(here::here("species_names_checks.csv"))
+species_names_df <- read_csv(here::here("species_names_checks.csv"))
 species_names_df <- species_names_df %>% 
-  rename(species = annotated_name)  %>%
-  mutate(species_code = as.numeric(factor(species_name)))
+  rename(species = annotated_name)
 
 species_names_df
 ```
@@ -35,13 +36,14 @@ species_names_df
 ## Load dataset
 
 ```{r}
-df_load_raw <- read_excel(path = here::here("a_data/19july24_datalab.xlsx"), sheet = 3)
+df_load_raw <- read_excel(path = here::here("a_data/19july24_datalab.xlsx"), 
+                          sheet = 3,
+                          col_types = c("text", "text", "text", "text", "text", 
+                                       "text", "numeric", "numeric", "text", 
+                                       "text", "text"))
 
-# df_load |> glimpse()
-
-
-df_load_raw$nematode_count[which(df_load_raw$nematode_count == ">100")] <- "100"
-df_load_raw$nematode_count <- as.numeric(df_load_raw$nematode_count)
+df_load_raw$nematode_count <- df_load_raw$nematode_count |> 
+  readr::parse_number()
 
 df_load <- df_load_raw %>% 
   select(id, spp, nematode_count, island) %>% 
@@ -52,13 +54,13 @@ df_load <- df_load %>%
   left_join(species_names_df, by = "species")
 
 df_load
-
 ```
 
 ## island info
 
 ```{r}
-df_island <- read_excel(path = here::here("a_data/19july24_datalab.xlsx"), sheet = "island_characteristics")
+df_island <- read_excel(path = here::here("a_data/19july24_datalab.xlsx"),
+                        sheet = "island_characteristics")
 
 # Rename the column "mean_emergence" to "island_age" in df_island
 df_island <- df_island %>% rename(island_age = mean_emergence,
@@ -74,7 +76,7 @@ df_island
 
 ```{r}
 
-df_kraemer <- read.csv(here::here("a_data/kraemer2019_brightness_scores.csv"))
+df_kraemer <- read_csv(here::here("a_data/kraemer2019_brightness_scores.csv"))
 df_kraemer <- df_kraemer %>% 
   select(location, spp, brightness, microhab) %>% 
   rename(id = location,
@@ -124,17 +126,17 @@ df_rad_relevel_hab |>
 ## we have a SECOND source for habitat data
 df_rad_hab_filtered <- df_rad_relevel_hab %>%
   filter(habitat %in% c("arboreal", "terrestrial")) |> 
-  select(species, microhab = habitat, species_code)
+  select(species, microhab = habitat)
 
 ###############################
 
 
 
-# select columns and combine with abitat data from Kraemer 2019 database
+# select columns and combine with habitat data from Kraemer 2019 database
 df_hab_combo_agg <- df_kraemer_corrected |>
-  select(species_name, microhab, species_code) |> 
-  bind_rows()|> 
-  count(species_name, microhab, species_code) |> 
+  select(species_name, microhab) |> 
+  bind_rows(df_rad_hab_filtered)|> 
+  count(species_name, microhab) |> 
   pivot_wider(values_from = n, names_from = microhab, values_fill = 0) |> 
   mutate(total_hab = terrestrial + arboreal)
 
@@ -172,24 +174,36 @@ Datasets, with same species_codes:
 
 # load
 
-df_load
+df_load |> 
+  select(species_name, nematode_count)
 
 # brightness
 
-df_kraemer_corrected
+df_brightness <- df_kraemer_corrected |> 
+  select(species_name, brightness)
 
 # habitat
 
-df_hab_combo_agg
+n_double_spp <- df_hab_combo_agg |> 
+  add_count(species_name) |> 
+  filter(n>1) |> 
+  nrow()
+
+stopifnot(n_double_spp == 0)
+if (n_double_spp > 0) stop("damn there's an extra species")
 
 # vegetation
 
-df_rad_veg_agg
+n_double_spp <- df_rad_veg_agg |> 
+  add_count(species_name) |> 
+  filter(n>1) |> 
+  nrow()
 
 ```
 
 
 ```{r}
+## drop all NA species
 
 ```
 
