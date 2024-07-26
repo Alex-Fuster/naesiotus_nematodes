@@ -28,14 +28,11 @@ library(tidybayes)
 library(posterior)
 ```
 
-
 # load csv with species names for checks
 
 ```{r}
 species_names_df <- read.csv(here::here("species_names_checks.csv"))
 ```
-
-
 
 # Load dataset
 
@@ -95,9 +92,6 @@ df_kraemer_corrected <- df_kraemer_corrected %>%
 
 ```
 
-
-
-
 AND give them the correct species numbers
 
 ```{r}
@@ -109,8 +103,6 @@ df_kraemer_corrected
 
 knitr::kable(head(df_kraemer_corrected))
 ```
-
-
 
 ### compare species-level info for all the datasets
 
@@ -153,9 +145,6 @@ full_df_sp_code <- full_df_nomissing_isl |>
   distinct() |> 
   mutate(species_code = seq_along(species))
 ```
-
-
-
 
 # habitat data
 
@@ -224,7 +213,6 @@ df_hab_combo_agg <- df_hab_combo_agg |>
 df_hab_combo_agg
 ```
 
-
 ```{r}
 # repeat and relevel vegetation
 df_rad_veg_agg <- df_rad_relevel_hab %>% 
@@ -248,10 +236,7 @@ df_rad_veg_agg <- df_rad_veg_agg |>
 df_rad_veg_agg
 ```
 
-
-
 # Model
-
 
 ### The dataframes
 
@@ -314,4 +299,3 @@ fit <- stan_model$sample(
 )
 
 ```
-
