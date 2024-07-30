@@ -1,15 +1,9 @@
-.Rproj.user
+.Rproj.user/
 .Rhistory
 .RData
 .Ruserdata
 *.exe
-
-# ignore binaries, from https://stackoverflow.com/questions/5711120/gitignore-binary-files-that-have-no-extension
-# Ignore all
-*
-
-# Unignore all with extensions
-!*.*
-
-# Unignore all dirs
-#!*/
+# ignore stan binaries manually
+c_codeStan/brightness_only_v2_NCP
+c_codeStan/generate_quantities_brightness
+c_codeStan/intercept_only_bright
