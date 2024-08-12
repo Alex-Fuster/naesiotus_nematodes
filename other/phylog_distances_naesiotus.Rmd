@@ -1,0 +1,122 @@
+---
+title: "Compute phylogenetic distance among naesiotus species"
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)# Load the ape package
+library(ape)
+library(readxl)
+library(tidyr)
+library(ade4)
+library(vegan)
+```
+
+
+# Phylogenetic distance
+
+
+```{r}
+# Read the .nwk file
+tree <- read.tree("phylogeny_2022/22Nov_Naesiotus.nwk")
+data <- read.nexus("phylogeny_2022/22Nov_Naesiotus.nex")
+df_rads <- read_excel("GPS RAD snails.xlsx")
+
+plot(tree)
+```
+
+
+```{r}
+# Create a mapping between Sample and Taxon
+sample_to_taxon <- setNames(df_rads$Taxon, df_rads$Sample)
+
+# Replace tip labels in the tree with corresponding taxa
+tree$tip.label <- sample_to_taxon[tree$tip.label]
+
+plot(tree)
+```
+
+
+compute phylogenetic distances
+
+```{r}
+phylo_dist_matrix <- cophenetic.phylo(tree)
+
+```
+
+
+
+## nematode load data
+
+```{r}
+df_load <- read_excel("04april24_datalab.xlsx", sheet = 3)
+df_load$nematode_count[which(df_load$nematode_count == ">100")] <- "100"
+df_load$nematode_count <- as.numeric(df_load$nematode_count)
+```
+
+#### compute mean load per species
+
+```{r}
+
+df_meanload <- df_load %>%
+  group_by(spp) %>%
+  summarise(n = n(),
+            mean_load = mean(nematode_count, na.rm = TRUE),
+            sd_load = sd(nematode_count, na.rm = TRUE)) %>%
+  arrange(desc(mean_load))
+
+colnames(df_meanload) = c("species", "n" ,"mean_load", "sd_load")
+
+df_totals <- data.frame("n" = sum(df_meanload$n),
+           "mean_load" = mean(df_meanload$mean_load),
+           "sd_load" = mean(df_meanload$sd_load))
+
+df_meanload <- bind_rows(df_meanload, df_totals)
+
+df_meanload$mean_load <- round(df_meanload$mean_load, 1)
+df_meanload$sd_load <- round(df_meanload$sd_load, 1)
+
+df_meanload
+
+```
+
+
+## Compute distance matrices and ordinations
+
+```{r}
+# Step 1: Calculate pairwise distances of mean_load values
+load_dist_matrix <- as.matrix(dist(df_meanload$mean_load, method = "euclidean"))
+rownames(load_dist_matrix) <- df_meanload$species
+colnames(load_dist_matrix) <- df_meanload$species
+
+# Step 2: Check and match species names in both matrices
+common_species <- intersect(rownames(load_dist_matrix), rownames(phylo_dist_matrix))
+
+common_species <- common_species[!is.na(common_species)]
+
+# Step 3: Subset and reorder matrices
+load_dist_matrix_subset <- load_dist_matrix[common_species, common_species]
+phylo_dist_matrix_subset <- phylo_dist_matrix[common_species, common_species]
+
+# Step 4: convert into distance objects
+load_dist <- as.dist(load_dist_matrix_subset)
+phylo_dist <- as.dist(phylo_dist_matrix_subset)
+
+# Step 5: compute an ordination of the matrices
+
+load_pco <- dudi.pco(load_dist, scannf = FALSE, nf = 2, full = TRUE)
+phylo_pco <- dudi.pco(phylo_dist, scannf = FALSE, nf = 2, full = TRUE)
+
+```
+
+
+## Procrustes
+
+```{r}
+protest <- protest(load_pco, phylo_pco)
+protest
+
+plot(protest)
+```
+
+Procrustes correlation = 0.18

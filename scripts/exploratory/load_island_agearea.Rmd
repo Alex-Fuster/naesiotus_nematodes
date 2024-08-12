@@ -1,0 +1,160 @@
+---
+title: "Load ~ island age"
+---
+
+
+```{r}
+library(dplyr)
+library(ggplot2)# Load the ape package
+library(ape)
+library(readxl)
+library(tidyr)
+library(ggpubr)
+library(ade4)
+library(vegan)
+library(stringr)
+library(brms)
+library(dplyr)
+library(tidyverse)
+library(cmdstanr)
+library(bayesplot)
+library(posterior)
+```
+
+
+parameters for plotting
+
+```{r}
+my_theme<-theme(axis.text=element_text(size=12),
+        axis.title = element_text(size = 14),
+        legend.text=element_text(size=10),
+        legend.title = element_text(size=12),
+        plot.title = element_text(face="bold",size=14,margin=margin(0,0,20,0),hjust = 0.5),
+        axis.title.y = element_text(hjust = 0.5),
+        axis.title.x = element_text(hjust = 0.5))
+```
+
+
+# df load
+
+```{r}
+df_island <- read_excel("../a_data04april24_datalab.xlsx", sheet = "island_characteristics")
+df_load <- read_excel("../a_data04april24_datalab.xlsx", sheet = 3)
+df_load$nematode_count[which(df_load$nematode_count == ">100")] <- "100"
+df_load$nematode_count <- as.numeric(df_load$nematode_count)
+
+df_load <- df_load %>% 
+  select(id, spp, nematode_count, island) %>% 
+  rename(species = spp)
+
+df_load
+```
+
+Adding island names to df_load
+
+```{r}
+# Rename the column "mean_emergence" to "island_age" in df_island
+df_island <- df_island %>% rename(island_age = mean_emergence,
+                                  island_area = area)
+
+# Merge the dataframes based on the "island" column
+df_load <- df_load %>%
+  left_join(df_island %>% select(island, island_age, island_area), by = "island")
+
+df_load
+```
+
+Data
+
+```{r}
+
+data_list <- list(
+  N_nem = nrow(df_load),
+  load = df_load$nematode_count,
+  island_age = df_load$island_age,
+  island_area = df_load$island_area
+)
+
+```
+
+
+
+Model
+
+```{r}
+# Fit the model using cmdstanr
+stan_load_island <- cmdstan_model(
+  stan_file = "../c_codeStan/island_agearea.stan", 
+  pedantic = TRUE
+)
+
+fit <- stan_load_island$sample(
+  data = data_list,
+  seed = 123,             
+  chains = 4,               
+  parallel_chains = 4,    
+  iter_warmup = 1000,       
+  iter_sampling = 2000   
+)
+```
+
+
+
+
+## All posterior pars
+
+```{r}
+
+posterior <- fit$draws(variables = "predicted_load")
+
+posterior_df <- as_draws_df(posterior)
+
+# Extract posterior samples
+posterior_samples <- fit$draws(c("intercept", "slope_age", "slope_area"))
+
+# Convert to a format suitable for bayesplot
+posterior_samples <- as_draws_matrix(posterior_samples)
+
+# Plot posterior distributions using mcmc_areas
+mcmc_areas(
+  posterior_samples,
+  pars = c("intercept", "slope_age", "slope_area"),
+  prob = 0.8, # 80% intervals
+  prob_outer = 0.95 # 95% intervals
+)
+```
+
+
+
+
+## posterior prediction checks
+
+
+```{r}
+# Extract the predicted values from the Stan fit object
+posterior <- fit$draws(variables = "predicted_load")
+
+# Convert to matrix for bayesplot
+predicted_load <- as_draws_matrix(posterior)
+
+# Convert to numeric matrix for ppc_dens_overlay
+predicted_load <- as.matrix(predicted_load)
+
+# Posterior predictive check for nematode load
+ppc_load <- ppc_dens_overlay(y = df_load$nematode_count, yrep = predicted_load) +
+  scale_color_manual(name = "Legend",
+                     values = c("y" = "black", "yrep" = "blue"),
+                     labels = c("Observed load", "Predicted load")) +
+  scale_fill_manual(name = "Legend",
+                    values = c("y" = "black", "yrep" = "blue"),
+                    labels = c("Observed load", "Predicted load"))
+
+# Print the posterior predictive check plot
+print(ppc_load)
+
+ggsave("../d_output/figures/predictions/ppc_load_agearea.png", height = 10, width = 15)
+
+```
+
+
+

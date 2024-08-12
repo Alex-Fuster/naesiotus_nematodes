@@ -1,0 +1,174 @@
+---
+title: "R Notebook"
+---
+
+
+```{r}
+library(readxl)
+library(raster)
+library(sf)
+library(ggplot2)
+library(ggspatial)
+library(dplyr)
+library(sf)
+library(ggrepel)
+```
+
+
+
+```{r}
+data_coord <- read_excel(here::here("a_data/19july24_datalab.xlsx"), sheet = 3)
+df_island <- read_excel(here::here("a_data/19july24_datalab.xlsx"), sheet = "island_characteristics")
+
+```
+
+```{r}
+data_coord <-  data_coord |> 
+  distinct(spp, id, .keep_all = TRUE)
+
+
+# Rename the column "mean_emergence" to "island_age" in df_island
+df_island <- df_island |> rename(island_age = mean_emergence,
+                                  island_area = area)
+
+# Merge the dataframes based on the "island" column
+data_coord <- data_coord |> 
+  left_join(df_island |> select(island, island_age, island_area), by = "island")
+
+
+```
+
+
+
+Add island age
+
+```{r}
+# Convert island_age and island_area to numeric in df_island
+df_island <- df_island %>%
+  mutate(island_age = as.numeric(island_age),
+         island_area = as.numeric(island_area))
+
+# Ensure there are no leading/trailing whitespace and consistent casing in the island column
+df_island <- df_island %>%
+  mutate(island = trimws(tolower(island)))
+data_coord <- data_coord %>%
+  mutate(island = trimws(tolower(island)))
+
+# Perform the left join
+data_coord <- data_coord %>%
+  left_join(df_island %>% dplyr::select(island, island_age, island_area), by = "island")
+```
+
+
+
+- rugulosus in Champion doesnt have coordinates but I can add it manually in the image editor
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+
+# directory containing the .asc files
+asc_files_directory <- here::here("../maps/elevation_finer")
+
+# List all .asc files in the directory
+asc_files <- list.files(path = asc_files_directory, pattern = "\\.asc$", full.names = TRUE)
+
+# Load the .asc files into a list of raster objects
+rasters <- lapply(asc_files, raster)
+
+# Combine the raster objects into a single raster
+combined_raster <- do.call(merge, rasters)
+
+
+utm_crs_string <- "+proj=utm +zone=15 +datum=WGS84 +units=m +no_defs"
+
+
+# Define the CRS for the raster if not already defined
+crs(combined_raster) <- CRS(utm_crs_string)
+
+
+# Convert raster to data frame
+raster_df <- as.data.frame(combined_raster, xy = TRUE)
+colnames(raster_df) <- c("x", "y", "elevation")
+
+
+# Remove rows with missing coordinate values
+data_coord <- data_coord %>% 
+  filter(!is.na(latitude) & !is.na(longitude))
+
+
+# Convert data_coord_sf to a spatial object with coordinates
+data_coord_sf <- st_as_sf(data_coord, coords = c("longitude", "latitude"), crs = 4326) %>%
+  st_transform(crs = utm_crs_string)
+
+# Convert sf object to data frame with coordinates
+data_coord_df <- data_coord_sf %>%
+  st_coordinates() %>%
+  as.data.frame() %>%
+  cbind(data_coord_sf)
+
+
+# Plot the raster and the points
+
+plot_coord_sites <- ggplot() +
+  geom_raster(data = raster_df, aes(x = x, y = y - 10000000, fill = elevation)) +
+  geom_point(data = data_coord_df, aes(x = X, y = Y), fill = "red",colour="white", size = 2,pch=21) +
+  scale_fill_viridis_c(option = "cividis", na.value = "white", limits = c(min(raster_df$elevation, na.rm = TRUE), max(raster_df$elevation, na.rm = TRUE))) +
+  coord_equal() +
+  labs(fill = "Elevation") +
+  theme_minimal() +
+  scale_x_continuous(labels = scales::number_format(scale = 1, accuracy = 1)) +  # Adjust x-axis labels
+  scale_y_continuous(labels = function(x) { scales::number_format(scale = 1, accuracy = 1)(x + 10000000) }) +
+  theme(axis.title = element_blank())
+
+plot_coord_sites
+
+ggsave("plot_coord_sites.png", height = 7, width = 8)
+
+```
+
+
+
+
+plot island and age labels
+
+```{r}
+# Create a dataframe for island labels with manual positions
+label_data <- data_coord %>%
+  distinct(island, .keep_all = TRUE) %>%
+  mutate(
+    label_x = longitude + 0.05,  # Adjust these values as needed for label positions
+    label_y = latitude + 0.05
+  )
+
+
+
+ggplot() +
+  geom_raster(data = raster_df, aes(x = x, y = y - 10000000, fill = elevation)) +
+  geom_point(data = data_coord_df, aes(x = X, y = Y), color = "red", size = 2) +
+  scale_fill_viridis_c(option = "cividis", na.value = "white", limits = c(min(raster_df$elevation, na.rm = TRUE), max(raster_df$elevation, na.rm = TRUE))) +
+  coord_equal() +
+  labs(fill = "Elevation") +
+  theme_minimal() +
+  scale_x_continuous(labels = scales::number_format(scale = 1, accuracy = 1)) +  # Adjust x-axis labels
+  scale_y_continuous(labels = function(x) { scales::number_format(scale = 1, accuracy = 1)(x + 10000000) }) +
+  theme(axis.title = element_blank()) +
+  geom_text_repel(
+    data = label_data,
+    aes(x = st_coordinates(st_transform(st_as_sf(label_data, coords = c("longitude", "latitude"), crs = 4326), crs = utm_crs_string))[,1], 
+        y = st_coordinates(st_transform(st_as_sf(label_data, coords = c("longitude", "latitude"), crs = 4326), crs = utm_crs_string))[,2], 
+        label = paste(island, island_age, sep = ": ")),
+    size = 3,
+    nudge_x = 0.05,  # Adjust these values as needed for label positions
+    nudge_y = 0.05
+  )
+```
+
