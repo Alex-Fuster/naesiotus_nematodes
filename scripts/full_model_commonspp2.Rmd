@@ -1,0 +1,296 @@
+---
+title: "R Notebook"
+---
+
+## load and combine data
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(naniar)
+# library(ape)
+# library(ggpubr)
+# library(ade4)
+library(vegan)
+library(stringr)
+library(brms)
+library(cmdstanr)
+library(bayesplot)
+library(tidybayes)
+library(posterior)
+```
+
+# load csv with species names for checks
+
+Note that all species without data for load will be asigned a "2" in the code as they wont have any entry in the "species_name" column. This allows to filter out these species and only work with those for which load has been measured.
+
+```{r}
+species_names_df <- read.csv(here::here("data/species_names_checks.csv"))
+species_names_df <- species_names_df %>% 
+  rename(species = annotated_name)  %>%
+  mutate(species_code = as.numeric(factor(species_name)))
+
+species_names_df
+```
+
+## island info
+
+```{r}
+df_island <- read_excel(path = here::here("data/19july24_datalab.xlsx"), sheet = "island_characteristics")
+
+# Rename the column "mean_emergence" to "island_age" in df_island
+df_island <- df_island %>% rename(island_age = mean_emergence,
+                                  island_area = area)
+
+df_island
+
+```
+
+## Load dataset
+
+```{r}
+df_load_raw <- read_excel(path = here::here("data/19july24_datalab.xlsx"), sheet = 3)
+
+# df_load |> glimpse()
+
+
+df_load_raw$nematode_count[which(df_load_raw$nematode_count == ">100")] <- "100"
+df_load_raw$nematode_count <- as.numeric(df_load_raw$nematode_count)
+
+df_load <- df_load_raw %>% 
+  select(id, spp, nematode_count, island) %>% 
+  rename(species = spp)
+
+# correct species names
+df_load <- df_load %>%
+  left_join(species_names_df |> select(species, species_code), by = "species")
+
+# add island characteristics
+
+df_load <- df_load |> 
+  left_join(df_island |> select(island, island_age, island_area), by = "island")
+
+df_load
+
+```
+
+Create dataframe linking species codes to island data for reference. This will be used to add island data to the rest of the datasets based on species code.
+
+```{r}
+df_load_spp_island_reference <- df_load %>%
+  select(species_code, island, island_age, island_area) %>%
+  distinct(species_code, .keep_all = TRUE)
+```
+
+
+
+# brightness data
+
+```{r}
+
+df_bright <- read.csv(here::here("data/kraemer2019_brightness_scores.csv"))
+df_bright <- df_bright %>% 
+  select(location, spp, brightness, microhab) %>% 
+  rename(id = location,
+         species = spp) %>%
+  left_join(species_names_df |> select(species, species_code), by = "species") %>% # correct species names
+  filter(species_code != 2) %>% # filter out species for with no load assessed 
+  left_join(df_load_spp_island_reference, by = "species_code") # add island data
+
+df_bright
+
+```
+
+
+# habitat data
+
+
+```{r}
+df_rad <- read_excel(here::here("data/GPS RAD snails.xlsx"))
+df_hab <- df_rad %>% 
+  select(Sample, Taxon, 
+         habitat = Microhabitat, 
+         vegetation = `Vegetation Zone`)%>% 
+  rename(species = Taxon) %>% 
+  glimpse() |> 
+  left_join(species_names_df |> select(species, species_code), by = "species") |> # correct species names
+  mutate(habitat = str_to_lower(habitat)) %>% 
+  mutate(habitat = str_replace(habitat, "semi-arboreal", "arboreal")) |> # Semi-Arboreal is considered arboreal
+  filter(habitat %in% c("arboreal", "terrestrial")) |> 
+  select(species_code, microhab = habitat) |> 
+  bind_rows(df_bright |> select(microhab, species_code), df_hab)|> # add habitat data from brightness dataset 
+  count(microhab, species_code) |> 
+  pivot_wider(values_from = n, names_from = microhab, values_fill = 0) |> 
+  mutate(total_hab = terrestrial + arboreal) |> 
+  filter(species_code != 2) %>% # filter out species for with no load assessed
+  left_join(df_load_spp_island_reference, by = "species_code") # add island data
+
+df_hab
+
+```
+
+
+# Vegetation data
+
+```{r}
+
+df_veg <- df_rad %>% 
+  select(Sample, Taxon, 
+         habitat = Microhabitat, 
+         vegetation = `Vegetation Zone`)%>% 
+  rename(species = Taxon) %>% 
+  glimpse() |> 
+  left_join(species_names_df |> select(species, species_code), by = "species") |> # correct species names
+  mutate(vegetation = str_to_lower(vegetation)) %>% 
+  filter(vegetation %in% c("humid", "arid")) |> ## filter for only legal values -- others are typos
+  count(species_code, vegetation) |> 
+  pivot_wider(values_from = n, names_from = vegetation, values_fill = 0) |> 
+  mutate(total_veg = humid + arid)|> 
+  filter(species_code != 2) %>% # filter out species for with no load assessed
+  left_join(df_load_spp_island_reference, by = "species_code") # add island data
+
+df_veg
+
+```
+
+
+
+Datasets, with same species_codes:
+
+df_island
+df_load
+df_bright
+df_hab
+df_veg 
+
+
+
+Only consider species with data for all the measurements:
+
+```{r}
+
+# Get the common species names present in all datasets
+common_species <- intersect(df_bright$species_code, df_load$species_code) |> 
+  intersect(df_hab$species_code) |> 
+  intersect(df_veg$species_code) |> 
+  setdiff("")
+
+# Filter each dataframe to include only the common species
+df_bright <- df_bright |> 
+  filter(species_code %in% common_species)
+
+df_load <- df_load |> 
+  filter(species_code %in% common_species)
+
+df_hab <- df_hab |> 
+  filter(species_code %in% common_species)
+
+df_veg <- df_veg |> 
+  filter(species_code %in% common_species)
+
+```
+
+
+## create a species-codes mapping table
+
+```{r}
+# Combine all species codes from the datasets
+all_species_codes <- unique(c(
+  df_bright$species_code,
+  df_load$species_code,
+  df_hab$species_code,
+  df_veg$species_code
+))
+
+# Ensure there are no more than 21 unique species codes
+if(length(all_species_codes) > 21) {
+  stop("There are more than 21 unique species codes. Adjust your mapping strategy.")
+}
+
+# Create a mapping table
+species_code_mapping <- data.frame(
+  species_code = all_species_codes,
+  species_code_new = 1:length(all_species_codes)
+)
+
+species_code_mapping
+
+```
+
+
+Add new column to each dataset
+
+```{r}
+add_new_species_code <- function(df, mapping) {
+  df <- merge(df, mapping, by = "species_code", all.x = TRUE)
+  df
+}
+
+df_bright <- add_new_species_code(df_bright, species_code_mapping)
+df_load <- add_new_species_code(df_load, species_code_mapping)
+df_hab <- add_new_species_code(df_hab, species_code_mapping)
+df_veg <- add_new_species_code(df_veg, species_code_mapping)
+```
+
+
+
+
+# Full model
+
+
+Data
+
+```{r}
+# Prepare the data list for Stan
+data_list <- list(
+  N = nrow(df_bright_filtered),
+  N_spp = length(common_species),
+  N_islands = length(df_island),
+  N_habitat = nrow(df_hab_filtered),
+  N_veg = nrow(df_veg_filtered),
+  N_nem = nrow(df_load_filtered),
+  
+  spp_id_bright = df_bright_filtered$species_code_new,
+  island_id = df_bright_filtered$island,
+  spp_id_hab = df_hab_filtered$species_code_new,
+  spp_id_veg = df_veg_filtered$species_code_new,
+  spp_id_load = df_load_filtered$species_code_new,
+  
+  brightness = df_bright_filtered$brightness,
+  island_age = df_island$island_age,
+  island_area = df_island$island_area,
+  
+  habitat_arboreal = df_hab_filtered$arboreal,
+  total_hab = df_hab_filtered$total_hab,
+  
+  vegetation_arid = df_veg_filtered$arid,
+  total_veg = df_veg_filtered$total_veg,
+  
+  load = df_load_filtered$nematode_count
+)
+
+```
+
+
+Run model
+
+```{r}
+
+
+ # Fit the model using cmdstanr
+ stan_model <- cmdstan_model(
+   stan_file = here::here("stan/full_model_commonspp.stan"), 
+   pedantic = TRUE
+ )
+ 
+ fit <- stan_model$sample(
+   data = data_list,
+   seed = 123,             
+   chains = 4,               
+   parallel_chains = 4,    
+   iter_warmup = 1000,       
+   iter_sampling = 2000   
+ )
+```
+
+
