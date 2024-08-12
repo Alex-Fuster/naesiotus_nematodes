@@ -233,6 +233,40 @@ df_veg <- add_new_species_code(df_veg, species_code_mapping)
 ```
 
 
+Create island mapping and assign island codes
+
+```{r}
+# Extract unique islands from one of the datasets that contain all island names
+unique_islands <- unique(c(df_load$island, df_bright$island, df_hab$island, df_veg$island))
+
+# Create a dataframe that maps island names to unique integer codes
+island_codes <- data.frame(
+  island = unique_islands,
+  island_code = seq_along(unique_islands)
+)
+
+island_codes
+```
+
+
+```{r}
+# Add island_code to df_load
+df_load <- df_load %>%
+  left_join(island_codes, by = "island")
+
+# Add island_code to df_bright
+df_bright <- df_bright %>%
+  left_join(island_codes, by = "island")
+
+# Add island_code to df_hab
+df_hab <- df_hab %>%
+  left_join(island_codes, by = "island")
+
+# Add island_code to df_veg
+df_veg <- df_veg %>%
+  left_join(island_codes, by = "island")
+```
+
 
 
 # Full model
@@ -243,30 +277,33 @@ Data
 ```{r}
 # Prepare the data list for Stan
 data_list <- list(
-  N = nrow(df_bright_filtered),
+  N_load = nrow(df_load),
+  N_bright = nrow(df_bright),
   N_spp = length(common_species),
-  N_islands = length(df_island),
-  N_habitat = nrow(df_hab_filtered),
-  N_veg = nrow(df_veg_filtered),
-  N_nem = nrow(df_load_filtered),
+  N_islands = length(island_codes$island_code),
+  N_habitat = nrow(df_hab),
+  N_veg = nrow(df_veg),
   
-  spp_id_bright = df_bright_filtered$species_code_new,
-  island_id = df_bright_filtered$island,
-  spp_id_hab = df_hab_filtered$species_code_new,
-  spp_id_veg = df_veg_filtered$species_code_new,
-  spp_id_load = df_load_filtered$species_code_new,
+  spp_id_bright = df_bright$species_code_new,
+  island_id_load = df_load$island_code,
+  island_id_bright = df_bright$island_code,
+  spp_id_hab = df_hab$species_code_new,
+  spp_id_veg = df_veg$species_code_new,
+  spp_id_load = df_load$species_code_new,
   
-  brightness = df_bright_filtered$brightness,
-  island_age = df_island$island_age,
-  island_area = df_island$island_area,
+  brightness = df_bright$brightness,
+  island_age_load = df_load$island_age,
+  island_age_bright = df_bright$island_age,
+  island_area_load = df_load$island_area,
+  island_area_bright = df_bright$island_area,
   
-  habitat_arboreal = df_hab_filtered$arboreal,
-  total_hab = df_hab_filtered$total_hab,
+  habitat_arboreal = df_hab$arboreal,
+  total_hab = df_hab$total_hab,
   
-  vegetation_arid = df_veg_filtered$arid,
-  total_veg = df_veg_filtered$total_veg,
+  vegetation_arid = df_veg$arid,
+  total_veg = df_veg$total_veg,
   
-  load = df_load_filtered$nematode_count
+  load = df_load$nematode_count
 )
 
 ```
@@ -293,4 +330,22 @@ Run model
  )
 ```
 
+
+```{r}
+# Extract the posterior samples
+posterior_samples <- fit$draws()
+
+
+posterior_df <- as_draws_df(posterior_samples)
+
+fit$diagnostic_summary()
+
+fit$summary()
+
+mcmc_areas(
+  posterior_df,
+  pars = vars(starts_with("slope")),
+  prob = 0.8  
+)
+```
 

@@ -1,21 +1,24 @@
 data {
-  int<lower=0> N;                      // Number of observations
+  int<lower=0> N_load;                      // Number of observations load dataset
+  int<lower=0> N_bright;                      // Number of observations brightness dataset
   int<lower=0> N_spp;                  // Number of unique species
   int<lower=0> N_islands;              // Number of unique islands
   int<lower=0> N_habitat;              // Number of habitat observations
   int<lower=0> N_veg;                  // Number of vegetation zone observations
-  int<lower=0> N_nem;                  // Number of observations for nematode load
   
-  array[N] int<lower=1,upper=N_spp> spp_id_bright;   // Species ID for brightness data
-  array[N] int<lower=1,upper=N_islands> island_id;    // Island ID for each observation
+  
+
+  
+  array[N_bright] int<lower=1,upper=N_spp> spp_id_bright;   // Species ID for brightness data
+  array[N_load] int<lower=1,upper=N_islands> island_id_load;    // Island ID for each observation in the load dataset
+  array[N_bright] int<lower=1,upper=N_islands> island_id_bright;    // Island ID for each observation in the brightness dataset
   array[N_habitat] int<lower=1,upper=N_spp> spp_id_hab; // Species ID for habitat data
   array[N_veg] int<lower=1,upper=N_spp> spp_id_veg;     // Species ID for vegetation data
-  array[N_nem] int<lower=1,upper=N_spp> spp_id_load;     // Species ID for load data
+  array[N_load] int<lower=1,upper=N_spp> spp_id_load;     // Species ID for load data
   
-  vector[N] brightness;                // Brightness data
-  vector[N] island_age;                // Island age for each observation
-  vector[N] island_area;               // Island area for each observation
+  array[N_load] int<lower=0, upper=100> load;               // Nematode load counts
   
+  vector[N_bright] brightness;                // Brightness data
   
   array[N_habitat] int habitat_arboreal;   // Total counts of arid habitat for each species
   array[N_habitat] int total_hab;  // Total counts of humid habitat for each species
@@ -23,13 +26,17 @@ data {
   array[N_veg] int vegetation_arid;    // Total counts of arid vegetation for each species
   array[N_veg] int total_veg;   // Total counts of humid vegetation for each species
   
-  array[N_nem] int<lower=0, upper=100> load;               // Nematode load counts
+  vector[N_load] island_age_load;                // Island age for each observation
+  vector[N_bright] island_age_bright;                // Island age for each observation
+  vector[N_load] island_area_load;               // Island area for each observation
+  vector[N_bright] island_area_bright;               // Island area for each observation
   
 }
 
 transformed data {
-  vector[N] log_brightness = log(brightness);
-  vector[N] log_island_area = log(island_area);
+  vector[N_bright] log_brightness = log(brightness);
+  vector[N_bright] log_island_area_bright = log(island_area_bright);
+  vector[N_load] log_island_area_load = log(island_area_load);
 
 }
 
@@ -84,7 +91,7 @@ model {
   sd_arid ~ exponential(1);
   
   intercept ~ normal(0, 1);
-  vector[N_nem] lambda;
+  vector[N_load] lambda;
   
   // Species and island effects
   spp_effects ~ normal(0, sigma_spp);
@@ -107,19 +114,19 @@ model {
   log_brightness ~ normal(
     mu +
     spp_effects[spp_id_bright] +
-    island_effects[island_id] +
+    island_effects[island_id_bright] +
     slope_arboreal * arboreal_prob[spp_id_bright] +
     slope_arid * arid_prob[spp_id_bright] +
-    slope_age * island_age[island_id] +
-    slope_area * log_island_area[island_id],
+    slope_age * island_age_bright[island_id_bright] +
+    slope_area * log_island_area_bright[island_id_bright],
     sigma_bright);
     
     lambda = intercept + 
-    slope_bright * log_brightness[spp_id_bright] + 
-    slope_arboreal * arboreal_prob[spp_id_bright] +
-    slope_arid * arid_prob[spp_id_bright] +
-    slope_age * island_age[island_id] +
-    slope_area * log_island_area[island_id];
+    slope_bright * log_brightness[spp_id_load] + 
+    slope_arboreal * arboreal_prob[spp_id_load] +
+    slope_arid * arid_prob[spp_id_load] +
+    slope_age * island_age_load[island_id_load] +
+    slope_area * log_island_area_load[island_id_load];
     
     // Model nematode load
     load ~ poisson_log(lambda); 
