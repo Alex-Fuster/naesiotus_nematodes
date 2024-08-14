@@ -22,6 +22,8 @@ library(posterior)
 
 # load csv with species names for checks
 
+Note that all species without data for load will be asigned a "2" in the code as they wont have any entry in the "species_name" column. This allows to filter out these species and only work with those for which load has been measured.
+
 ```{r}
 species_names_df <- read.csv(here::here("data/species_names_checks.csv"))
 species_names_df <- species_names_df %>% 
@@ -61,7 +63,7 @@ df_load <- df_load_raw %>%
 
 # correct species names
 df_load <- df_load %>%
-  left_join(species_names_df, by = "species")
+  left_join(species_names_df |> select(species, species_code), by = "species")
 
 # add island characteristics
 
@@ -72,7 +74,13 @@ df_load
 
 ```
 
+Create dataframe linking species codes to island data for reference. This will be used to add island data to the rest of the datasets based on species code.
 
+```{r}
+df_load_spp_island_reference <- df_load %>%
+  select(species_code, island, island_age, island_area) %>%
+  distinct(species_code, .keep_all = TRUE)
+```
 
 
 
@@ -84,86 +92,62 @@ df_bright <- read.csv(here::here("data/kraemer2019_brightness_scores.csv"))
 df_bright <- df_bright %>% 
   select(location, spp, brightness, microhab) %>% 
   rename(id = location,
-         species = spp)
+         species = spp) %>%
+  left_join(species_names_df |> select(species, species_code), by = "species") %>% # correct species names
+  filter(species_code != 2) %>% # filter out species for with no load assessed 
+  left_join(df_load_spp_island_reference, by = "species_code") # add island data
 
-
-# correct species names
-df_bright_corrected <- df_bright %>%
-  left_join(species_names_df, by = "species")
-
-
-df_bright_corrected
-
-
+df_bright
 
 ```
-
-
 
 
 # habitat data
 
 
-
-### habitat data from RAD sequences database
-
 ```{r}
 df_rad <- read_excel(here::here("data/GPS RAD snails.xlsx"))
-df_rad <- df_rad %>% 
+df_hab <- df_rad %>% 
   select(Sample, Taxon, 
          habitat = Microhabitat, 
          vegetation = `Vegetation Zone`)%>% 
   rename(species = Taxon) %>% 
-  glimpse() 
-
-
-# correct species names
-df_rad_corrected <- df_rad %>%
-  left_join(species_names_df, by = "species")
-
-
-# Semi-Arboreal is considered arboreal
-df_rad_relevel_hab <- df_rad_corrected %>%
+  glimpse() |> 
+  left_join(species_names_df |> select(species, species_code), by = "species") |> # correct species names
   mutate(habitat = str_to_lower(habitat)) %>% 
-  mutate(habitat = str_replace(habitat, "semi-arboreal", "arboreal"))
-
-
-
-## we have a SECOND source for habitat data
-df_rad_hab_filtered <- df_rad_relevel_hab %>%
+  mutate(habitat = str_replace(habitat, "semi-arboreal", "arboreal")) |> # Semi-Arboreal is considered arboreal
   filter(habitat %in% c("arboreal", "terrestrial")) |> 
-  select(species_name, microhab = habitat, species_code)
-
-###############################
-
-
-
-# select columns and combine with abitat data from brightness database
-df_bright_hab <- df_bright_corrected |>
-  select(species_name, microhab, species_code) 
-
-
-df_hab <-  bind_rows(df_bright_hab, df_rad_hab_filtered)|> 
-  count(species_name, microhab, species_code) |> 
+  select(species_code, microhab = habitat) |> 
+  bind_rows(df_bright |> select(microhab, species_code), df_hab)|> # add habitat data from brightness dataset 
+  count(microhab, species_code) |> 
   pivot_wider(values_from = n, names_from = microhab, values_fill = 0) |> 
-  mutate(total_hab = terrestrial + arboreal)
+  mutate(total_hab = terrestrial + arboreal) |> 
+  filter(species_code != 2) %>% # filter out species for with no load assessed
+  left_join(df_load_spp_island_reference, by = "species_code") # add island data
 
-# correct species names
 df_hab
 
 ```
 
 
-```{r}
-# repeat and relevel vegetation
-df_veg <- df_rad_relevel_hab %>% 
-  mutate(vegetation = str_to_lower(vegetation)) %>% 
-  ## filter for only legal values -- others are typos
-  filter(vegetation %in% c("humid", "arid")) |> 
-  count(species_name, species_code, vegetation) |> 
-  pivot_wider(values_from = n, names_from = vegetation, values_fill = 0) |> 
-  mutate(total_veg = humid + arid)
+# Vegetation data
 
+```{r}
+
+df_veg <- df_rad %>% 
+  select(Sample, Taxon, 
+         habitat = Microhabitat, 
+         vegetation = `Vegetation Zone`)%>% 
+  rename(species = Taxon) %>% 
+  glimpse() |> 
+  left_join(species_names_df |> select(species, species_code), by = "species") |> # correct species names
+  mutate(vegetation = str_to_lower(vegetation)) %>% 
+  filter(vegetation %in% c("humid", "arid")) |> ## filter for only legal values -- others are typos
+  count(species_code, vegetation) |> 
+  pivot_wider(values_from = n, names_from = vegetation, values_fill = 0) |> 
+  mutate(total_veg = humid + arid)|> 
+  filter(species_code != 2) %>% # filter out species for with no load assessed
+  left_join(df_load_spp_island_reference, by = "species_code") # add island data
 
 df_veg
 
@@ -173,50 +157,36 @@ df_veg
 
 Datasets, with same species_codes:
 
-```{r}
-
 df_island
-
-# load (44 spp)
-
 df_load
-
-# brightness (26 spp)
-
-df_bright_corrected
-
-# habitat (40 spp)
-
+df_bright
 df_hab
-
-# vegetation (36 spp)
-
 df_veg 
 
-```
+
 
 Only consider species with data for all the measurements:
 
 ```{r}
 
 # Get the common species names present in all datasets
-common_species <- common_species <- intersect(df_bright_corrected$species_name, df_load$species_name) |> 
-  intersect(df_hab$species_name) |> 
-  intersect(df_veg$species_name) |> 
+common_species <- intersect(df_bright$species_code, df_load$species_code) |> 
+  intersect(df_hab$species_code) |> 
+  intersect(df_veg$species_code) |> 
   setdiff("")
 
 # Filter each dataframe to include only the common species
-df_bright_filtered <- df_bright_corrected |> 
-  filter(species_name %in% common_species)
+df_bright <- df_bright |> 
+  filter(species_code %in% common_species)
 
-df_load_filtered <- df_load |> 
-  filter(species_name %in% common_species)
+df_load <- df_load |> 
+  filter(species_code %in% common_species)
 
-df_hab_filtered <- df_hab |> 
-  filter(species_name %in% common_species)
+df_hab <- df_hab |> 
+  filter(species_code %in% common_species)
 
-df_veg_filtered <- df_veg |> 
-  filter(species_name %in% common_species)
+df_veg <- df_veg |> 
+  filter(species_code %in% common_species)
 
 ```
 
@@ -226,10 +196,10 @@ df_veg_filtered <- df_veg |>
 ```{r}
 # Combine all species codes from the datasets
 all_species_codes <- unique(c(
-  df_bright_filtered$species_code,
-  df_load_filtered$species_code,
-  df_hab_filtered$species_code,
-  df_veg_filtered$species_code
+  df_bright$species_code,
+  df_load$species_code,
+  df_hab$species_code,
+  df_veg$species_code
 ))
 
 # Ensure there are no more than 21 unique species codes
@@ -242,7 +212,6 @@ species_code_mapping <- data.frame(
   species_code = all_species_codes,
   species_code_new = 1:length(all_species_codes)
 )
-
 
 species_code_mapping
 
@@ -257,13 +226,46 @@ add_new_species_code <- function(df, mapping) {
   df
 }
 
-df_bright_filtered <- add_new_species_code(df_bright_filtered, species_code_mapping)
-df_load_filtered <- add_new_species_code(df_load_filtered, species_code_mapping)
-df_hab_filtered <- add_new_species_code(df_hab_filtered, species_code_mapping)
-df_veg_filtered <- add_new_species_code(df_veg_filtered, species_code_mapping)
+df_bright <- add_new_species_code(df_bright, species_code_mapping)
+df_load <- add_new_species_code(df_load, species_code_mapping)
+df_hab <- add_new_species_code(df_hab, species_code_mapping)
+df_veg <- add_new_species_code(df_veg, species_code_mapping)
 ```
 
 
+Create island mapping and assign island codes
+
+```{r}
+# Extract unique islands from one of the datasets that contain all island names
+unique_islands <- unique(c(df_load$island, df_bright$island, df_hab$island, df_veg$island))
+
+# Create a dataframe that maps island names to unique integer codes
+island_codes <- data.frame(
+  island = unique_islands,
+  island_code = seq_along(unique_islands)
+)
+
+island_codes
+```
+
+
+```{r}
+# Add island_code to df_load
+df_load <- df_load %>%
+  left_join(island_codes, by = "island")
+
+# Add island_code to df_bright
+df_bright <- df_bright %>%
+  left_join(island_codes, by = "island")
+
+# Add island_code to df_hab
+df_hab <- df_hab %>%
+  left_join(island_codes, by = "island")
+
+# Add island_code to df_veg
+df_veg <- df_veg %>%
+  left_join(island_codes, by = "island")
+```
 
 
 
@@ -275,30 +277,33 @@ Data
 ```{r}
 # Prepare the data list for Stan
 data_list <- list(
-  N = nrow(df_bright_filtered),
+  N_load = nrow(df_load),
+  N_bright = nrow(df_bright),
   N_spp = length(common_species),
-  N_islands = length(df_island),
-  N_habitat = nrow(df_hab_filtered),
-  N_veg = nrow(df_veg_filtered),
-  N_nem = nrow(df_load_filtered),
+  N_islands = length(island_codes$island_code),
+  N_habitat = nrow(df_hab),
+  N_veg = nrow(df_veg),
   
-  spp_id_bright = df_bright_filtered$species_code_new,
-  island_id = as.integer(factor(df_island$island)),
-  spp_id_hab = df_hab_filtered$species_code_new,
-  spp_id_veg = df_veg_filtered$species_code_new,
-  spp_id_load = df_load_filtered$species_code_new,
+  spp_id_bright = df_bright$species_code_new,
+  island_id_load = df_load$island_code,
+  island_id_bright = df_bright$island_code,
+  spp_id_hab = df_hab$species_code_new,
+  spp_id_veg = df_veg$species_code_new,
+  spp_id_load = df_load$species_code_new,
   
-  brightness = df_bright_filtered$brightness,
-  island_age = df_island$island_age,
-  island_area = df_island$island_area,
+  brightness = df_bright$brightness,
+  island_age_load = df_load$island_age,
+  island_age_bright = df_bright$island_age,
+  island_area_load = df_load$island_area,
+  island_area_bright = df_bright$island_area,
   
-  habitat_arboreal = df_hab_filtered$arboreal,
-  total_hab = df_hab_filtered$total_hab,
+  habitat_arboreal = df_hab$arboreal,
+  total_hab = df_hab$total_hab,
   
-  vegetation_arid = df_veg_filtered$arid,
-  total_veg = df_veg_filtered$total_veg,
+  vegetation_arid = df_veg$arid,
+  total_veg = df_veg$total_veg,
   
-  load = df_load_filtered$nematode_count
+  load = df_load$nematode_count
 )
 
 ```
@@ -325,4 +330,22 @@ Run model
  )
 ```
 
+
+```{r}
+# Extract the posterior samples
+posterior_samples <- fit$draws()
+
+
+posterior_df <- as_draws_df(posterior_samples)
+
+fit$diagnostic_summary()
+
+fit$summary()
+
+mcmc_areas(
+  posterior_df,
+  pars = vars(starts_with("slope")),
+  prob = 0.8  
+)
+```
 
