@@ -117,8 +117,10 @@ df_hab <- df_rad %>%
   mutate(habitat = str_to_lower(habitat)) %>% 
   mutate(habitat = str_replace(habitat, "semi-arboreal", "arboreal")) |> # Semi-Arboreal is considered arboreal
   filter(habitat %in% c("arboreal", "terrestrial")) |> 
-  select(species_code, microhab = habitat) |> 
-  bind_rows(df_bright |> select(microhab, species_code), df_hab)|> # add habitat data from brightness dataset 
+  select(species_code, microhab = habitat)
+
+
+df_hab <-  bind_rows(df_bright |> select(microhab, species_code), df_hab)|> # add habitat data from brightness dataset 
   count(microhab, species_code) |> 
   pivot_wider(values_from = n, names_from = microhab, values_fill = 0) |> 
   mutate(total_hab = terrestrial + arboreal) |> 
