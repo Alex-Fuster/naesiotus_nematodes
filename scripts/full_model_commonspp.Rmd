@@ -314,35 +314,48 @@ data_list <- list(
 Run model
 
 ```{r}
+# Fit the model using cmdstanr
+full_model_commonspp_slopepos_load <- cmdstan_model(
+  stan_file = here::here("stan/full_model_commonspp_slopepos_load.stan"), 
+  pedantic = TRUE
+)
+```
 
 
- # Fit the model using cmdstanr
- stan_model <- cmdstan_model(
-   stan_file = here::here("stan/full_model_commonspp.stan"), 
-   pedantic = TRUE
- )
- 
- fit <- stan_model$sample(
-   data = data_list,
-   seed = 123,             
-   chains = 4,               
-   parallel_chains = 4,    
-   iter_warmup = 1000,       
-   iter_sampling = 2000   
- )
+```{r, eval=FALSE}
+full_model_commonspp_slopepos_load_samples <- 
+  full_model_commonspp_slopepos_load$sample(
+    data = data_list,
+    seed = 123,             
+    chains = 5,               
+    parallel_chains = 5,    
+    iter_warmup = 200,       
+    iter_sampling = 200,
+    output_dir = here::here("model_object/full_model_commonspp_slopepos_load")
+  )
+
+```
+
+
+```{r}
+# read in the model from above
+full_model_commonspp_slopepos_load_samples <- as_cmdstan_fit(dir("model_object/full_model_commonspp_slopepos", full.names = TRUE))
+
+full_model_commonspp_slopepos_load_samples$summary()
+
 ```
 
 
 ```{r}
 # Extract the posterior samples
-posterior_samples <- fit$draws()
+posterior_samples <- full_model_commonspp_slopepos_load_samples$draws()
 
 
 posterior_df <- as_draws_df(posterior_samples)
 
-fit$diagnostic_summary()
+full_model_commonspp_slopepos_load_samples$diagnostic_summary()
 
-fit$summary()
+full_model_commonspp_slopepos_load_samples$summary()
 
 mcmc_areas(
   posterior_df,
@@ -350,6 +363,80 @@ mcmc_areas(
   prob = 0.8  
 )
 ```
+
+
+# # generated quantities - linear regressions
+
+
+## aridity
+
+
+```{r}
+sp_sample_arid <- df_veg |> 
+  select(species_code, arid, total_veg) |> 
+  mutate(p_arid = arid/total_veg)
+
+
+sp_sample_load <- df_load |> 
+  group_by(species_code) |> 
+  summarize(mean_load = mean(nematode_count),
+            n_sample = n())
+
+arid_load_df <- sp_sample_load |> 
+  left_join(sp_sample_arid, by = join_by(species_code)) 
+
+arid_load_df |> 
+  ggplot(aes(x = p_arid, y = mean_load, size = n_sample, colour = total_veg)) + 
+  geom_point(alpha = .7)
+```
+
+```{r}
+# calculate averages
+# log brightness
+
+df_bright |> 
+  group_by(species_code) |> 
+  summarize(mean_log_bright = mean(log(brightness))) |> 
+  pluck("mean_log_bright") |> 
+  mean()
+
+df_hab |> 
+  mutate(p_arbor = arboreal/total_hab) |> 
+  pluck("p_arbor") |> mean()
+
+df_island |> 
+  pluck("island_age") |> mean()
+
+df_island$island_area |> log() |>  mean()
+
+```
+
+compile GQ program
+
+```{r}
+gq_trendline_arid <- cmdstan_model(here::here("stan/gq_trendline_full_model_commonspp_slopepos_load.stan"))
+
+arid_line_samples <- gq_trendline_arid$generate_quantities(
+  fitted_params = full_model_commonspp_slopepos_load_samples,
+  data =data_list)
+```
+
+
+```{r}
+arid_line_samples |> 
+  gather_rvars(lambda[i]) |> 
+  mutate(p_arid = c(0, .2, .5, .7, 1), 
+         mean_load = exp(.value)) |> 
+  ggplot(aes(x = p_arid, ydist = mean_load)) + 
+  stat_lineribbon() + 
+  scale_fill_brewer(type = "seq", palette = 2, direction = -1) + 
+  geom_point(aes(y = mean_load), data = arid_load_df)
+```
+
+
+
+
+# generated quantities
 
 ```{r}
 
@@ -360,9 +447,8 @@ gq_slopepos_load <- cmdstan_model(
 )
 
 
-gq_logit_NCP <- bright_logit_NCP_gq$generate_quantities(
-  fitted_params = fit_bright_logit_NCP,
+gq <- gq_slopepos_load$generate_quantities(
+  fitted_params = full_model_commonspp_slopepos_load_samples,
   data = data_list
 )
 ```
-

@@ -5,10 +5,7 @@ data {
   int<lower=0> N_islands;              // Number of unique islands
   int<lower=0> N_habitat;              // Number of habitat observations
   int<lower=0> N_veg;                  // Number of vegetation zone observations
-  
-  
-
-  
+    
   array[N_bright] int<lower=1,upper=N_spp> spp_id_bright;   // Species ID for brightness data
   array[N_load] int<lower=1,upper=N_islands> island_id_load;    // Island ID for each observation in the load dataset
   array[N_bright] int<lower=1,upper=N_islands> island_id_bright;    // Island ID for each observation in the brightness dataset
@@ -80,48 +77,14 @@ transformed parameters{
 
 generated quantities{
   
-  vector[N_bright] log_brightness_pred;
-  vector[N_bright] brightness_pred;
-  vector[N_spp] habitat_arboreal_pred;
-  vector[N_spp] vegetation_arid_pred;
-  array[N_load] int load_pred;
+  vector[5] p_arid_vec = [0, .2, .5, .7, 1]';
+  vector[5] lambda;
   
-  // vector[N_islands] island_effects;
-  // island_effects = z_island_effects * sigma_islands;
-  
-  for (i in 1:N_bright) {
-    log_brightness_pred[i] = normal_rng(
-      mu +
-      spp_effects[spp_id_bright[i]] +
-      island_effects[island_id_bright[i]] +
-      slope_arboreal_bright * arboreal_prob[spp_id_bright[i]] +
-      slope_arid_bright * arid_prob[spp_id_bright[i]] +
-      slope_age * island_age_bright[island_id_bright[i]] +
-      slope_area * log_island_area_bright[island_id_bright[i]],
-      sigma_bright);
-  }
-  
-  brightness_pred = exp(log_brightness_pred);
-  
-  for (s in 1:N_habitat) {
-    habitat_arboreal_pred[s] = binomial_rng(total_hab[s], arboreal_prob[s]);
-  }
-  
-  for (s in 1:N_veg) {
-    vegetation_arid_pred[s] = binomial_rng(total_veg[s], arid_prob[s]);
-  }
-  
-  
-  for (i in 1:N_load) {
-    load_pred[i] = poisson_log_rng(
-      intercept + 
-    slope_bright * log_brightness[spp_id_load[i]] + 
-    slope_arboreal_load * arboreal_prob[spp_id_load[i]] +
-    slope_arid_load * arid_prob[spp_id_load[i]] +
-    slope_age * island_age_load[island_id_load[i]] +
-    slope_area * log_island_area_load[island_id_load[i]]);
-
-  }
-  
-
+  lambda = intercept + 
+    slope_bright * 8.33 + 
+    slope_arboreal_load * 0.34 +
+    slope_arid_load * p_arid_vec +
+    slope_age * 1.46 +
+    slope_area * 4.19;
+    
 }
