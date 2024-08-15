@@ -339,7 +339,7 @@ full_model_commonspp_slopepos_load_samples <-
 
 ```{r}
 # read in the model from above
-full_model_commonspp_slopepos_load_samples <- as_cmdstan_fit(dir("model_object/full_model_commonspp_slopepos", full.names = TRUE))
+full_model_commonspp_slopepos_load_samples <- as_cmdstan_fit(dir("model_object/full_model_commonspp_slopepos_load", full.names = TRUE))
 
 full_model_commonspp_slopepos_load_samples$summary()
 
