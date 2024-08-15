@@ -1,0 +1,100 @@
+---
+title: "Model load"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(naniar)
+library(cmdstanr)
+library(bayesplot)
+library(tidybayes)
+library(posterior)
+```
+
+
+## compute species code id
+
+```{r}
+species_names_df_raw <- read.csv(here::here("data/species_names_checks.csv"))
+
+
+species_names_df <- species_names_df_raw %>% 
+  rename(species = annotated_name)  %>% 
+  filter(species_name != "") |> 
+  mutate(species_code = as.numeric(factor(species_name)))
+
+species_code_df <- species_names_df |> 
+  select(species_name, species_code) |> 
+  distinct() |> 
+  arrange(species_code)
+
+species_code_df
+```
+
+- correct "sp. nov. Volc\xe1n Wolf 3" in the datasets
+
+
+
+## island info
+
+```{r}
+df_island <- read_excel(path = here::here("data/19july24_datalab.xlsx"), sheet = "island_characteristics")
+
+# Rename the column "mean_emergence" to "island_age" in df_island
+df_island <- df_island %>% rename(island_age = mean_emergence,
+                                  island_area = area)
+
+df_island
+
+```
+
+
+## Load dataset
+
+```{r}
+df_load_raw <- read_excel(path = here::here("data/19july24_datalab.xlsx"), sheet = 3)
+
+# df_load |> glimpse()
+
+
+df_load_raw$nematode_count[which(df_load_raw$nematode_count == ">100")] <- "100"
+df_load_raw$nematode_count <- as.numeric(df_load_raw$nematode_count)
+
+df_load <- df_load_raw %>% 
+  select(id, spp, nematode_count, island) %>% 
+  rename(species = spp)
+
+# correct species names
+df_load <- df_load %>%
+  left_join(species_names_df |> select(species, species_code), by = "species")
+
+# add island characteristics
+
+df_load <- df_load |> 
+  left_join(df_island |> select(island, island_age, island_area), by = "island")
+
+df_load
+
+```
+
+
+
+# brightness data
+
+```{r}
+
+df_bright <- read.csv(here::here("data/kraemer2019_brightness_scores.csv"))
+df_bright <- df_bright %>% 
+  select(location, spp, brightness, microhab) %>% 
+  rename(id = location,
+         species = spp) %>%
+  left_join(species_names_df |> select(species, species_code), by = "species") %>% # correct species names
+  left_join(df_load_spp_island_reference, by = "species_code") # add island data
+
+df_bright
+
+
+```
