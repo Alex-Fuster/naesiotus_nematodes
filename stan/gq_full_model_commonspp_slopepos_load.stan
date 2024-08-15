@@ -84,7 +84,7 @@ generated quantities{
   vector[N_bright] brightness_pred;
   vector[N_spp] habitat_arboreal_pred;
   vector[N_spp] vegetation_arid_pred;
-  vector[N_load] load_pred;
+  array[N_load] int load_pred;
   
   // vector[N_islands] island_effects;
   // island_effects = z_island_effects * sigma_islands;
@@ -96,8 +96,8 @@ generated quantities{
       island_effects[island_id_bright[i]] +
       slope_arboreal_bright * arboreal_prob[spp_id_bright[i]] +
       slope_arid_bright * arid_prob[spp_id_bright[i]] +
-      slope_age * island_age[island_id_bright[i]] +
-      slope_area * log_island_area[island_id_bright[i]],
+      slope_age * island_age_bright[island_id_bright[i]] +
+      slope_area * log_island_area_bright[island_id_bright[i]],
       sigma_bright);
   }
   
@@ -119,7 +119,7 @@ generated quantities{
     slope_arboreal_load * arboreal_prob[spp_id_load] +
     slope_arid_load * arid_prob[spp_id_load] +
     slope_age * island_age_load[island_id_load] +
-    slope_area * log_island_area_load[island_id_load];);
+    slope_area * log_island_area_load[island_id_load]);
 
   }
   

@@ -351,3 +351,18 @@ mcmc_areas(
 )
 ```
 
+```{r}
+
+# Fit the model using cmdstanr
+gq_slopepos_load <- cmdstan_model(
+  stan_file = here::here("stan/gq_full_model_commonspp_slopepos_load.stan"), 
+  pedantic = TRUE
+)
+
+
+gq_logit_NCP <- bright_logit_NCP_gq$generate_quantities(
+  fitted_params = fit_bright_logit_NCP,
+  data = data_list
+)
+```
+
