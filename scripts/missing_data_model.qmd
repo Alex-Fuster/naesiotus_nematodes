@@ -366,3 +366,26 @@ all_spp_arbor_veg_bright_samp <- all_spp_arbor_veg_bright$sample(
 )
 ```
 
+let's look now at species brightness predictions from this model
+
+```{r}
+bright_rvars <- all_spp_arbor_veg_bright_samp |> 
+  tidybayes::gather_rvars(true_ln_bright[species_code]) |> 
+  mutate(brightness = exp(.value),
+         species_code = forcats::fct_reorder(as.character(species_code), .value))
+
+post_bright <- bright_rvars |> 
+  ggplot(aes(x = species_code, ydist = brightness)) + 
+  stat_pointinterval() + 
+  scale_y_log10()
+
+post_bright + 
+  geom_point(aes(x = species_code_f, y = brightness), inherit.aes = FALSE, 
+             data = df_bright_noNA |> 
+               mutate(species_code_f = ordered(species_code, levels = levels(bright_rvars$species_code))), 
+             colour = "orange",
+             size = .5, alpha = .5,
+             position = position_jitter(width = .3))
+
+```
+
