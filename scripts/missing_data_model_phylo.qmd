@@ -78,9 +78,6 @@ df_island
 ```{r}
 df_load_raw <- read_excel(path = here::here("data/19july24_datalab.xlsx"), sheet = 3)
 
-# df_load |> glimpse()
-
-
 df_load_raw$nematode_count[which(df_load_raw$nematode_count == ">100")] <- "100"
 df_load_raw$nematode_count <- as.numeric(df_load_raw$nematode_count)
 
@@ -91,7 +88,9 @@ df_load_rename <- df_load_raw %>%
 # correct species names
 df_load <- df_load_rename %>%
   left_join(species_names_df |> select(species, species_code),
-            by = "species")
+            by = "species") |> 
+  left_join(df_island |> select(island, island_code),
+            by = "island")
 df_load
 
 ```
@@ -106,7 +105,7 @@ HOWEVER, species-island associations are only found in the load dataset
 
 ```{r}
 sp_code_island_df <- df_load |> 
-  select(species, species_code, island) |> 
+  select(species, species_code, island, island_code) |> 
   distinct() |> 
   left_join(df_island)
 
@@ -449,6 +448,12 @@ df_load <- read_excel(here::here("data/19july24_datalab.xlsx"), sheet = 3)
 df_load$nematode_count[which(df_load$nematode_count == ">100")] <- "100"
 df_load$nematode_count <- as.numeric(df_load$nematode_count)
 
+# correct species names
+
+df_load <- df_load |> 
+  rename(species = spp) |> 
+  left_join(species_names_df |>  select(species, species_code))
+
 ```
 
 Correct names in the RAD database 
@@ -714,8 +719,8 @@ ggarrange(
 ```{r}
 # Ensure df_load has the species_code and island_code columns
 df_load <- df_load %>%
-  left_join(sp_code_island_df %>% select(species, island_code), 
-            by = "species")
+  left_join(sp_code_island_df %>% select(species_code, island_code), 
+            by = "species_code")
 ```
 
 
@@ -767,7 +772,8 @@ all_spp_load_samp <- all_spp_load_phylo$sample(
   # Phylogenetic covariance matrix
   phylo_cov_matrix = phylo_cov_matrix_final  # Phylogenetic covariance matrix
 ),
-  chains = 4, parallel_chains = 4, refresh = 0
+  chains = 4, parallel_chains = 4, refresh = 0,
+output_dir = here::here("output/models/missing_data_load_phylo")
 )
 
 
@@ -775,15 +781,66 @@ all_spp_load_samp <- all_spp_load_phylo$sample(
 ```
 
 
+
+```{r}
+# read in the model from above
+all_spp_load_samp <- as_cmdstan_fit(dir(here::here("output/models/missing_data_load_phylo"), full.names = TRUE))
+```
+
+
+## Predictios brightness
+
+```{r}
+bright_rvars_phylo <- all_spp_load_samp |> 
+  tidybayes::gather_rvars(true_ln_bright[species_code]) |> 
+  mutate(brightness = exp(.value),
+         species_code = forcats::fct_reorder(as.character(species_code), .value))
+
+
+# ! the errors for species with missing data are too high - this generates NaN and can't plot it
+
+
+##################
+# Create a named vector for species names
+species_code_to_name <- setNames(sp_code_island_df$species, sp_code_island_df$species_code)
+
+# Replace species codes with species names in bright_rvars
+bright_rvars_phylo <- bright_rvars_phylo %>%
+  mutate(species_name = species_code_to_name[as.character(species_code)])
+
+# Replace species codes with species names in df_bright_noNA
+df_bright_noNA <- df_bright_noNA %>%
+  mutate(species_name = species_code_to_name[as.character(species_code)])
+#################
+
+post_bright_phylo <- bright_rvars_phylo |> 
+  ggplot(aes(x = species_name, ydist = brightness)) + 
+  stat_pointinterval() + 
+  scale_y_log10()
+
+post_bright_phylo <- post_bright_phylo + 
+  geom_point(aes(x = species_name, y = brightness), inherit.aes = FALSE, 
+             data = df_bright_noNA, 
+             colour = "red",
+             size = .5, alpha = .5,
+             position = position_jitter(width = .3)) +
+  theme_minimal() +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  xlab(NULL)
+
+post_bright_phylo
+```
+
+
+## Predictios load
+
 ```{r}
 
-# Extract the predicted values from the Stan fit object
-predicted_brightness <- all_spp_load_samp$draws("true_ln_bright")
 predicted_load <- all_spp_load_samp$draws("predicted_nematode_load")
 
 # Convert the extracted predictions to a format suitable for bayesplot
 predicted_load <- as_draws_matrix(predicted_load)
-predicted_brightness <- as_draws_matrix(predicted_brightness)
 
 # Posterior predictive check for nematode load
 ppc_load <-  ppc_dens_overlay(y = df_load$nematode_count, yrep = predicted_load) +
@@ -795,30 +852,118 @@ ppc_load <-  ppc_dens_overlay(y = df_load$nematode_count, yrep = predicted_load)
                     labels = c("Observed load", "Predicted load"))+
   my_theme
 
-# Posterior predictive check for brightness
-observed_brightness <- df_bright$brightness
-ppc_brightness <- ppc_dens_overlay(y = observed_brightness, yrep = predicted_brightness) +
-  scale_color_manual(name = "Legend",
-                     values = c("y" = "black", "yrep" = "coral"),
-                     labels = c("Observed brightness", "Predicted brightness")) +
-  scale_fill_manual(name = "Legend",
-                    values = c("y" = "black", "yrep" = "coral"),
-                    labels = c("Observed brightness", "Predicted brightness"))+
-  xlim(0,60000)
-  my_theme
+
+```
 
 
-ppc_plots_load_bright <- ggarrange(
+```{r}
+# Extract the posterior samples
+posterior_samples <- all_spp_load_samp$draws()
+
+
+posterior_df <- as_draws_df(posterior_samples)
+
+all_spp_load_samp$diagnostic_summary()
+
+all_spp_load_samp$summary()
+
+mcmc_areas(
+  posterior_df,
+  pars = vars(starts_with("slope")),
+  prob = 0.8  
+)
+```
+
+
+
+# Add constrains
+
+slope priors:
+
+slope_arbor_bright ~ normal(0, 0.5) T[0, ];  // Biased towards positive (Kraemer et al. 2019)
+slope_age_bright ~ normal(0, 0.5) T[, 0];  // Biased towards negative (Kraemer et al. 2019)
+
+
+```{r}
+#| class-output: stan
+all_spp_load_phylo_constrained <- cmdstan_model(here::here("stan/all_spp_load_phylo_constrained.stan"),
+                                          pedantic = TRUE)
+
+all_spp_load_phylo_constrained
+```
+
+
+```{r}
+
+# Data code including phylogenetic covariance matrix
+all_spp_load_constrained_samp <- all_spp_load_phylo_constrained$sample(
+  data = list(
+  N_spp = nrow(sp_code_island_df),  # Number of species (47)
+  N_island = max(sp_code_island_df$island_code),
+  sp_id = sp_code_island_df$species_code,
+  island_area = sp_code_island_df$island_area,
+  island_age = sp_code_island_df$island_age,
+  island_index_spp = sp_code_island_df$island_code,
   
-  ppc_load,
-  ppc_brightness,
-  labels = LETTERS[1:2],
-  ncol = 1,
-  nrow = 2
+  # Habitat data
+  N_habitat = nrow(df_hab),
+  habitat_arboreal = df_hab$arboreal,
+  total_hab = df_hab$total_hab,
+  sp_index_hab = df_hab$species_code,
+  
+  # Vegetation zone data
+  N_veg = nrow(df_veg),
+  veg_arid = df_veg$arid,
+  total_veg = df_veg$total_veg,
+  sp_index_veg = df_veg$species_code,
+  
+  # Brightness data
+  N_bright = nrow(df_bright_noNA), 
+  brightness_obs = df_bright_noNA$brightness,
+  sp_index_bright = df_bright_noNA$species_code,
+  
+  # Nematode load data
+  N_load = nrow(df_load),  # Total observations for nematode load
+  nematode_count = df_load$nematode_count,
+  sp_index_load = df_load$species_code,  # Use species_code from df_load
+  island_index_load = df_load$island_code,  # Use island_code from df_load
+  
+  # Phylogenetic covariance matrix
+  phylo_cov_matrix = phylo_cov_matrix_final  # Phylogenetic covariance matrix
+),
+  chains = 4, parallel_chains = 4, refresh = 0,
+output_dir = here::here("output/models/missing_data_load_phylo_constrained")
 )
 
-ppc_plots_load_bright
 
 
+```
+
+
+
+```{r}
+# read in the model from above
+all_spp_load_constrained_samp <- as_cmdstan_fit(dir(here::here("output/models/missing_data_load_phylo_constrained"), full.names = TRUE))
+```
+
+
+
+
+```{r}
+# Extract the posterior samples
+posterior_samples <- all_spp_load_constrained_samp$draws()
+
+
+posterior_df <- as_draws_df(posterior_samples)
+
+all_spp_load_constrained_samp$diagnostic_summary()
+
+all_spp_load_constrained_samp$summary()
+
+mcmc_areas(
+  posterior_df,
+  pars = vars(starts_with("slope")),
+  prob = 0.8  
+)
 ```
 
