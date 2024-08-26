@@ -726,9 +726,12 @@ ggarrange(
 ```
 
 
+- negligible changes in brightness when adding phylogenetic information
 
 
-#####################
+
+
+# model load adding phylogenetic information
 
 
 
@@ -1069,3 +1072,5 @@ mcmc_areas(
   prob = 0.8  
 )
 ```
+
+
