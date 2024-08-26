@@ -82,7 +82,7 @@ model {
   island_effect_bright ~ normal(0, sd_ln_bright_island);
   slope_arbor_bright ~ normal(0, 0.5) T[0, ];  // Biased towards positive 
   slope_arid_bright ~ normal(0, 0.5);
-  slope_age_bright ~ normal(0, 0.5); //T[, 0];  // Biased towards negative 
+  slope_age_bright ~ normal(0, 0.5) T[, 0];  // Biased towards negative 
   slope_area_bright ~ normal(0, 0.5);
   sigma_bright ~ exponential(0.5);
   
