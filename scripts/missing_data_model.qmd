@@ -362,7 +362,7 @@ all_spp_arbor_veg_bright_samp <- all_spp_arbor_veg_bright$sample(
     brightness_obs = df_bright_noNA$brightness,
     sp_index_bright = df_bright_noNA$species_code
   ),
-  chains = 4, parallel_chains = 4, refresh = 0
+  chains = 4, parallel_chains = 4, refresh = 500
 )
 ```
 
@@ -388,4 +388,78 @@ post_bright +
              position = position_jitter(width = .3))
 
 ```
+
+## Parasite load also
+
+
+```{r}
+#| class-output: stan
+all_spp_arbor_veg_bright_load <- cmdstan_model(here::here("stan/all_spp_arbor_veg_bright_load.stan"),
+                                          pedantic = TRUE)
+
+all_spp_arbor_veg_bright_load
+```
+
+
+```{r}
+all_spp_arbor_veg_bright_load_samp <- all_spp_arbor_veg_bright_load$sample(
+  data = list(
+    N_spp = nrow(sp_code_island_df),
+    N_island = max(sp_code_island_df$island_code),
+    sp_id = sp_code_island_df$species_code,
+    island_area = sp_code_island_df$island_area,
+    island_age = sp_code_island_df$island_age,
+    island_index_spp = sp_code_island_df$island_code,
+    # microhabitat
+    N_habitat = nrow(df_hab),
+    habitat_arboreal = df_hab$arboreal,
+    total_hab = df_hab$total_hab,
+    sp_index_hab = df_hab$species_code,
+    # veg zone
+    N_veg = nrow(df_veg),
+    veg_arid = df_veg$arid,
+    total_veg = df_veg$total_veg,
+    sp_index_veg = df_veg$species_code,
+    # brightness data
+    N_bright = nrow(df_bright_noNA), 
+    brightness_obs = df_bright_noNA$brightness,
+    sp_index_bright = df_bright_noNA$species_code,
+    # load data
+    N_load = nrow(df_load),
+    load_obs = df_load$nematode_count,
+    sp_index_load = df_load$species_code
+  ),
+  chains = 4, parallel_chains = 4, refresh = 500
+)
+```
+
+let's look now at species brightness predictions from this model
+
+```{r}
+bright_rvars <- all_spp_arbor_veg_bright_load_samp |> 
+  tidybayes::gather_rvars(true_ln_bright[species_code]) |> 
+  mutate(brightness = exp(.value),
+         species_code = forcats::fct_reorder(as.character(species_code), .value))
+
+post_bright <- bright_rvars |> 
+  ggplot(aes(x = species_code, ydist = brightness)) + 
+  stat_pointinterval() + 
+  scale_y_log10()
+
+post_bright + 
+  geom_point(aes(x = species_code_f, y = brightness), inherit.aes = FALSE, 
+             data = df_bright_noNA |> 
+               mutate(species_code_f = ordered(species_code, levels = levels(bright_rvars$species_code))), 
+             colour = "orange",
+             size = .5, alpha = .5,
+             position = position_jitter(width = .3))
+
+```
+
+
+```{r}
+all_spp_arbor_veg_bright_load_samp |> 
+  tidybayes::gather_rvars("slope_bright_load")
+```
+
 
