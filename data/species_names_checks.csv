@@ -2,7 +2,7 @@ annotated_name,species_name
 akamatus,akamatus
 albemarlensis,albemarlensis
 albermarlensis,albemarlensis
-cf. albemarlensis,albemarlensis
+cf. albemarlensis,sp_nov_CA
 amastroides,amastroides
 cf. amastroides,amastroides
 basiplicatus,basiplicatus
@@ -24,7 +24,7 @@ CF. HIRSUTUS,hirsutus
 cf. hirsutus,hirsutus
 invalidus,invalidus
 invalidus 1,invalidus
-invalidus 2,invalidus
+invalidus 2,
 cf. invalidus,invalidus
 jacobinus,jacobinus
 lycodus,lycodus
@@ -35,7 +35,7 @@ cf. nux,nux
 ochsneri,ochsneri
 olla,olla
 perspectivus,perspectivus
-perspectivus 1,perspectivus
+perspectivus 1,
 perspectivus 2,perspectivus
 cf. perspectivus,perspectivus
 planospira,planospira
@@ -44,24 +44,24 @@ reibischi,reibischi
 rugiferus,rugiferus
 sculpturatus,sculpturatus
 sculpturatus 1,sculpturatus
-sculpturatus 2,sculpturatus
-sculpturatus 3,sculpturatus
+sculpturatus 2,
+sculpturatus 3,
 simrothi,simrothi
 simrothi 1,simrothi
-simrothi 2,simrothi
+simrothi 2,
 snodgrassi,snodgrassi
 spp1,sp. nov. Darwin 1
-spp11,sp_nov_11
+spp11,pinzonopsis
 spp12,sp. nov. pinzon 1
 spp13,sp. nov. Pinta 2
-spp14,sp_nov_14
+spp14,sp_nov_CH
 spp15,rugulosus
 spp2,sp. nov. Volcan Wolf 3
 spp3,pallidus
 spp4,perrus 1
 spp6,ventrosus
 spp7,approximatus
-spp8,cf. albemarlensis
+spp8,sp_nov_CA
 spp9,pinzonensis
 tanneri,tanneri
 tortuganus,tortuganus
@@ -73,8 +73,8 @@ ustulatus phlegonis,ustulatus
 ustulatus mahogany,ustulatus
 wolfi,wolfi
 wolfi 1,wolfi
-wolfi 2,wolfi
-wolfi 3,wolfi
+wolfi 2,
+wolfi 3,
 wolfi garrapatero,wolfi
 wolfi occidente,wolfi
 nux basiplicatus SL,
@@ -90,13 +90,13 @@ curtus,
 eschariferus ventrosus,
 indefatigabilis,
 nilsodhneri,
-pallidus,
+pallidus,pallidus
 perrus 1,perrus 1
 perrus 2,
 pinzonensis,pinzonensis
-pinzonopsis,
+pinzonopsis,pinzonopsis
 rugatinus,
-sp nov Pinzon,
+sp nov Pinzon,sp. nov. pinzon 1
 unknownblack,
 Brantsnail Clade,
 Brown guys,
@@ -118,7 +118,7 @@ chato black,
 elaeodes,
 hemaerodes,
 "little Black, Garrapatero",
-olla jacobinus*,
+olla jacobinus*,olla
 perspectivus/canaliferus??,
 sp. nov. Alcedo 1,
 sp. nov. Darwin 1,sp. nov. Darwin 1
@@ -128,7 +128,7 @@ sp. nov. Pinta 2,sp. nov. Pinta 2
 sp. nov. Volcan Wolf 1,
 sp. nov. Volcan Wolf 2,
 sp. nov. Volcan Wolf 3,sp. nov. Volcan Wolf 3
-sp. nov. pinzon 1,
+sp. nov. pinzon 1,sp. nov. pinzon 1
 sulcatus (yellow nux),
 testing Pinta divergence,
 ventrosus,ventrosus

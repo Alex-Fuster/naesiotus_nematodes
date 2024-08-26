@@ -56,7 +56,7 @@ species_code_df <- species_names_df |>
 species_code_df
 ```
 
--   correct "sp. nov. Volc\xe1n Wolf 3" in the datasets
+
 
 ## island info
 
@@ -107,7 +107,8 @@ HOWEVER, species-island associations are only found in the load dataset
 sp_code_island_df <- df_load |> 
   select(species, species_code, island, island_code) |> 
   distinct() |> 
-  left_join(df_island)
+  left_join(df_island) |> 
+  left_join(species_names_df |> select(species_name, species_code))
 
 sp_code_island_df |> 
   head() |> 
@@ -463,55 +464,7 @@ df_load <- read_excel(here::here("data/19july24_datalab.xlsx"), sheet = 3)
 df_load$nematode_count[which(df_load$nematode_count == ">100")] <- "100"
 df_load$nematode_count <- as.numeric(df_load$nematode_count)
 
-# correct species names
-
-df_load <- df_load |> 
-  rename(species = spp) |> 
-  left_join(species_names_df |>  select(species, species_code))
-
 ```
-
-Correct names in the RAD database 
-
-```{r}
-# Names checks
-
-#df_rads[which(df_rads$Taxon == "albermarlensis"),] <- "albemarlensis"
-df_rads[which(df_rads$Taxon == "cf. albemarlensis"),"Taxon"] <- "albemarlensis"
-
-#df_rads[which(df_rads$Taxon == "ustulatus pallescens"),] <- "ustulatus"
-#df_rads[which(df_rads$Taxon == "ustulatus phlegonis"),] <- "ustulatus"
-#df_rads[which(df_rads$Taxon == "ustulatus mahogany"),] <- "ustulatus"
-
-df_rads[which(df_rads$Taxon == "invalidus 1"),"Taxon"] <- "invalidus"
-df_rads[which(df_rads$Taxon == "invalidus 2"),"Taxon"] <- "invalidus"
-
-df_rads[which(df_rads$Taxon == "sculpturatus 1"),"Taxon"] <- "sculpturatus"
-df_rads[which(df_rads$Taxon == "sculpturatus 2"),"Taxon"] <- "sculpturatus"
-df_rads[which(df_rads$Taxon == "sculpturatus 3"),"Taxon"] <- "sculpturatus"
-
-df_rads[which(df_rads$Taxon == "wolfi 1"),"Taxon"] <- "wolfi"
-df_rads[which(df_rads$Taxon == "wolfi 2"),"Taxon"] <- "wolfi"
-df_rads[which(df_rads$Taxon == "wolfi 3"),"Taxon"] <- "wolfi"
-
-df_rads[which(df_rads$Taxon == "cf. perspectivus"),"Taxon"] <- "perspectivus"
-df_rads[which(df_rads$Taxon == "perspectivus 1"),"Taxon"] <- "perspectivus"
-df_rads[which(df_rads$Taxon == "perspectivus 2"),"Taxon"] <- "perspectivus"
-
-df_rads[which(df_rads$Taxon == "cf. amastroides"),"Taxon"] <- "amastroides"
-
-df_rads[which(df_rads$Taxon == "canaliferus 1"),"Taxon"] <- "canaliferus"
-df_rads[which(df_rads$Taxon == "canaliferus 2"),"Taxon"] <- "canaliferus"
-
-df_rads[which(df_rads$Taxon == "simrothi 1"),"Taxon"] <- "simrothi"
-df_rads[which(df_rads$Taxon == "simrothi 2"),"Taxon"] <- "simrothi"
-
-df_rads[which(df_rads$Taxon == "cf. tortuganus"),"Taxon"] <- "tortuganus"
-
-df_rads[which(df_rads$Taxon == "cf. nux"),"Taxon"] <- "nux"
-
-```
-
 
 
 ```{r}
@@ -530,10 +483,21 @@ plot(tree)
 
 
 
+Replace with assessed species names
+
+```{r}
+species_lookup <- setNames(species_names_df$species_name, species_names_df$species)
+tree$tip.label <- species_lookup[tree$tip.label]
+
+plot(tree)
+```
+
+
+
 Prune tree, discarting those species not assessed for load
 
 ```{r}
-pruned.tree<-drop.tip(tree, setdiff(tree$tip.label, sp_code_island_df$species))
+pruned.tree<-drop.tip(tree, setdiff(tree$tip.label, sp_code_island_df$species_name))
 
 plot(pruned.tree)
 ```

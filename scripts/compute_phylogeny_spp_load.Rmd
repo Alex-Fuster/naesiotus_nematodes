@@ -1,0 +1,144 @@
+---
+title: "R Notebook"
+---
+
+
+The RAD sequencing showed that there are several cryptic species and the taxonomy of the group needs to be revisited.
+
+When sampling nematode interactions in the dry collection, the snail species' names were annotated according to the classic taxonomy and doesnt follow the level of detailed differenciation reconstructed by the rad sequencing tree. 
+
+However, for those species for which cryptic lineages are identified and now appear as different nodes in the tree, we can approximate the taxa identity that was assessed for the load based on the location of the sampled populations. I therefore discard those lineages among a cryptic species complex for which I dont measure individuals of its location (based on individuals' ID):
+
+- **Invalidus 2**
+- **Wolfi 2, Wolfi 3**
+- **sculpturatus 2, sculpturatus 3**
+- **Simrothi 2**
+
+An arbitrary decision justified by proximity of sampling location:
+
+- **Perspectivus**: perspectivus 1 dicarded. I only measure perspectivus from 2005 and locations SL05-01 and SL05-02. The closest to this location are cf. perspectivus and perspectivus 2, so I keep these.
+
+
+A completely arbitrary decision:
+
+- **Canaliferous**: canaliferous individuals measured are not from neither canaliferous 1 or canaliferous 2 areas, so it can be assigned to any of them. 
+
+I need to repeat analysis with different options for the decision on canalifrous (one discarding canaliferous 1 and another canaliferous 2) to make sure it doesnt impact the overall results.
+
+
+```{r setup-packages}
+#| message: false
+#| warning: false
+library(tidyverse)
+library(readxl)
+library(ggpubr)
+library(phytools)
+library(ape)
+
+```
+
+
+
+
+# Generate tree
+
+### tree from raw rad seq data
+
+```{r}
+
+# tree file
+tree <- read.tree(here::here("data/phylogeny_2022/22Nov_Naesiotus.nwk"))
+
+tree<- as.phylo(tree)
+
+```
+
+
+Add names to the tips
+
+```{r}
+# codes for the tip names
+df_rads <- read_excel(here::here("data/GPS RAD snails.xlsx"))
+
+# Create a mapping between Sample and Taxon
+sample_to_taxon <- setNames(df_rads$Taxon, df_rads$Sample)
+
+# Replace tip labels in the tree with corresponding taxa
+tree$tip.label <- sample_to_taxon[tree$tip.label]
+
+plot(tree)
+
+```
+
+
+We can see several cryptic species complex and some invalid names.
+
+
+## Prune tree with assessed species
+
+Note that species_names_df doesnt asign any name to those taxa that we didn't assessed for load. This is where we also choose to consider either canaliferus 1 or canaliferus 2 (arbitrary decision, as we cannot know which ones we measured based on their location), by assigning the name "canaliferous" to one of them.
+
+
+#### get species names mapping
+
+```{r}
+species_names_df_raw <- read.csv(here::here("data/species_names_checks.csv"))
+
+# arbitraty choice - eliminate canaliferous 2
+species_names_df_raw[which(species_names_df_raw$annotated_name == "canaliferus 2"), "species_name"] <- ""
+
+# we're dropping the species with no name in this database. 
+# this indicates morphospecies which have no formal name
+species_names_df <- species_names_df_raw %>% 
+  rename(species = annotated_name)  %>% 
+  filter(species_name != "") |> 
+  mutate(species_code = as.numeric(factor(species_name)))
+
+```
+
+
+
+First, replace tip names by correct names based on the species names mapping dataframe:
+
+```{r}
+species_lookup <- setNames(species_names_df$species_name, species_names_df$species)
+tree$tip.label <- species_lookup[tree$tip.label]
+
+plot(tree)
+```
+
+
+### Prune tree, discarting those species not assessed for load
+
+First, we create the list of species assessed for load and correct its names based on the species mapping dataframe:
+
+
+```{r}
+df_load_raw <- read_excel(path = here::here("data/19july24_datalab.xlsx"), sheet = 3)
+
+df_load_raw$nematode_count[which(df_load_raw$nematode_count == ">100")] <- "100"
+df_load_raw$nematode_count <- as.numeric(df_load_raw$nematode_count)
+
+df_load_rename <- df_load_raw %>% 
+  select(id, spp, nematode_count, island) %>% 
+  rename(species = spp)
+
+# correct species names in load dataset
+df_spp_load <- df_load_rename %>%
+  left_join(species_names_df |> select(species, species_code),
+            by = "species") |> 
+  select(species, species_code) |> 
+  distinct() |> 
+  left_join(species_names_df |> select(species_name, species_code))|> 
+  distinct()
+
+df_spp_load
+```
+
+Then, we prune the tree to keep only species assessed for load:
+
+```{r}
+pruned.tree<-drop.tip(tree, setdiff(tree$tip.label, df_spp_load$species_name))
+
+plot(pruned.tree)
+```
