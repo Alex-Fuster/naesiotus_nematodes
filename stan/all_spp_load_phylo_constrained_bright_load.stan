@@ -80,9 +80,9 @@ model {
   sd_ln_bright_island ~ exponential(0.5);
   sp_effect_bright ~ normal(0, sd_ln_bright_sp);
   island_effect_bright ~ normal(0, sd_ln_bright_island);
-  slope_arbor_bright ~ normal(0, 0.5) T[0, ];  // Biased towards positive 
+  slope_arbor_bright ~ normal(0.5, 0.5);  // Biased towards positive 
   slope_arid_bright ~ normal(0, 0.5);
-  slope_age_bright ~ normal(0, 0.5) T[, 0];  // Biased towards negative 
+  slope_age_bright ~ normal(-0.5, 0.5);  // Biased towards negative 
   slope_area_bright ~ normal(0, 0.5);
   sigma_bright ~ exponential(0.5);
   
@@ -91,8 +91,8 @@ model {
   sd_load_sp ~ exponential(0.5);
   sd_load_island ~ exponential(0.5);
   slope_bright_load ~ normal(0, 0.5);
-  slope_arbor_load ~ normal(0, 0.5) T[, 0];  // Biased towards negative
-  slope_arid_load ~ normal(0, 0.5) T[, 0];  // Biased towards negative
+  slope_arbor_load ~ normal(-0.5, 0.5);  // Biased towards negative
+  slope_arid_load ~ normal(-0.5, 0.5);  // Biased towards negative
   slope_age_load ~ normal(0, 0.5);
   slope_area_load ~ normal(0, 0.5);
   
