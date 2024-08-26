@@ -863,9 +863,9 @@ posterior_samples <- all_spp_load_samp$draws()
 
 posterior_df <- as_draws_df(posterior_samples)
 
-all_spp_load_samp$diagnostic_summary()
+#all_spp_load_samp$diagnostic_summary()
 
-all_spp_load_samp$summary()
+#all_spp_load_samp$summary()
 
 mcmc_areas(
   posterior_df,
@@ -956,9 +956,9 @@ posterior_samples <- all_spp_load_constrained_samp$draws()
 
 posterior_df <- as_draws_df(posterior_samples)
 
-all_spp_load_constrained_samp$diagnostic_summary()
+#all_spp_load_constrained_samp$diagnostic_summary()
 
-all_spp_load_constrained_samp$summary()
+#all_spp_load_constrained_samp$summary()
 
 mcmc_areas(
   posterior_df,

@@ -52,17 +52,17 @@ simrothi 2,simrothi
 snodgrassi,snodgrassi
 spp1,sp. nov. Darwin 1
 spp11,sp_nov_11
-spp12,pinzonensis
+spp12,sp. nov. pinzon 1
 spp13,sp. nov. Pinta 2
 spp14,sp_nov_14
 spp15,rugulosus
-spp2,sp. nov. Volc�n Wolf 3
-spp3,sp_nov_3
+spp2,sp. nov. Volcan Wolf 3
+spp3,pallidus
 spp4,perrus 1
 spp6,ventrosus
 spp7,approximatus
 spp8,cf. albemarlensis
-spp9,sp_nov_9
+spp9,pinzonensis
 tanneri,tanneri
 tortuganus,tortuganus
 cf. tortuganus,tortuganus
@@ -125,10 +125,10 @@ sp. nov. Darwin 1,sp. nov. Darwin 1
 sp. nov. Darwin 2,
 sp. nov. Pinta 1,
 sp. nov. Pinta 2,sp. nov. Pinta 2
-sp. nov. Volcán Wolf 1,
-sp. nov. Volcán Wolf 2,
-sp. nov. Volcán Wolf 3,sp. nov. Volc�n Wolf 3
-sp. nov. pinzón 1,
+sp. nov. Volcan Wolf 1,
+sp. nov. Volcan Wolf 2,
+sp. nov. Volcan Wolf 3,sp. nov. Volcan Wolf 3
+sp. nov. pinzon 1,
 sulcatus (yellow nux),
 testing Pinta divergence,
 ventrosus,ventrosus
