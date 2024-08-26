@@ -259,6 +259,21 @@ sp_code_island_df |>
 df_bright_noNA |> head() |> knitr::kable()
 ```
 
+
+#### load data
+
+
+```{r}
+# Ensure df_load has the species_code and island_code columns
+df_load <- df_load %>%
+  left_join(sp_code_island_df %>% select(species_code, island_code), 
+            by = "species_code")
+
+df_load |> head() |> knitr::kable()
+```
+
+
+
 # Models
 
 Building up slowly from a simple model -- unfortunately, the only way I know how to do this kind of work.
@@ -606,6 +621,10 @@ print(eigen_values)
 
 # model brightness adding phylogenetic information
 
+
+In the model, we treat the phylogenetic effects as random effects that influence the species-level traits (e.g., brightness or nematode load). We assume that these random effects are distributed according to a multivariate normal distribution with a covariance structure given by the phylogenetic covariance matrix.
+
+
 ```{r}
 #| class-output: stan
 all_spp_arbor_veg_bright_phylo <- cmdstan_model(here::here("stan/all_spp_arbor_veg_bright_phylo.stan"),
@@ -712,18 +731,6 @@ ggarrange(
 #####################
 
 
-# Add nematode load
-
-
-
-```{r}
-# Ensure df_load has the species_code and island_code columns
-df_load <- df_load %>%
-  left_join(sp_code_island_df %>% select(species_code, island_code), 
-            by = "species_code")
-```
-
-
 
 ```{r}
 #| class-output: stan
@@ -797,9 +804,6 @@ bright_rvars_phylo <- all_spp_load_samp |>
          species_code = forcats::fct_reorder(as.character(species_code), .value))
 
 
-# ! the errors for species with missing data are too high - this generates NaN and can't plot it
-
-
 ##################
 # Create a named vector for species names
 species_code_to_name <- setNames(sp_code_island_df$species, sp_code_island_df$species_code)
@@ -831,6 +835,11 @@ post_bright_phylo <- post_bright_phylo +
 
 post_bright_phylo
 ```
+
+
+
+
+- The errors for species with missing data are too high - this generates NaN and can't plot it.
 
 
 ## Predictios load
@@ -875,28 +884,30 @@ mcmc_areas(
 ```
 
 
+- curves are extremely flat, except for brightness which has an extremely narrow variance.
+
 
 # Add constrains
 
-slope priors:
+Trying first with a couple of constrains on brightness supported by Kraemer et al. 2019. We know snails are brighter if they are arboreous, and that brightness decreases with island age. Constrains are added to slope priors:
 
 slope_arbor_bright ~ normal(0, 0.5) T[0, ];  // Biased towards positive (Kraemer et al. 2019)
-slope_age_bright ~ normal(0, 0.5) T[, 0];  // Biased towards negative (Kraemer et al. 2019)
+slope_age_bright ~ normal(0.5, 0) T[, 0];  // Biased towards negative (Kraemer et al. 2019)
 
 
 ```{r}
 #| class-output: stan
-all_spp_load_phylo_constrained <- cmdstan_model(here::here("stan/all_spp_load_phylo_constrained.stan"),
+all_spp_load_phylo_constrained_bright <- cmdstan_model(here::here("stan/all_spp_load_phylo_constrained_bright.stan"),
                                           pedantic = TRUE)
 
-all_spp_load_phylo_constrained
+all_spp_load_phylo_constrained_bright
 ```
 
 
 ```{r}
 
 # Data code including phylogenetic covariance matrix
-all_spp_load_constrained_samp <- all_spp_load_phylo_constrained$sample(
+all_spp_load_constrained_bright_samp <- all_spp_load_phylo_constrained_bright$sample(
   data = list(
   N_spp = nrow(sp_code_island_df),  # Number of species (47)
   N_island = max(sp_code_island_df$island_code),
@@ -932,7 +943,7 @@ all_spp_load_constrained_samp <- all_spp_load_phylo_constrained$sample(
   phylo_cov_matrix = phylo_cov_matrix_final  # Phylogenetic covariance matrix
 ),
   chains = 4, parallel_chains = 4, refresh = 0,
-output_dir = here::here("output/models/missing_data_load_phylo_constrained")
+output_dir = here::here("output/models/missing_data_load_phylo_constrained_bright")
 )
 
 
@@ -943,7 +954,7 @@ output_dir = here::here("output/models/missing_data_load_phylo_constrained")
 
 ```{r}
 # read in the model from above
-all_spp_load_constrained_samp <- as_cmdstan_fit(dir(here::here("output/models/missing_data_load_phylo_constrained"), full.names = TRUE))
+all_spp_load_constrained_bright_samp <- as_cmdstan_fit(dir(here::here("output/models/missing_data_load_phylo_constrained_bright"), full.names = TRUE))
 ```
 
 
@@ -951,7 +962,7 @@ all_spp_load_constrained_samp <- as_cmdstan_fit(dir(here::here("output/models/mi
 
 ```{r}
 # Extract the posterior samples
-posterior_samples <- all_spp_load_constrained_samp$draws()
+posterior_samples <- all_spp_load_constrained_bright_samp$draws()
 
 
 posterior_df <- as_draws_df(posterior_samples)
@@ -967,3 +978,94 @@ mcmc_areas(
 )
 ```
 
+
+
+# Add further constrains
+
+We add further constrains based on the nematode's biology (supported by studies, but not referenced here).
+
+slope_arid_load ~ normal(0.5, 0) T[0, ];  // Biased towards negative
+slope_arbor_load ~ normal(0.5, 0) T[, 0];  // Biased towards negative
+
+```{r}
+#| class-output: stan
+all_spp_load_phylo_constrained_bright_load <- cmdstan_model(here::here("stan/all_spp_load_phylo_constrained_bright_load.stan"),
+                                          pedantic = TRUE)
+
+all_spp_load_phylo_constrained_bright_load
+```
+
+
+```{r}
+
+# Data code including phylogenetic covariance matrix
+all_spp_load_constrained_bright_load_samp <- all_spp_load_phylo_constrained_bright_load$sample(
+  data = list(
+  N_spp = nrow(sp_code_island_df),  # Number of species (47)
+  N_island = max(sp_code_island_df$island_code),
+  sp_id = sp_code_island_df$species_code,
+  island_area = sp_code_island_df$island_area,
+  island_age = sp_code_island_df$island_age,
+  island_index_spp = sp_code_island_df$island_code,
+  
+  # Habitat data
+  N_habitat = nrow(df_hab),
+  habitat_arboreal = df_hab$arboreal,
+  total_hab = df_hab$total_hab,
+  sp_index_hab = df_hab$species_code,
+  
+  # Vegetation zone data
+  N_veg = nrow(df_veg),
+  veg_arid = df_veg$arid,
+  total_veg = df_veg$total_veg,
+  sp_index_veg = df_veg$species_code,
+  
+  # Brightness data
+  N_bright = nrow(df_bright_noNA), 
+  brightness_obs = df_bright_noNA$brightness,
+  sp_index_bright = df_bright_noNA$species_code,
+  
+  # Nematode load data
+  N_load = nrow(df_load),  # Total observations for nematode load
+  nematode_count = df_load$nematode_count,
+  sp_index_load = df_load$species_code,  # Use species_code from df_load
+  island_index_load = df_load$island_code,  # Use island_code from df_load
+  
+  # Phylogenetic covariance matrix
+  phylo_cov_matrix = phylo_cov_matrix_final  # Phylogenetic covariance matrix
+),
+  chains = 4, parallel_chains = 4, refresh = 0,
+output_dir = here::here("output/models/missing_data_load_phylo_constrained_bright_load")
+)
+
+
+
+```
+
+
+
+```{r}
+# read in the model from above
+all_spp_load_constrained_bright_load_samp <- as_cmdstan_fit(dir(here::here("output/models/missing_data_load_phylo_constrained_bright_load"), full.names = TRUE))
+```
+
+
+
+
+```{r}
+# Extract the posterior samples
+posterior_samples <- all_spp_load_constrained_bright_load_samp$draws()
+
+
+posterior_df <- as_draws_df(posterior_samples)
+
+#all_spp_load_constrained_samp$diagnostic_summary()
+
+#all_spp_load_constrained_samp$summary()
+
+mcmc_areas(
+  posterior_df,
+  pars = vars(starts_with("slope")),
+  prob = 0.8  
+)
+```
