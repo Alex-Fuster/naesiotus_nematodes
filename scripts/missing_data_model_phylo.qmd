@@ -108,7 +108,8 @@ sp_code_island_df <- df_load |>
   select(species, species_code, island, island_code) |> 
   distinct() |> 
   left_join(df_island) |> 
-  left_join(species_names_df |> select(species_name, species_code))
+  left_join(species_names_df |> select(species_name, species_code)) |> 
+  distinct()
 
 sp_code_island_df |> 
   head() |> 
@@ -277,7 +278,7 @@ df_load |> head() |> knitr::kable()
 
 # Models
 
-Building up slowly from a simple model -- unfortunately, the only way I know how to do this kind of work.
+Building up slowly from a simple model
 
 ## Model of microhabitat
 
@@ -409,7 +410,7 @@ bright_rvars <- all_spp_arbor_veg_bright_samp |>
 
 ##################
 # Create a named vector for species names
-species_code_to_name <- setNames(sp_code_island_df$species, sp_code_island_df$species_code)
+species_code_to_name <- setNames(sp_code_island_df$species_name, sp_code_island_df$species_code)
 
 # Replace species codes with species names in bright_rvars
 bright_rvars <- bright_rvars %>%
@@ -445,142 +446,75 @@ post_bright <- post_bright +
 
 # Adding phylogenetic information
 
-
-Load data
-
 ```{r}
-
-# tree file
-tree <- read.tree(here::here("data/phylogeny_2022/22Nov_Naesiotus.nwk"))
-
-tree<- as.phylo(tree)
-
-
-# codes for the tip names
-df_rads <- read_excel(here::here("data/GPS RAD snails.xlsx"))
-
-# load
-df_load <- read_excel(here::here("data/19july24_datalab.xlsx"), sheet = 3)
-df_load$nematode_count[which(df_load$nematode_count == ">100")] <- "100"
-df_load$nematode_count <- as.numeric(df_load$nematode_count)
-
-```
-
-
-```{r}
-# Create a mapping between Sample and Taxon
-sample_to_taxon <- setNames(df_rads$Taxon, df_rads$Sample)
-
-```
-
-
-```{r}
-# Replace tip labels in the tree with corresponding taxa
-tree$tip.label <- sample_to_taxon[tree$tip.label]
-
-plot(tree)
-```
-
-
-
-Replace with assessed species names
-
-```{r}
-species_lookup <- setNames(species_names_df$species_name, species_names_df$species)
-tree$tip.label <- species_lookup[tree$tip.label]
-
-plot(tree)
-```
-
-
-
-Prune tree, discarting those species not assessed for load
-
-```{r}
-pruned.tree<-drop.tip(tree, setdiff(tree$tip.label, sp_code_island_df$species_name))
-
+pruned.tree <- readRDS(here::here("output/tree/tree_spp_load.rds"))
 plot(pruned.tree)
 ```
 
 
+### Create a phylogenetic covariance matrix
 
-Create a phylogenetic covariance matrix
+- Phylogenetic Tree and Brownian Motion Assumption: The vcv function assumes that traits evolve under a Brownian motion model along the branches of the phylogenetic tree. In this model, the amount of evolutionary change that occurs is proportional to the amount of time since species shared a common ancestor.
+
+- Shared Evolutionary History: The VCV matrix represents how much of the evolutionary history is shared between pairs of species. The diagonal elements represent the total amount of evolutionary change for each species (i.e., their own branch lengths), while the off-diagonal elements represent the shared evolutionary history between pairs of species (i.e., the branch lengths they share up to their most recent common ancestor).
+
+Matrix Construction:
+
+- Diagonal Elements: Each diagonal element of the matrix corresponds to the total branch length from the root of the tree to a given species. This reflects the total evolutionary variance that has accumulated along that lineage.
+
+- Off-diagonal Elements: The off-diagonal elements correspond to the covariance between two species, which is proportional to the length of the branch they share from their most recent common ancestor.
+
+The resulting matrix is a symmetric matrix where the diagonal elements are the variances (representing the evolutionary path length of each species), and the off-diagonal elements are the covariances (representing shared evolutionary history between species).
+
 
 ```{r}
 # Calculate the phylogenetic covariance matrix
 phylo_cov_matrix <- vcv(pruned.tree, corr = TRUE)
 ```
 
-- Some species are assigned to more than one tree node (different sequences within a described taxa). I choose one of them at random because these are all sister species, so it should not affect the distances with others.
-- except for sculpturatus, which appears in quite different places - I therefore discard it.
+
+We only have phylogenetic data for a subset of species. To make the model run, we need to have the same number of species in the matrix than we are modeling. Species without phylogenetic data are added to the matrix with all 0:
 
 ```{r}
-# Convert the row/column names of the covariance matrix to a data frame for easier manipulation
-cov_names <- data.frame(species_name = gsub("_.*", "", rownames(phylo_cov_matrix)), 
-                        original_name = rownames(phylo_cov_matrix))
-
-# Identify species with multiple nodes
-multiple_cov <- cov_names %>%
-  group_by(species_name) %>%
-  filter(n() > 1)
-
-# Randomly choose one node for each species with multiple entries, excluding "sculpturatus"
-set.seed(123)  # Set seed for reproducibility
-chosen_cov <- multiple_cov %>%
-  filter(species_name != "sculpturatus") %>%
-  slice_sample(n = 1)
-
-# Add back singletons (species with only one node) and exclude "sculpturatus"
-final_cov <- cov_names %>%
-  anti_join(multiple_cov, by = "original_name") %>%  # Keep species with only one node
-  bind_rows(chosen_cov) %>%
-  filter(species_name != "sculpturatus")  # Remove "sculpturatus"
-
-# Subset the covariance matrix to keep only the selected nodes
-selected_names <- final_cov$original_name
-phylo_cov_matrix_final <- phylo_cov_matrix[selected_names, selected_names]
-```
-
-
-
-
-```{r}
-# Match species in the tree to the species in your data
-tree_species <- colnames(phylo_cov_matrix_final)
-dataset_species <- sp_code_island_df$species
-
-# Ensure the order matches your dataset
-species_match <- match(dataset_species, tree_species)
-phylo_cov_matrix_final <- phylo_cov_matrix_final[species_match, species_match]
-
-colnames(phylo_cov_matrix_final) <- dataset_species
-rownames(phylo_cov_matrix_final) <- dataset_species
-
-# Replace NA values in the final covariance matrix with zeros
-phylo_cov_matrix_final[is.na(phylo_cov_matrix_final)] <- 0
+ # Match species in the tree to the species in your data
+ tree_species <- colnames(phylo_cov_matrix)
+ dataset_species <- unique(sp_code_island_df$species_name)
+ 
+ # Ensure the order matches your dataset
+ species_match <- match(dataset_species, tree_species)
+ phylo_cov_matrix_final <- phylo_cov_matrix[species_match, species_match]
+ 
+ colnames(phylo_cov_matrix_final) <- dataset_species
+ rownames(phylo_cov_matrix_final) <- dataset_species
+ 
+ # Replace NA values in the final covariance matrix with zeros
+ phylo_cov_matrix_final[is.na(phylo_cov_matrix_final)] <- 0
 
 ```
 
 
-change species names to species codes in the covariance matrix
+change species names to species codes in the covariance matrix:
 
 ```{r}
-# Create a named vector to map species names to species codes
-name_to_code <- setNames(sp_code_island_df$species_code, sp_code_island_df$species)
-# Replace the row and column names in phylo_cov_matrix_final with species codes
-rownames(phylo_cov_matrix_final) <- name_to_code[rownames(phylo_cov_matrix_final)]
-colnames(phylo_cov_matrix_final) <- name_to_code[colnames(phylo_cov_matrix_final)]
-
-# Add a small value to the diagonal elements of the covariance matrix to make it positive definite
-epsilon <- 1e-6  # Regularization constant (can be adjusted)
-phylo_cov_matrix_final <- phylo_cov_matrix_final + diag(epsilon, nrow(phylo_cov_matrix_final))
-
-
-eigen_values <- eigen(phylo_cov_matrix_final)$values
-print(eigen_values)
+ # Create a named vector to map species names to species codes
+ name_to_code <- setNames(sp_code_island_df$species_code, sp_code_island_df$species)
+ # Replace the row and column names in phylo_cov_matrix_final with species codes
+ rownames(phylo_cov_matrix_final) <- name_to_code[rownames(phylo_cov_matrix_final)]
+ colnames(phylo_cov_matrix_final) <- name_to_code[colnames(phylo_cov_matrix_final)]
 
 ```
 
+
+The covariance matrix must be positive definite. To guarantee this, we add a small value to the diagonal elements:
+
+```{r}
+ epsilon <- 1e-6  # Regularization constant (can be adjusted)
+ phylo_cov_matrix_final <- phylo_cov_matrix_final + diag(epsilon, nrow(phylo_cov_matrix_final))
+# 
+# # ensure all egeinvalues are epositive
+ eigen_values <- eigen(phylo_cov_matrix_final)$values
+ print(eigen_values)
+```
 
 
 # model brightness adding phylogenetic information
@@ -642,7 +576,7 @@ bright_rvars_phylo <- all_spp_arbor_veg_bright_phylo_samp |>
 
 ##################
 # Create a named vector for species names
-species_code_to_name <- setNames(sp_code_island_df$species, sp_code_island_df$species_code)
+species_code_to_name <- setNames(sp_code_island_df$species_name, sp_code_island_df$species_code)
 
 # Replace species codes with species names in bright_rvars
 bright_rvars_phylo <- bright_rvars_phylo %>%
@@ -691,6 +625,26 @@ ggarrange(
 
 
 - negligible changes in brightness when adding phylogenetic information
+
+
+
+
+
+
+
+
+
+
+
+
+
+###################################################
+###################################################
+
+
+
+
+
 
 
 
@@ -773,7 +727,7 @@ bright_rvars_phylo <- all_spp_load_samp |>
 
 ##################
 # Create a named vector for species names
-species_code_to_name <- setNames(sp_code_island_df$species, sp_code_island_df$species_code)
+species_code_to_name <- setNames(sp_code_island_df$species_name, sp_code_island_df$species_code)
 
 # Replace species codes with species names in bright_rvars
 bright_rvars_phylo <- bright_rvars_phylo %>%
