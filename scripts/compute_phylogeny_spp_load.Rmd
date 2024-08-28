@@ -141,4 +141,6 @@ Then, we prune the tree to keep only species assessed for load:
 pruned.tree<-drop.tip(tree, setdiff(tree$tip.label, df_spp_load$species_name))
 
 plot(pruned.tree)
+
+#saveRDS(pruned.tree, here::here("output/tree/tree_spp_load.rds"))
 ```
