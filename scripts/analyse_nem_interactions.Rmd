@@ -1,0 +1,385 @@
+---
+title: "R Notebook"
+---
+
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(dplyr)
+library(igraph)
+library(ggplot2)
+library(ggraph)
+library(ggrepel)
+```
+
+Read data
+
+```{r}
+df_taxa_nem <- read.csv(here::here("data/taxa_nem_splevel.csv"))
+metadata <- read_excel(here::here("../sequencing/metadata.xlsx"))[-1,]
+```
+
+What samples do not contain nematodes?
+
+```{r}
+sort(setdiff(metadata$`sample-id`, df_taxa_nem$index))
+```
+
+What negatives contain nematodes?
+
+```{r}
+unique(df_taxa_nem[df_taxa_nem$pos_neg == "negative", "species_code"])
+```
+
+Add species names to df_taxa_nem
+
+```{r}
+
+# Assuming the column names are the same and properly formatted, join the two dataframes
+df_taxa_nem <- df_taxa_nem %>%
+  # Perform a left join to add species names from metadata to df_taxa_nem
+  left_join(metadata |> select("sample-id", "species"), by = c("index" = "sample-id")) %>%
+  # Select only the necessary columns and add species column
+  select(everything(), species)
+
+# Check the updated dataframe
+head(df_taxa_nem)
+```
+
+What species do not have nematodes?
+
+```{r}
+setdiff(metadata$species, df_taxa_nem$species)
+```
+
+# Compute metaweb
+
+Nematode abundances are averaged across samples of the same species, as these are relative abundances - ask Ian if this is correct or I should sum them. 
+
+```{r}
+# Select columns with nematode taxa and species
+nematode_columns <- df_taxa_nem %>%
+  select(starts_with("d__Eukaryota"), species)
+
+# Summarize the abundance of nematode taxa by species
+interaction_matrix <- nematode_columns %>%
+  group_by(species) %>%
+  summarise(across(starts_with("d__Eukaryota"), ~ mean(as.numeric(.), na.rm = TRUE)))
+
+
+# Convert to a matrix format (rows = species, columns = nematode taxa)
+interaction_matrix <- as.matrix(interaction_matrix)
+rownames_snailspp <- interaction_matrix[,1]
+rownames(interaction_matrix) <- rownames_snailspp
+interaction_matrix <- as.matrix(interaction_matrix[,-1]) # Exclude species column from matrix conversion
+
+# Remove the prefix "d__Eukaryota.p__Nematozoa." from the column names
+colnames(interaction_matrix) <- sub("^d__Eukaryota\\.p__Nematozoa\\.", "", colnames(interaction_matrix))
+
+# Ensure that the matrix values are numeric
+interaction_matrix <- apply(interaction_matrix, 2, as.numeric)
+rownames(interaction_matrix) <- rownames_snailspp
+
+```
+
+
+
+
+# compute diversity per snail species
+
+```{r}
+nematode_interactions <- rowSums(interaction_matrix > 0)
+
+# Create a dataframe to display the results
+interaction_counts <- data.frame(
+  species = rownames(interaction_matrix),
+  nematode_interactions = nematode_interactions
+)
+
+# View the interaction counts
+print(interaction_counts)
+```
+
+
+
+```{r}
+
+# Extract taxonomic levels from column names using correct regex patterns
+taxa_levels <- colnames(interaction_matrix) %>%
+  tibble::enframe(name = NULL, value = "taxa") %>%
+  mutate(
+    class = str_extract(taxa, "(?<=c__)[^\\.]+"),
+    order = str_extract(taxa, "(?<=o__)[^\\.]+"),
+    family = str_extract(taxa, "(?<=f__)[^\\.]+"),
+    genus = str_extract(taxa, "(?<=g__)[^\\.]+"),
+    species = str_extract(taxa, "(?<=s__)[^\\.]+")
+  )
+
+# Replace missing taxonomic information (NA values) with "Unknown" for accurate counting
+# taxa_levels <- taxa_levels %>%
+#   mutate(across(everything(), ~ ifelse(is.na(.), "Unknown", .)))
+
+# Add unique suffixes to "Unknown" values
+taxa_levels <- taxa_levels %>%
+  mutate(across(class:species, ~ ifelse(is.na(.), "Unknown", .))) %>%
+  mutate(unique_id = row_number()) %>%  # Create a unique identifier for each row
+  mutate(
+    class = ifelse(class == "Unknown", paste0("Unknown_", unique_id), class),
+    order = ifelse(order == "Unknown", paste0("Unknown_", unique_id), order),
+    family = ifelse(family == "Unknown", paste0("Unknown_", unique_id), family),
+    genus = ifelse(genus == "Unknown", paste0("Unknown_", unique_id), genus),
+    species = ifelse(species == "Unknown", paste0("Unknown_", unique_id), species)
+  ) %>%
+  select(-unique_id)  # Remove the temporary unique_id column
+
+# Adjust the taxa_levels structure to ensure it matches the columns of the matrix
+taxa_levels <- as.data.frame(taxa_levels)
+
+# Function to count unique taxa at each level for each species
+count_unique_taxa <- function(matrix, taxa_levels, level) {
+  apply(matrix, 1, function(row) {
+    # Identify indices of non-zero values in the row
+    non_zero_indices <- which(row > 0)
+    
+    # Select the corresponding taxonomic levels
+    present_taxa <- taxa_levels[non_zero_indices, level]
+    
+    # Count unique taxa, omitting NAs
+    unique_count <- length(unique(na.omit(present_taxa)))
+    return(unique_count)
+  })
+}
+
+# Count the number of unique species, genera, families, orders, and classes each snail species interacts with
+nematode_species_counts <- count_unique_taxa(interaction_matrix, taxa_levels, "species")
+nematode_genus_counts <- count_unique_taxa(interaction_matrix, taxa_levels, "genus")
+nematode_family_counts <- count_unique_taxa(interaction_matrix, taxa_levels, "family")
+nematode_order_counts <- count_unique_taxa(interaction_matrix, taxa_levels, "order")
+nematode_class_counts <- count_unique_taxa(interaction_matrix, taxa_levels, "class")
+
+# Combine into a dataframe with proper alignment
+interaction_counts <- data.frame(
+  species = rownames(interaction_matrix),
+  nematode_species = nematode_species_counts,
+  nematode_genus = nematode_genus_counts,
+  nematode_family = nematode_family_counts,
+  nematode_order = nematode_order_counts,
+  nematode_class = nematode_class_counts
+)
+
+# View the interaction counts table
+interaction_counts
+
+write.csv(here::here("output/tables/diversity_per_snailspp"))
+
+```
+
+
+# Metaweb metrics and visualization
+
+```{r}
+
+
+# Step 1: Merge metadata with interaction matrix row names to get island information for each snail species
+species_island <- metadata %>%
+  select(species, island) %>%
+  distinct() %>%
+  filter(species %in% rownames(interaction_matrix))
+
+
+# Prepare data for the metaweb
+# Get snail species and nematode taxa as nodes
+snail_species <- rownames(interaction_matrix)
+nematode_taxa <- colnames(interaction_matrix)
+
+# Create nodes for the graph
+nodes <- data.frame(
+  name = c(snail_species, nematode_taxa),
+  type = c(rep("snail", length(snail_species)), rep("nematode", length(nematode_taxa))),
+  stringsAsFactors = FALSE
+)
+
+# Create edges based on interactions (non-zero values)
+edges <- expand.grid(snail = snail_species, nematode = nematode_taxa, stringsAsFactors = FALSE)
+edges$weight <- as.vector(interaction_matrix) # Assign interaction strength
+
+# Filter edges with non-zero interactions
+edges <- edges %>%
+  filter(weight > 0)
+
+# Build the graph using igraph
+g <- graph_from_data_frame(d = edges, vertices = nodes, directed = FALSE)
+
+# Add island attribute to snails in the graph
+V(g)$island <- NA
+V(g)$island[V(g)$type == "snail"] <- species_island$island[match(V(g)$name[V(g)$type == "snail"], species_island$species)]
+
+# Assign islands to nematodes based on the snails they interact with
+nematode_islands <- edges %>%
+  left_join(species_island, by = c("snail" = "species")) %>%
+  group_by(nematode) %>%
+  summarize(island = list(unique(island)))
+
+# Add island information to nematode nodes in the graph
+V(g)$island[V(g)$type == "nematode"] <- sapply(V(g)$name[V(g)$type == "nematode"], function(nematode) {
+  paste(unlist(nematode_islands$island[nematode_islands$nematode == nematode]), collapse = ", ")
+})
+
+# Assign different colors for each snail species and nematode taxa
+snail_colors <- setNames(rainbow(length(snail_species)), snail_species)
+nematode_colors <- setNames(heat.colors(length(nematode_taxa)), nematode_taxa)
+
+# Set color and shape attributes
+V(g)$color <- ifelse(V(g)$type == "snail", snail_colors[V(g)$name], nematode_colors[V(g)$name])
+V(g)$shape <- ifelse(V(g)$type == "snail", "circle", "square")
+
+# Plot the metaweb using ggraph for more control and better aesthetics
+ggraph(g, layout = "fr") +  # 'fr' layout can be used to spatially group nodes
+  geom_edge_link(aes(edge_width = weight), color = "gray70", alpha = 0.6) +
+  geom_node_point(aes(color = I(color), shape = shape), size = 5) +
+  scale_shape_manual(values = c("circle" = 16, "square" = 15)) +  # Different shapes for snails and nematodes
+  theme_void() +
+  facet_wrap(~ island) +  # Group nodes by island
+  theme(legend.position = "none") +  # Adjust as needed
+  labs(title = "Metaweb of Snail-Nematode Interactions across Islands")
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+# Extract taxonomic levels from column names
+taxa_levels <- colnames(interaction_matrix) %>%
+  tibble::enframe(name = NULL, value = "taxa") %>%
+  mutate(
+    class = str_extract(taxa, "(?<=c__)[^\\.]+"),
+    order = str_extract(taxa, "(?<=o__)[^\\.]+"),
+    family = str_extract(taxa, "(?<=f__)[^\\.]+"),
+    genus = str_extract(taxa, "(?<=g__)[^\\.]+"),
+    species = str_extract(taxa, "(?<=s__)[^\\.]+")
+  )
+
+taxa_levels <- taxa_levels %>%
+  mutate(across(everything(), ~ ifelse(is.na(.), "Unknown", .)))
+
+write.csv(taxa_levels, here::here("output/tables/df_nematode_taxalevels.csv"))
+
+```
+
+
+```{r}
+# Function to count unique taxa at each level for each species
+count_unique_taxa <- function(matrix, taxa_levels, level) {
+  apply(matrix > 0, 1, function(row) {
+    unique_taxa <- taxa_levels[row, level, drop = FALSE]
+    length(unique(na.omit(unique_taxa)))
+  })
+}
+
+count_unique_taxa <- function(matrix, taxa_levels, level) {
+  taxa_counts <- apply(matrix, 1, function(row) {
+    present_taxa <- taxa_levels[row > 0, level]  # Select taxa where abundance is greater than 0
+    length(unique(na.omit(present_taxa)))        # Count unique taxa, omitting NAs
+  })
+  return(taxa_counts)
+}
+
+
+# Count the number of unique species, genera, families, orders, and classes each snail species interacts with
+interaction_counts <- data.frame(
+  species = rownames(interaction_matrix),
+  nematode_species = count_unique_taxa(interaction_matrix, taxa_levels, "species"),
+  nematode_genus = count_unique_taxa(interaction_matrix, taxa_levels, "genus"),
+  nematode_family = count_unique_taxa(interaction_matrix, taxa_levels, "family"),
+  nematode_order = count_unique_taxa(interaction_matrix, taxa_levels, "order"),
+  nematode_class = count_unique_taxa(interaction_matrix, taxa_levels, "class")
+)
+
+# View the interaction counts table
+print(interaction_counts)
+```
+
+```{r}
+# Extract the nematode taxa columns and the species column
+nematode_columns <- df_taxa_nem %>%
+  select(starts_with("c__"), species)
+
+# Calculate the average relative abundance of each nematode taxon by species
+interaction_matrix <- nematode_columns %>%
+  group_by(species) %>%
+  summarise(across(starts_with("c__"), ~ mean(as.numeric(.), na.rm = TRUE)))
+
+# Convert to a matrix format (rows = species, columns = nematode taxa)
+interaction_matrix_matrix <- as.matrix(interaction_matrix[,-1]) # Exclude species column for matrix conversion
+rownames(interaction_matrix_matrix) <- interaction_matrix$species
+
+# Extract taxonomic levels from column names using correct regex patterns
+taxa_levels <- colnames(interaction_matrix_matrix) %>%
+  tibble::enframe(name = NULL, value = "taxa") %>%
+  mutate(
+    class = str_extract(taxa, "(?<=c__)[^\\.]+"),
+    order = str_extract(taxa, "(?<=o__)[^\\.]+"),
+    family = str_extract(taxa, "(?<=f__)[^\\.]+"),
+    genus = str_extract(taxa, "(?<=g__)[^\\.]+"),
+    species = str_extract(taxa, "(?<=s__)[^\\.]+")
+  )
+
+# Replace missing taxonomic information (NA values) with "Unknown" for accurate counting
+taxa_levels <- taxa_levels %>%
+  mutate(across(everything(), ~ ifelse(is.na(.), "Unknown", .)))
+
+# Function to count unique taxa at each level for each species
+count_unique_taxa <- function(matrix, taxa_levels, level) {
+  apply(matrix, 1, function(row) {
+    present_taxa <- taxa_levels[row > 0, level, drop = TRUE]  # Select taxa where abundance is greater than 0
+    length(unique(na.omit(present_taxa)))                     # Count unique taxa, omitting NAs
+  })
+}
+
+# Ensure correct indexing of taxa levels for rows
+taxa_levels <- taxa_levels[rep(1, nrow(interaction_matrix_matrix)), ]  # Ensure correct length for rows
+
+# Count the number of unique species, genera, families, orders, and classes each snail species interacts with
+interaction_counts <- data.frame(
+  species = rownames(interaction_matrix_matrix),
+  nematode_species = count_unique_taxa(interaction_matrix_matrix, taxa_levels, "species"),
+  nematode_genus = count_unique_taxa(interaction_matrix_matrix, taxa_levels, "genus"),
+  nematode_family = count_unique_taxa(interaction_matrix_matrix, taxa_levels, "family"),
+  nematode_order = count_unique_taxa(interaction_matrix_matrix, taxa_levels, "order"),
+  nematode_class = count_unique_taxa(interaction_matrix_matrix, taxa_levels, "class")
+)
+
+# View the interaction counts table
+print(interaction_counts)
+```
+
