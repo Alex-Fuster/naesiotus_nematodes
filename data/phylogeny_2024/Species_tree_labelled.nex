@@ -1,0 +1,172 @@
+ #NEXUS
+begin taxa;
+	dimensions ntax=70;
+	taxlabels
+	Brantsnail
+	Brown_guys
+	achtinellus
+	albemarlensis
+	alethorhytidus
+	amastroides
+	approximatus
+	basiplicatus
+	bauri
+	calvus
+	canaliferus_1
+	canaliferus_2
+	caryonis
+	cf_albemarlensis
+	cf_amastroides
+	cf_nux
+	cf_perspectivus
+	cf_reibischi
+	cf_tortuganus
+	cf_wolfi
+	cfbasiplicatus
+	cfhirsutus
+	cfinvalidus
+	chato_black
+	chemnitzioides
+	elaeodes
+	eos
+	hemaerodes
+	hirsutus
+	invalidus_1
+	invalidus_2
+	jacobi
+	jacobinus
+	little_Black_Garrapatero
+	nuciformis
+	nucula
+	nux
+	ochsneri
+	olla
+	pallidus
+	perrus_1
+	perspectivus_1
+	perspectivus_2
+	pinzonensis
+	rabidensis
+	rugiferus
+	rugulosus
+	sculpturatus_1
+	sculpturatus_2
+	sculpturatus_3
+	simrothi_1
+	simrothi_2
+	snodgrassi
+	sp_nov_Alcedo_1
+	sp_nov_Darwin_1
+	sp_nov_Darwin_2
+	sp_nov_Pinta_1
+	sp_nov_Pinta_2
+	'sp_nov_Volcán_Wolf_1'
+	'sp_nov_Volcán_Wolf_2'
+	'sp_nov_Volcán_Wolf_3'
+	'sp_nov_pinzón_1'
+	sulcatus
+	tanneri
+	unifasciatus
+	ustulatus
+	ventrosus
+	wolfi_1
+	wolfi_2
+	wolfi_3
+;
+end;
+
+begin trees;
+	tree tree_1 = [&R] ((((((((pallidus[&!color=#a423cf]:0.13497,hemaerodes[&!color=#cf828f]:0.13497)[&!color=#cf828f]:0.20975,(sp_nov_Alcedo_1[&!color=#cf828f]:0.24646,((sp_nov_Darwin_1[&!color=#cf828f]:0.09508,sp_nov_Darwin_2[&!color=#cf828f]:0.09508)[&!color=#cf828f]:0.07367,perrus_1[&!color=#cf828f]:0.16875)[&!color=#cf828f]:0.07771)[&!color=#cf828f]:0.09827)[&!color=#cf828f]:0.13433,('sp_nov_Volcán_Wolf_1'[&!color=#cf828f]:0.22274,(elaeodes[&!color=#cf828f]:0.15459,('sp_nov_Volcán_Wolf_3'[&!color=#cf828f]:0.1081,'sp_nov_Volcán_Wolf_2'[&!color=#cf828f]:0.1081)[&!color=#cf828f]:0.04649)[&!color=#cf828f]:0.06815)[&!color=#cf828f]:0.25631)[&!color=#cf828f]:0.24523,(cf_albemarlensis[&!color=#cf828f]:0.53095,((Brantsnail[&!color=#cf828f]:0.31192,albemarlensis[&!color=#cf828f]:0.31192)[&!color=#cf828f]:0.11191,((simrothi_2[&!color=#cf828f]:0.21333,cf_tortuganus[&!color=#cf828f]:0.21333)[&!color=#cf828f]:0.10094,simrothi_1[&!color=#cf828f]:0.31426)[&!color=#cf828f]:0.10957)[&!color=#cf828f]:0.10712)[&!color=#cf828f]:0.19334)[&!color=#cf828f]:0.24201,(sp_nov_Pinta_1[&!color=#cf3e13]:0.09355,sp_nov_Pinta_2[&!color=#cf3e13]:0.09355)[&!color=#cf3e13]:0.87275):0.17801,(pinzonensis[&!color=#ffbb00]:1.02083,((((((alethorhytidus[&!color=#00cf15]:0.25661,ochsneri[&!color=#00cf15]:0.25661)[&!color=#00cf15]:0.16678,(sculpturatus_2[&!color=#ff0022]:0.30927,eos[&!color=#00cf15]:0.30927)[&!color=#00cf15]:0.11411)[&!color=#00cf15]:0.07567,chato_black[&!color=#00cf15]:0.49905)[&!color=#00cf15]:0.12702,(wolfi_2[&!color=#00cf15]:0.23928,cf_wolfi[&!color=#00cf15]:0.23928)[&!color=#00cf15]:0.38679)[&!color=#00cf15]:0.13469,((((hirsutus[&!color=#00cf15]:0.23904,cf_reibischi[&!color=#00cf15]:0.23904)[&!color=#00cf15]:0.19326,(little_Black_Garrapatero[&!color=#00cf15]:0.32811,olla[&!color=#00cf15]:0.32811)[&!color=#00cf15]:0.10419)[&!color=#00cf15]:0.08528,wolfi_1[&!color=#00cf15]:0.51758)[&!color=#00cf15]:0.11543,wolfi_3[&!color=#00cf15]:0.633)[&!color=#00cf15]:0.12776)[&!color=#00cf15]:0.1678,(((rugiferus[&!color=#ff0022]:0.34501,(sculpturatus_1[&!color=#ff0022]:0.26807,sculpturatus_3[&!color=#ff0022]:0.26807)[&!color=#ff0022]:0.07694)[&!color=#ff0022]:0.2026,cfhirsutus[&!color=#00cf15]:0.54761):0.19224,tanneri[&!color=#00cf15]:0.73985):0.18871):0.09227):0.12348):0.1467,('sp_nov_pinzón_1'[&!color=#ffbb00]:0.84249,(rabidensis[&!color=#f2ff00]:0.51503,(jacobi[&!color=#ff0022]:0.27507,jacobinus[&!color=#ff0022]:0.27507)[&!color=#ff0022]:0.23996):0.32746):0.44852):0.70601,(((snodgrassi[&!color=#002fff]:0.48428,approximatus[&!color=#002fff]:0.48428)[&!color=#002fff]:0.46193,((((((caryonis[&!color=#088516]:0.21019,ustulatus[&!color=#088516]:0.21019)[&!color=#088516]:0.04527,calvus[&!color=#088516]:0.25546)[&!color=#088516]:0.07867,(cf_nux[&!color=#088516]:0.17406,cfinvalidus[&!color=#088516]:0.17406)[&!color=#088516]:0.16007)[&!color=#088516]:0.04173,((nux[&!color=#088516]:0.23286,(invalidus_2[&!color=#088516]:0.19446,invalidus_1[&!color=#088516]:0.19446)[&!color=#088516]:0.0384)[&!color=#088516]:0.04824,sulcatus[&!color=#088516]:0.2811)[&!color=#088516]:0.09476)[&!color=#088516]:0.04642,Brown_guys[&!color=#088516]:0.42228)[&!color=#088516]:0.06306,rugulosus[&!color=#001414]:0.48534)[&!color=#088516]:0.46087):0.59022,((unifasciatus[&!color=#088516]:1.09661,(((basiplicatus[&!color=#00f1f5]:0.50332,achtinellus[&!color=#00f1f5]:0.50332)[&!color=#00f1f5]:0.14815,(cfbasiplicatus[&!color=#00f1f5]:0.36834,nuciformis[&!color=#00f1f5]:0.36834)[&!color=#00f1f5]:0.28313)[&!color=#00f1f5]:0.2877,((((canaliferus_2[&!color=#00f1f5]:0.44943,bauri[&!color=#00f1f5]:0.44943)[&!color=#00f1f5]:0.18545,(((cf_amastroides[&!color=#00f1f5]:0.30521,amastroides[&!color=#00f1f5]:0.30521)[&!color=#00f1f5]:0.13793,(nucula[&!color=#00f1f5]:0.37227,perspectivus_1[&!color=#00f1f5]:0.37227)[&!color=#00f1f5]:0.07087)[&!color=#00f1f5]:0.08672,canaliferus_1[&!color=#00f1f5]:0.52986)[&!color=#00f1f5]:0.10501)[&!color=#00f1f5]:0.12606,chemnitzioides[&!color=#00f1f5]:0.76093)[&!color=#00f1f5]:0.07919,(perspectivus_2[&!color=#00f1f5]:0.56344,cf_perspectivus[&!color=#00f1f5]:0.56344)[&!color=#00f1f5]:0.27668)[&!color=#00f1f5]:0.09905)[&!color=#00f1f5]:0.15743):0.21079,ventrosus:1.30739):0.22903):0.46059);
+end;
+
+begin figtree;
+	set appearance.backgroundColorAttribute="Default";
+	set appearance.backgroundColour=#ffffff;
+	set appearance.branchColorAttribute="User selection";
+	set appearance.branchColorGradient=false;
+	set appearance.branchLineWidth=3.0;
+	set appearance.branchMinLineWidth=0.0;
+	set appearance.branchWidthAttribute="Fixed";
+	set appearance.foregroundColour=#000000;
+	set appearance.hilightingGradient=false;
+	set appearance.selectionColour=#2d3680;
+	set branchLabels.colorAttribute="User selection";
+	set branchLabels.displayAttribute="Branch times";
+	set branchLabels.fontName="sansserif";
+	set branchLabels.fontSize=8;
+	set branchLabels.fontStyle=0;
+	set branchLabels.isShown=false;
+	set branchLabels.significantDigits=4;
+	set layout.expansion=297;
+	set layout.layoutType="RECTILINEAR";
+	set layout.zoom=0;
+	set legend.attribute=null;
+	set legend.fontSize=10.0;
+	set legend.isShown=false;
+	set legend.significantDigits=4;
+	set nodeBars.barWidth=4.0;
+	set nodeBars.displayAttribute=null;
+	set nodeBars.isShown=false;
+	set nodeLabels.colorAttribute="User selection";
+	set nodeLabels.displayAttribute="Node ages";
+	set nodeLabels.fontName="sansserif";
+	set nodeLabels.fontSize=8;
+	set nodeLabels.fontStyle=0;
+	set nodeLabels.isShown=false;
+	set nodeLabels.significantDigits=4;
+	set nodeShapeExternal.colourAttribute="User selection";
+	set nodeShapeExternal.isShown=false;
+	set nodeShapeExternal.minSize=10.0;
+	set nodeShapeExternal.scaleType=Width;
+	set nodeShapeExternal.shapeType=Circle;
+	set nodeShapeExternal.size=4.0;
+	set nodeShapeExternal.sizeAttribute="Fixed";
+	set nodeShapeInternal.colourAttribute="User selection";
+	set nodeShapeInternal.isShown=false;
+	set nodeShapeInternal.minSize=10.0;
+	set nodeShapeInternal.scaleType=Width;
+	set nodeShapeInternal.shapeType=Circle;
+	set nodeShapeInternal.size=4.0;
+	set nodeShapeInternal.sizeAttribute="Fixed";
+	set polarLayout.alignTipLabels=false;
+	set polarLayout.angularRange=0;
+	set polarLayout.rootAngle=0;
+	set polarLayout.rootLength=100;
+	set polarLayout.showRoot=true;
+	set radialLayout.spread=0.0;
+	set rectilinearLayout.alignTipLabels=false;
+	set rectilinearLayout.curvature=0;
+	set rectilinearLayout.rootLength=100;
+	set scale.offsetAge=0.0;
+	set scale.rootAge=1.0;
+	set scale.scaleFactor=1.0;
+	set scale.scaleRoot=false;
+	set scaleAxis.automaticScale=true;
+	set scaleAxis.fontSize=12.0;
+	set scaleAxis.isShown=true;
+	set scaleAxis.lineWidth=4.0;
+	set scaleAxis.majorTicks=0.05;
+	set scaleAxis.minorTicks=0.025;
+	set scaleAxis.origin=0.0;
+	set scaleAxis.reverseAxis=true;
+	set scaleAxis.showGrid=true;
+	set scaleBar.automaticScale=true;
+	set scaleBar.fontSize=10.0;
+	set scaleBar.isShown=false;
+	set scaleBar.lineWidth=1.0;
+	set scaleBar.scaleRange=0.2;
+	set tipLabels.colorAttribute="User selection";
+	set tipLabels.displayAttribute="Names";
+	set tipLabels.fontName="sansserif";
+	set tipLabels.fontSize=12;
+	set tipLabels.fontStyle=0;
+	set tipLabels.isShown=true;
+	set tipLabels.significantDigits=4;
+	set trees.order=false;
+	set trees.orderType="increasing";
+	set trees.rooting=false;
+	set trees.rootingType="User Selection";
+	set trees.transform=false;
+	set trees.transformType="cladogram";
+end;
+

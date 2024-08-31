@@ -14,7 +14,7 @@ However, for those species for which cryptic lineages are identified and now app
 - **sculpturatus 2, sculpturatus 3**
 - **Simrothi 2**
 
-An arbitrary decision justified by proximity of sampling location:
+(guess) decision justified by proximity of sampling location:
 
 - **Perspectivus**: perspectivus 1 dicarded. I only measure perspectivus from 2005 and locations SL05-01 and SL05-02. The closest to this location are cf. perspectivus and perspectivus 2, so I keep these.
 
@@ -34,6 +34,7 @@ library(readxl)
 library(ggpubr)
 library(phytools)
 library(ape)
+library(ggtree)
 
 ```
 
@@ -46,71 +47,87 @@ library(ape)
 
 ```{r}
 
-# tree file
-tree <- read.tree(here::here("data/phylogeny_2022/22Nov_Naesiotus.nwk"))
-
-tree<- as.phylo(tree)
-
-```
-
-
-Add names to the tips
-
-```{r}
-# codes for the tip names
-df_rads <- read_excel(here::here("data/GPS RAD snails.xlsx"))
-
-# Create a mapping between Sample and Taxon
-sample_to_taxon <- setNames(df_rads$Taxon, df_rads$Sample)
-
-# Replace tip labels in the tree with corresponding taxa
-tree$tip.label <- sample_to_taxon[tree$tip.label]
-
-plot(tree)
-
-```
-
-
-We can see several cryptic species complex and some invalid names.
-
-
-## Prune tree with assessed species
-
-Note that species_names_df doesnt asign any name to those taxa that we didn't assessed for load. This is where we also choose to consider either canaliferus 1 or canaliferus 2 (arbitrary decision, as we cannot know which ones we measured based on their location), by assigning the name "canaliferous" to one of them.
-
-
-#### get species names mapping
-
-```{r}
+tree <- read.nexus(here::here("data/phylogeny_2024/Species_tree_labelled.nex"))
+df_rads <- read_excel(here::here("data/phylogeny_2024/New_tree_taxa_28Aug24.xlsx"))
 species_names_df_raw <- read.csv(here::here("data/species_names_checks.csv"))
 
-# arbitraty choice - eliminate canaliferous 2
-species_names_df_raw[which(species_names_df_raw$annotated_name == "canaliferus 2"), "species_name"] <- ""
-
-# we're dropping the species with no name in this database. 
-# this indicates morphospecies which have no formal name
-species_names_df <- species_names_df_raw %>% 
-  rename(species = annotated_name)  %>% 
-  filter(species_name != "") |> 
-  mutate(species_code = as.numeric(factor(species_name)))
+tree_data <- fortify(tree)
+ggtree(tree) +
+  geom_tiplab() +  # Add tip labels for species
+  theme_tree() +  # Remove legend
+  xlim(0, max(tree_data$x) + 3)  
 
 ```
 
 
-
-First, replace tip names by correct names based on the species names mapping dataframe:
+Correct typos
 
 ```{r}
-species_lookup <- setNames(species_names_df$species_name, species_names_df$species)
-tree$tip.label <- species_lookup[tree$tip.label]
+tree$tip.label[which(tree$tip.label == "'sp_nov_Volcán_Wolf_1'")]<- "sp. nov. Volcan Wolf 1"
+tree$tip.label[which(tree$tip.label == "'sp_nov_Volcán_Wolf_2'")]<- "sp. nov. Volcan Wolf 2"
+tree$tip.label[which(tree$tip.label == "'sp_nov_Volcán_Wolf_3'")]<- "sp. nov. Volcan Wolf 3"
 
-plot(tree)
+
+tree$tip.label[which(tree$tip.label == "'sp_nov_pinzón_1'")]<- "sp. nov. pinzon 1"
+
 ```
 
 
-### Prune tree, discarting those species not assessed for load
 
-First, we create the list of species assessed for load and correct its names based on the species mapping dataframe:
+```{r}
+# Create a named vector for species mapping
+name_mapping <- species_names_df_raw %>%
+  #filter(!is.na(species_name)) %>%
+  select(annotated_name, species_name) %>%
+  distinct() %>%
+  deframe()  # Create a named vector with annotated_name as names and species_name as values
+
+# Update the tree tip labels using the mapping
+tree$tip.label <- sapply(tree$tip.label, function(x) {
+  if (x %in% names(name_mapping)) {
+    name_mapping[[x]]  # Replace with the mapped name if it exists
+  } else {
+    x  # Keep the original name if no mapping is found
+  }
+})
+
+# Prepare data for plotting
+tree_data <- fortify(tree)
+tree_data$has_name <- tree_data$label %in% name_mapping  # Check if the label has a corresponding name in the mapping
+
+# Plot the tree with conditional styling, remove the legend, and adjust plot width
+p <- ggtree(tree) +
+  geom_tiplab(data = tree_data, aes(label = label, 
+                  fontface = ifelse(has_name, "bold", "plain"), 
+                  color = ifelse(has_name, "blue", "black")), 
+              size = 3, 
+              align = TRUE,  # Align labels
+              linetype = NA,  # Remove lines connecting labels to tree
+              offset = 0.01,  # Adjust the position of the labels to avoid going out of margin
+              inherit.aes = FALSE) +
+  theme(legend.position = "none") +  # Remove legend
+  xlim(0, max(tree_data$x) + 3)  # Adjust the x-axis limit to control width
+
+print(p)
+```
+
+Prune the tree to keep only assessed species
+
+```{r}
+# Extract the species names to keep (those that have an assigned name)
+species_to_keep <- tree_data$label[tree_data$has_name]
+
+# Step 1: Filter out any empty names from species_to_keep
+species_to_keep <- species_to_keep[species_to_keep != ""]
+
+# Step 2: Prune the tree to keep only these species
+pruned_tree <- drop.tip(tree, setdiff(tree$tip.label, species_to_keep))
+
+ggtree(pruned_tree) +
+  geom_tiplab(aes(label = label), size = 3) + 
+  xlim(0, max(pruned_tree$edge.length) + 3)  # Adjust x-axis limits
+```
+
 
 
 ```{r}
@@ -123,24 +140,121 @@ df_load_rename <- df_load_raw %>%
   select(id, spp, nematode_count, island) %>% 
   rename(species = spp)
 
-# correct species names in load dataset
-df_spp_load <- df_load_rename %>%
-  left_join(species_names_df |> select(species, species_code),
-            by = "species") |> 
-  select(species, species_code) |> 
-  distinct() |> 
-  left_join(species_names_df |> select(species_name, species_code))|> 
-  distinct()
+species_names_df <- species_names_df_raw %>% 
+  rename(species = annotated_name)  %>% 
+  filter(species_name != "")
 
-df_spp_load
+# correct species names
+df_load <- df_load_rename %>%
+  left_join(species_names_df |> select(species, species_name),
+            by = "species") 
+df_load
 ```
 
-Then, we prune the tree to keep only species assessed for load:
+Compute mean and se load per species
 
 ```{r}
-pruned.tree<-drop.tip(tree, setdiff(tree$tip.label, df_spp_load$species_name))
+df_meanload <- df_load %>%
+  group_by(species_name) %>%
+  summarise(n = n(),
+            mean_load = mean(nematode_count, na.rm = TRUE),
+            se_load = sd(nematode_count, na.rm = TRUE)/sqrt(length(nematode_count)), 
+            sd_load = sd(nematode_count, na.rm = TRUE)) %>%
+  arrange(desc(mean_load))
 
-plot(pruned.tree)
-
-#saveRDS(pruned.tree, here::here("output/tree/tree_spp_load.rds"))
+df_meanload
 ```
+
+
+```{r}
+meanload<-setNames(df_meanload$mean_load, df_meanload$species_name)
+s.error<-setNames(df_meanload$se_load, df_meanload$species_name)
+```
+
+
+discard those species in load that are not present in the tree
+
+```{r}
+# Filter data to include only species present in the phylogenetic tree
+tree_species <- pruned_tree$tip.label
+meanload_filtered <- meanload[names(meanload) %in% tree_species]
+s.error_filtered <- s.error[names(s.error) %in% tree_species]
+
+# Verify data alignment
+match_indices <- match(tree_species, names(meanload_filtered))
+meanload_filtered <- meanload_filtered[match_indices]
+s.error_filtered <- s.error_filtered[match_indices]
+```
+
+
+# Blomberg's K
+
+```{r}
+K_nemaload <- phylosig(pruned_tree, meanload_filtered, method = 'K', test = TRUE, se = s.error_filtered)
+K_nemaload
+plot.phylosig(K_nemaload)
+
+```
+
+
+# Lambda
+
+```{r}
+
+lambda_nemaload <- phylosig(pruned_tree, meanload_filtered, method = 'lambda', test = TRUE, se = s.error_filtered) 
+lambda_nemaload <- phylosig(pruned_tree, meanload_filtered, method = 'lambda', test = TRUE) 
+lambda_nemaload
+plot.phylosig(lambda_nemaload)
+
+```
+
+
+
+# Plot tree and trait values
+
+```{r}
+
+contMap(pruned_tree,
+        meanload_filtered,
+        res = 400,
+        lwd = 4,
+        outline = FALSE,
+        sig = 0)
+
+```
+
+
+
+```{r}
+# Step 1: Create a mapping of species to islands
+species_island_map <- df_load %>%
+  select(species_name, island) %>%
+  distinct() %>%
+  group_by(species_name) %>%
+  summarize(island = paste(unique(island), collapse = ", "))  # Handle cases where species occur on multiple islands
+
+
+tree_data1 <- fortify(pruned_tree)
+
+# Merge the tree data with the island information
+tree_data1 <- tree_data1 %>%
+  left_join(species_island_map, by = c("label" = "species_name"))  # Merge based on the species names
+
+# Create a column indicating whether each tip label has an assigned name
+tree_data1$has_name <- !is.na(tree_data1$island)
+
+# Plot the tree with conditional styling
+ggtree(pruned_tree) +
+  geom_tiplab(data = tree_data1, aes(label = label, 
+                                    
+                                    color = island),  # Use island information to color labels
+              size = 3, 
+              align = TRUE,  # Align labels
+              linetype = NA,  # Remove lines connecting labels to tree
+              offset = 0.01,  # Adjust the position of the labels to avoid going out of margin
+              inherit.aes = FALSE) +
+  theme(legend.position = "bottom")+  # Remove legend
+  xlim(0, max(tree_data$x) + 3)  # Adjust the x-axis limit to control width   # Adjust the x-axis limit to control width
+
+```
+

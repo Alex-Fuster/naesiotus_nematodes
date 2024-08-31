@@ -16,7 +16,25 @@ library(cmdstanr)
 library(bayesplot)
 library(tidybayes)
 library(posterior)
+library(ggpubr)
+library(phytools)
+library(ape)
+
 ```
+
+parameters for plotting
+
+```{r}
+my_theme<-theme(axis.text=element_text(size=12),
+        axis.title = element_text(size = 14),
+        legend.text=element_text(size=10),
+        legend.title = element_text(size=12),
+        plot.title = element_text(face="bold",size=14,margin=margin(0,0,20,0),hjust = 0.5),
+        axis.title.y = element_text(hjust = 0.5),
+        axis.title.x = element_text(hjust = 0.5))
+```
+
+
 
 ## compute species code id
 
@@ -38,7 +56,7 @@ species_code_df <- species_names_df |>
 species_code_df
 ```
 
--   correct "sp. nov. Volc\xe1n Wolf 3" in the datasets
+
 
 ## island info
 
@@ -60,9 +78,6 @@ df_island
 ```{r}
 df_load_raw <- read_excel(path = here::here("data/19july24_datalab.xlsx"), sheet = 3)
 
-# df_load |> glimpse()
-
-
 df_load_raw$nematode_count[which(df_load_raw$nematode_count == ">100")] <- "100"
 df_load_raw$nematode_count <- as.numeric(df_load_raw$nematode_count)
 
@@ -73,7 +88,9 @@ df_load_rename <- df_load_raw %>%
 # correct species names
 df_load <- df_load_rename %>%
   left_join(species_names_df |> select(species, species_code),
-            by = "species")
+            by = "species") |> 
+  left_join(df_island |> select(island, island_code),
+            by = "island")
 df_load
 
 ```
@@ -88,9 +105,11 @@ HOWEVER, species-island associations are only found in the load dataset
 
 ```{r}
 sp_code_island_df <- df_load |> 
-  select(species, species_code, island) |> 
+  select(species, species_code, island, island_code) |> 
   distinct() |> 
-  left_join(df_island)
+  left_join(df_island) |> 
+  left_join(species_names_df |> select(species_name, species_code)) |> 
+  distinct()
 
 sp_code_island_df |> 
   head() |> 
@@ -242,9 +261,20 @@ sp_code_island_df |>
 df_bright_noNA |> head() |> knitr::kable()
 ```
 
+
+#### load data
+
+
+```{r}
+
+df_load |> head() |> knitr::kable()
+```
+
+
+
 # Models
 
-Building up slowly from a simple model -- unfortunately, the only way I know how to do this kind of work.
+Building up slowly from a simple model
 
 ## Model of microhabitat
 
@@ -362,7 +392,7 @@ all_spp_arbor_veg_bright_samp <- all_spp_arbor_veg_bright$sample(
     brightness_obs = df_bright_noNA$brightness,
     sp_index_bright = df_bright_noNA$species_code
   ),
-  chains = 4, parallel_chains = 4, refresh = 500
+  chains = 4, parallel_chains = 4, refresh = 0
 )
 ```
 
@@ -374,92 +404,156 @@ bright_rvars <- all_spp_arbor_veg_bright_samp |>
   mutate(brightness = exp(.value),
          species_code = forcats::fct_reorder(as.character(species_code), .value))
 
+##################
+# Create a named vector for species names
+species_code_to_name <- setNames(sp_code_island_df$species_name, sp_code_island_df$species_code)
+
+# Replace species codes with species names in bright_rvars
+bright_rvars <- bright_rvars %>%
+  mutate(species_name = species_code_to_name[as.character(species_code)])
+
+# Replace species codes with species names in df_bright_noNA
+df_bright_noNA <- df_bright_noNA %>%
+  mutate(species_name = species_code_to_name[as.character(species_code)])
+#################
+
 post_bright <- bright_rvars |> 
-  ggplot(aes(x = species_code, ydist = brightness)) + 
+  ggplot(aes(x = species_name, ydist = brightness)) + 
   stat_pointinterval() + 
   scale_y_log10()
 
-post_bright + 
-  geom_point(aes(x = species_code_f, y = brightness), inherit.aes = FALSE, 
-             data = df_bright_noNA |> 
-               mutate(species_code_f = ordered(species_code, levels = levels(bright_rvars$species_code))), 
-             colour = "orange",
+post_bright <- post_bright + 
+  geom_point(aes(x = species_name, y = brightness), inherit.aes = FALSE, 
+             data = df_bright_noNA, 
+             colour = "red",
              size = .5, alpha = .5,
-             position = position_jitter(width = .3))
+             position = position_jitter(width = .3)) +
+  theme_minimal() +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  xlab(NULL)
+
+
+
 
 ```
 
-## Parasite load also
+
+
+
+###################################################
+###################################################
+
+
+
+# model load
+
+## Negative binomial model
 
 
 ```{r}
 #| class-output: stan
-all_spp_arbor_veg_bright_load <- cmdstan_model(here::here("stan/all_spp_arbor_veg_bright_load.stan"),
+all_spp_load <- cmdstan_model(here::here("stan/all_spp_load_nbinom.stan"),
                                           pedantic = TRUE)
 
-all_spp_arbor_veg_bright_load
+all_spp_load
 ```
 
 
 ```{r}
-all_spp_arbor_veg_bright_load_samp <- all_spp_arbor_veg_bright_load$sample(
+
+# Data code including phylogenetic covariance matrix
+all_spp_load_samp <- all_spp_load$sample(
   data = list(
-    N_spp = nrow(sp_code_island_df),
-    N_island = max(sp_code_island_df$island_code),
-    sp_id = sp_code_island_df$species_code,
-    island_area = sp_code_island_df$island_area,
-    island_age = sp_code_island_df$island_age,
-    island_index_spp = sp_code_island_df$island_code,
-    # microhabitat
-    N_habitat = nrow(df_hab),
-    habitat_arboreal = df_hab$arboreal,
-    total_hab = df_hab$total_hab,
-    sp_index_hab = df_hab$species_code,
-    # veg zone
-    N_veg = nrow(df_veg),
-    veg_arid = df_veg$arid,
-    total_veg = df_veg$total_veg,
-    sp_index_veg = df_veg$species_code,
-    # brightness data
-    N_bright = nrow(df_bright_noNA), 
-    brightness_obs = df_bright_noNA$brightness,
-    sp_index_bright = df_bright_noNA$species_code,
-    # load data
-    N_load = nrow(df_load),
-    load_obs = df_load$nematode_count,
-    sp_index_load = df_load$species_code
-  ),
-  chains = 4, parallel_chains = 4, refresh = 500
+  N_spp = nrow(sp_code_island_df),  # Number of species (47)
+  N_island = max(sp_code_island_df$island_code),
+  sp_id = sp_code_island_df$species_code,
+  island_area = sp_code_island_df$island_area,
+  island_age = sp_code_island_df$island_age,
+  island_index_spp = sp_code_island_df$island_code,
+  
+  # Habitat data
+  N_habitat = nrow(df_hab),
+  habitat_arboreal = df_hab$arboreal,
+  total_hab = df_hab$total_hab,
+  sp_index_hab = df_hab$species_code,
+  
+  # Vegetation zone data
+  N_veg = nrow(df_veg),
+  veg_arid = df_veg$arid,
+  total_veg = df_veg$total_veg,
+  sp_index_veg = df_veg$species_code,
+  
+  # Brightness data
+  N_bright = nrow(df_bright_noNA), 
+  brightness_obs = df_bright_noNA$brightness,
+  sp_index_bright = df_bright_noNA$species_code,
+  
+  # Nematode load data
+  N_load = nrow(df_load),  # Total observations for nematode load
+  nematode_count = df_load$nematode_count,
+  sp_index_load = df_load$species_code,  # Use species_code from df_load
+  island_index_load = df_load$island_code  # Use island_code from df_load
+  
+),
+  chains = 10, parallel_chains = 10, refresh = 0,
+iter_sampling = 500,
+output_dir = here::here("output/models/missing_data_load_nbinom")
+)
+
+
+
+```
+
+
+
+```{r}
+# read in the model from above
+all_spp_load_samp <- as_cmdstan_fit(dir(here::here("output/models/missing_data_load_nbinom"), full.names = TRUE))
+```
+
+
+
+```{r}
+# Extract the posterior samples
+posterior_samples <- all_spp_load_samp$draws()
+
+
+posterior_df <- as_draws_df(posterior_samples)
+
+#all_spp_load_samp$diagnostic_summary()
+
+#all_spp_load_samp$summary()
+
+mcmc_areas(
+  posterior_df,
+  pars = vars(starts_with("slope")),
+  prob = 0.8  
 )
 ```
 
-let's look now at species brightness predictions from this model
+
+Predicted load
 
 ```{r}
-bright_rvars <- all_spp_arbor_veg_bright_load_samp |> 
-  tidybayes::gather_rvars(true_ln_bright[species_code]) |> 
-  mutate(brightness = exp(.value),
-         species_code = forcats::fct_reorder(as.character(species_code), .value))
 
-post_bright <- bright_rvars |> 
-  ggplot(aes(x = species_code, ydist = brightness)) + 
-  stat_pointinterval() + 
-  scale_y_log10()
+predicted_load <- all_spp_load_samp$draws("predicted_nematode_load")
 
-post_bright + 
-  geom_point(aes(x = species_code_f, y = brightness), inherit.aes = FALSE, 
-             data = df_bright_noNA |> 
-               mutate(species_code_f = ordered(species_code, levels = levels(bright_rvars$species_code))), 
-             colour = "orange",
-             size = .5, alpha = .5,
-             position = position_jitter(width = .3))
+# Convert the extracted predictions to a format suitable for bayesplot
+predicted_load <- as_draws_matrix(predicted_load)
+
+# Posterior predictive check for nematode load
+ppc_load <-  ppc_dens_overlay(y = df_load$nematode_count, yrep = predicted_load) +
+  scale_color_manual(name = "Legend",
+                     values = c("y" = "black", "yrep" = "blue"),
+                     labels = c("Observed load", "Predicted load")) +
+  scale_fill_manual(name = "Legend",
+                    values = c("y" = "black", "yrep" = "blue"),
+                    labels = c("Observed load", "Predicted load"))+
+  my_theme
+
 
 ```
 
 
-```{r}
-all_spp_arbor_veg_bright_load_samp |> 
-  tidybayes::gather_rvars("slope_bright_load")
-```
-
-
+Predicted values have super high values - I need to solve this in the generated quantities block, probably back transforming

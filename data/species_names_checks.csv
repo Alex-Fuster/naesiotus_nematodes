@@ -3,15 +3,19 @@ akamatus,akamatus
 albemarlensis,albemarlensis
 albermarlensis,albemarlensis
 cf. albemarlensis,sp_nov_CA
+cf_albemarlensis,sp_nov_CA
 amastroides,amastroides
 cf. amastroides,amastroides
+cf_amastroides,amastroides
 basiplicatus,basiplicatus
 CF. BASIPLACATUS,basiplicatus
 cf. basiplicatus,basiplicatus
+cfbasiplicatus,basiplicatus
 bauri,bauri
 calvus,calvus
 canaliferus,canaliferus
 canaliferus 1,canaliferus
+canaliferus_1,canaliferus
 canaliferus 2,canaliferus
 cavagnaroi,cavagnaroi
 chemnitzioides,chemnitzioides
@@ -22,38 +26,47 @@ eschariferus,eschariferus
 hirsutus,hirsutus
 CF. HIRSUTUS,hirsutus
 cf. hirsutus,hirsutus
+cfhirsutus,hirsutus
 invalidus,invalidus
 invalidus 1,invalidus
+invalidus_1,invalidus
 invalidus 2,
 cf. invalidus,invalidus
+cfinvalidus,invalidus
 jacobinus,jacobinus
 lycodus,lycodus
 nuciformis,nuciformis
 nucula,nucula
 nux,nux
 cf. nux,nux
+cf_nux,nux
 ochsneri,ochsneri
 olla,olla
 perspectivus,perspectivus
 perspectivus 1,
 perspectivus 2,perspectivus
+perspectivus_2,perspectivus
 cf. perspectivus,perspectivus
-planospira,planospira
+cf_perspectivus,perspectivus
+planospira,rugulosus
 rabidensis,rabidensis
 reibischi,reibischi
 rugiferus,rugiferus
 sculpturatus,sculpturatus
 sculpturatus 1,sculpturatus
+sculpturatus_1,sculpturatus
 sculpturatus 2,
 sculpturatus 3,
 simrothi,simrothi
 simrothi 1,simrothi
+simrothi_1,simrothi
 simrothi 2,
 snodgrassi,snodgrassi
 spp1,sp. nov. Darwin 1
 spp11,pinzonopsis
 spp12,sp. nov. pinzon 1
 spp13,sp. nov. Pinta 2
+sp_nov_Pinta_2,sp. nov. Pinta 2
 spp14,sp_nov_CH
 spp15,rugulosus
 spp2,sp. nov. Volcan Wolf 3
@@ -66,6 +79,7 @@ spp9,pinzonensis
 tanneri,tanneri
 tortuganus,tortuganus
 cf. tortuganus,tortuganus
+cf_tortuganus,tortuganus
 unifasciatus,unifasciatus
 ustulatus,ustulatus
 ustulatus pallescens,ustulatus
@@ -73,6 +87,7 @@ ustulatus phlegonis,ustulatus
 ustulatus mahogany,ustulatus
 wolfi,wolfi
 wolfi 1,wolfi
+wolfi_1,wolfi
 wolfi 2,
 wolfi 3,
 wolfi garrapatero,wolfi
@@ -92,6 +107,7 @@ indefatigabilis,
 nilsodhneri,
 pallidus,pallidus
 perrus 1,perrus 1
+perrus_1,perrus 1
 perrus 2,
 pinzonensis,pinzonensis
 pinzonopsis,pinzonopsis
@@ -122,6 +138,7 @@ olla jacobinus*,olla
 perspectivus/canaliferus??,
 sp. nov. Alcedo 1,
 sp. nov. Darwin 1,sp. nov. Darwin 1
+sp_nov_Darwin_1,sp. nov. Darwin 1
 sp. nov. Darwin 2,
 sp. nov. Pinta 1,
 sp. nov. Pinta 2,sp. nov. Pinta 2
@@ -132,3 +149,4 @@ sp. nov. pinzon 1,sp. nov. pinzon 1
 sulcatus (yellow nux),
 testing Pinta divergence,
 ventrosus,ventrosus
+cf_reibischi,reibischi
