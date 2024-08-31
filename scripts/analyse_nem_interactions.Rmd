@@ -47,7 +47,7 @@ df_taxa_nem <- df_taxa_nem %>%
 head(df_taxa_nem)
 ```
 
-What species do not have nematodes?
+What species didnt amplify nematodes?
 
 ```{r}
 setdiff(metadata$species, df_taxa_nem$species)
@@ -80,6 +80,8 @@ colnames(interaction_matrix) <- sub("^d__Eukaryota\\.p__Nematozoa\\.", "", colna
 # Ensure that the matrix values are numeric
 interaction_matrix <- apply(interaction_matrix, 2, as.numeric)
 rownames(interaction_matrix) <- rownames_snailspp
+
+#saveRDS(interaction_matrix, here::here("output/objects/metaweb.rds"))
 
 ```
 
@@ -171,7 +173,7 @@ interaction_counts <- data.frame(
 # View the interaction counts table
 interaction_counts
 
-write.csv(here::here("output/tables/diversity_per_snailspp"))
+#write.csv(interaction_counts,here::here("output/tables/diversity_per_snailspp.csv"))
 
 ```
 

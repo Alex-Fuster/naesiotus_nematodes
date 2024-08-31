@@ -51,6 +51,10 @@ tree <- read.nexus(here::here("data/phylogeny_2024/Species_tree_labelled.nex"))
 df_rads <- read_excel(here::here("data/phylogeny_2024/New_tree_taxa_28Aug24.xlsx"))
 species_names_df_raw <- read.csv(here::here("data/species_names_checks.csv"))
 
+species_names_df <- species_names_df_raw %>% 
+  rename(species = annotated_name)  %>% 
+  filter(species_name != "")
+
 tree_data <- fortify(tree)
 ggtree(tree) +
   geom_tiplab() +  # Add tip labels for species
@@ -140,10 +144,6 @@ df_load_rename <- df_load_raw %>%
   select(id, spp, nematode_count, island) %>% 
   rename(species = spp)
 
-species_names_df <- species_names_df_raw %>% 
-  rename(species = annotated_name)  %>% 
-  filter(species_name != "")
-
 # correct species names
 df_load <- df_load_rename %>%
   left_join(species_names_df |> select(species, species_name),
@@ -210,7 +210,7 @@ plot.phylosig(lambda_nemaload)
 
 
 
-# Plot tree and trait values
+# Plot tree and load
 
 ```{r}
 
@@ -258,3 +258,133 @@ ggtree(pruned_tree) +
 
 ```
 
+
+# Analysis with diversity
+
+
+Keep species names for which nematode amplification was successful
+
+```{r}
+diversity_per_snailspp <- read.csv(here::here("output/tables/diversity_per_snailspp.csv"))[,-1]
+
+# correct species names
+diversity_per_snailspp <- diversity_per_snailspp %>%
+  left_join(species_names_df |> select(species, species_name),
+            by = "species") 
+```
+
+
+Prune the tree to keep only assessed species
+
+```{r}
+# Extract the species names to keep from your dataset
+species_assessed_div <- unique(diversity_per_snailspp$species_name)
+
+# Check which species names are not found in the tree's tip labels
+mismatched_species <- setdiff(species_assessed_div, pruned_tree$tip.label)
+
+mismatched_species
+```
+
+Filter data
+
+```{r}
+diversity_per_snailspp_filtered <- diversity_per_snailspp %>%
+  filter(!(species_name %in% mismatched_species))
+  
+```
+
+
+```{r}
+div_nem_species <-setNames(diversity_per_snailspp_filtered$nematode_species, diversity_per_snailspp_filtered$species_name)
+
+if(length(setdiff(unique(pruned_tree$tip.label),diversity_per_snailspp_filtered$species_name)) != 0){
+"problem- mismatch in names"
+}else{
+"all good - species in data and tree match"
+}
+
+```
+How to get standard error? maybe from sequence data 
+
+
+# Blomberg's K
+
+```{r}
+K_nemadiv <- phylosig(pruned_tree, div_nem_species, method = 'K', test = TRUE)
+K_nemadiv
+plot.phylosig(K_nemadiv)
+
+```
+
+
+# Lambda
+
+```{r}
+
+lambda_nemadiv <- phylosig(pruned_tree, div_nem_species, method = 'lambda', test = TRUE) 
+lambda_nemadiv <- phylosig(pruned_tree, div_nem_species, method = 'lambda', test = TRUE) 
+lambda_nemadiv
+plot.phylosig(lambda_nemadiv)
+
+```
+
+# Plot tree and nem diversity
+
+
+```{r}
+matching_species <- intersect(pruned_tree$tip.label, names(div_nem_species))
+
+# Filter and reorder the phenotypic data to match the tree tip labels
+div_nem_species_matched <- div_nem_species[matching_species]
+div_nem_species_matched <- div_nem_species_matched[match(pruned_tree$tip.label, names(div_nem_species_matched))]
+
+if (!all(names(div_nem_species_matched) == pruned_tree$tip.label)) {
+  stop("Error: The names in the phenotypic data do not match the tip labels in the tree.")
+}
+
+# Use contMap to plot the tree with the matched data
+contMap(pruned_tree,
+        div_nem_species_matched,
+        res = 400,
+        lwd = 4,
+        outline = FALSE,
+        sig = 0)
+```
+
+
+--------------------------------------------------
+
+
+```{r}
+heatmap_data <- data.frame(
+  species_name = names(div_nem_species_matched),
+  div = div_nem_species_matched
+)
+
+# Aggregate the data to make species names unique
+heatmap_data <- heatmap_data %>%
+  group_by(species_name) %>%
+  summarise(div = sum(div, na.rm = TRUE)) %>%  # Adjust to your preferred method (sum, mean, etc.)
+  ungroup()
+
+# Ensure there are no missing values
+heatmap_data <- heatmap_data %>%
+  filter(!is.na(div))  # Remove rows with NA values
+
+# Set the row names to the unique species names
+rownames(heatmap_data) <- heatmap_data$species_name
+
+# Plot the tree
+p <- ggtree(pruned_tree) +
+  geom_tiplab(align = TRUE, linesize = 0.5, offset = 0.01) +
+  xlim(0, 3)  # Adjust the x-axis limits as needed
+
+# Add the heatmap next to the tree
+p1 <- gheatmap(p, heatmap_data[, "div", drop = FALSE], offset = 0.8, width = 0.1, 
+               colnames = FALSE, low = "white", high = "red", legend_title = "div") +
+  scale_fill_gradient(low = "white", high = "red")  # Ensures a color gradient for the fill
+
+# Print the plot
+print(p1)
+```

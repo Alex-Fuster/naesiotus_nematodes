@@ -17,8 +17,8 @@ library(ggrepel)
 
 
 ```{r}
-data_coord <- read_excel(here::here("a_data/19july24_datalab.xlsx"), sheet = 3)
-df_island <- read_excel(here::here("a_data/19july24_datalab.xlsx"), sheet = "island_characteristics")
+data_coord <- read_excel(here::here("data/19july24_datalab.xlsx"), sheet = 3)
+df_island <- read_excel(here::here("data/19july24_datalab.xlsx"), sheet = "island_characteristics")
 
 ```
 
@@ -33,7 +33,8 @@ df_island <- df_island |> rename(island_age = mean_emergence,
 
 # Merge the dataframes based on the "island" column
 data_coord <- data_coord |> 
-  left_join(df_island |> select(island, island_age, island_area), by = "island")
+  left_join(df_island |> select(island, island_age, island_area), by = "island") |> 
+  rename(species = spp)
 
 
 ```
@@ -54,26 +55,37 @@ df_island <- df_island %>%
 data_coord <- data_coord %>%
   mutate(island = trimws(tolower(island)))
 
-# Perform the left join
-data_coord <- data_coord %>%
-  left_join(df_island %>% dplyr::select(island, island_age, island_area), by = "island")
 ```
 
 
 
-- rugulosus in Champion doesnt have coordinates but I can add it manually in the image editor
+- sp_nov_CH in Champion doesnt have coordinates but I can add it manually in the image editor
 
+```{r}
+species_names_df_raw <- read.csv(here::here("data/species_names_checks.csv"))
 
+# we're dropping the species with no name in this database. 
+# this indicates morphospecies which have no formal name
+species_names_df <- species_names_df_raw %>% 
+  rename(species = annotated_name)  %>% 
+  filter(species_name != "")
 
+species_names_df <- species_names_df |> 
+  select(species, species_name) |> 
+  distinct()
+```
 
-
+```{r}
+data_coord <- data_coord %>%
+  left_join(species_names_df |> select(species, species_name),
+            by = "species")
+```
 
 
 
 
 
 ```{r}
-
 
 # directory containing the .asc files
 asc_files_directory <- here::here("../maps/elevation_finer")
@@ -131,7 +143,7 @@ plot_coord_sites <- ggplot() +
 
 plot_coord_sites
 
-ggsave("plot_coord_sites.png", height = 7, width = 8)
+#ggsave("plot_coord_sites.png", height = 7, width = 8)
 
 ```
 
