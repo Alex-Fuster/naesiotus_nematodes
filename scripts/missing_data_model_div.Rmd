@@ -1,0 +1,317 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r setup-packages}
+#| message: false
+#| warning: false
+library(tidyverse)
+library(readxl)
+library(naniar)
+library(cmdstanr)
+library(bayesplot)
+library(tidybayes)
+library(posterior)
+library(ggpubr)
+library(phytools)
+library(ape)
+
+```
+
+parameters for plotting
+
+```{r}
+my_theme<-theme(axis.text=element_text(size=12),
+        axis.title = element_text(size = 14),
+        legend.text=element_text(size=10),
+        legend.title = element_text(size=12),
+        plot.title = element_text(face="bold",size=14,margin=margin(0,0,20,0),hjust = 0.5),
+        axis.title.y = element_text(hjust = 0.5),
+        axis.title.x = element_text(hjust = 0.5))
+```
+
+
+# diversity nematodes df
+
+```{r}
+diversity_per_snailspp <- read.csv(here::here("output/tables/diversity_per_snailspp.csv"))[,-1]
+```
+
+
+## compute species code id
+
+```{r}
+species_names_df_raw <- read.csv(here::here("data/species_names_checks.csv"))
+
+# we're dropping the species with no name in this database. 
+# this indicates morphospecies which have no formal name
+species_names_df <- species_names_df_raw %>% 
+  rename(species = annotated_name)  %>% 
+  filter(species_name != "") 
+```
+
+
+```{r}
+diversity_per_snailspp <- read.csv(here::here("output/tables/diversity_per_snailspp.csv"))[,-1]
+
+# correct species names
+diversity_per_snailspp <- diversity_per_snailspp %>%
+  left_join(species_names_df |> select(species, species_name),
+            by = "species")
+```
+
+
+Filter species names based on the ones assessed for diversity
+
+```{r}
+species_names_filtered <- species_names_df_raw %>%
+  filter(species_name %in% diversity_per_snailspp$species_name)
+```
+
+Create species code
+
+```{r}
+species_names_df <- species_names_filtered |> 
+   mutate(species_code = as.numeric(factor(species_name)))
+
+ species_code_df <- species_names_df |> 
+   select(species_name, species_code) |> 
+   distinct() |> 
+   arrange(species_code)
+ 
+ species_code_df
+```
+
+
+## island info
+
+```{r}
+df_island <- read_excel(path = here::here("data/19july24_datalab.xlsx"), sheet = "island_characteristics")
+
+# Rename the column "mean_emergence" to "island_age" in df_island
+# add an ID column
+df_island <- df_island %>% rename(island_age = mean_emergence,
+                                  island_area = area) |> 
+  mutate(island_code = as.numeric(as.factor(island)))
+
+df_island
+
+```
+
+
+
+I need to add the island information. Perhaps the best is to do the mapping before, in the diversity_per_snailspp table, so that I can use the island df after with it.
+
+```{r}
+metadata <- read_excel(here::here("../sequencing/metadata.xlsx"))[-1,]
+
+metadata <- metadata |> 
+  mutate(annotated_name = species)|> 
+  left_join(species_names_df |> select(annotated_name, species_name), by = "annotated_name")
+```
+
+
+
+# Nematode diversity dataset
+
+```{r}
+diversity_per_snailspp <- read.csv(here::here("output/tables/diversity_per_snailspp.csv"))[,-1]
+
+# correct species names
+diversity_per_snailspp <- diversity_per_snailspp %>%
+  mutate(annotated_name = species) |> 
+  left_join(species_names_df |> select(annotated_name, species_name, species_code),
+            by = "annotated_name") |> 
+  left_join(metadata |> select(species_name, island), by = "species_name") |> 
+  left_join(df_island |> select(island, island_code),
+            by = "island")
+diversity_per_snailspp
+```
+
+
+
+Previously we merged all the data on islands into the load dataset, but in the last bit of code above we depart from this.
+Here we are adding only the island code. 
+Island level data will instead be added to the species data, since it is used in calculations at the species level:
+
+HOWEVER, species-island associations are only found in the diversity dataset
+
+```{r}
+sp_code_island_df <- diversity_per_snailspp |> 
+  select(species, species_code, island, island_code) |> 
+  distinct() |> 
+  left_join(df_island) |> 
+  left_join(species_names_df |> select(species_name, species_code)) |> 
+  distinct()
+
+sp_code_island_df
+sp_code_island_df |> 
+  head() |> 
+  knitr::kable()
+```
+
+
+## Brightness data
+
+```{r}
+
+df_bright_raw <- read_csv(here::here("data/kraemer2019_brightness_scores.csv"))
+df_bright <- df_bright_raw %>% 
+  select(location, spp, brightness, microhab) %>% 
+  rename(id = location,
+         species = spp) %>%
+  rename(annotated_name = species)|> 
+  left_join(species_names_df |> select(annotated_name, species_code), by = "annotated_name")
+
+df_bright
+
+
+```
+
+```{r}
+df_bright_noNA <- df_bright |> 
+  drop_na(species_code)
+```
+
+
+```{r}
+df_rad_raw <- read_excel(here::here("data/GPS RAD snails.xlsx"))
+df_rad_rename <- df_rad_raw %>% 
+  select(Sample, Taxon, 
+         habitat = Microhabitat, 
+         vegetation = `Vegetation Zone`)%>% 
+  rename(annotated_name = Taxon) %>% 
+  glimpse() |> 
+  left_join(species_names_df |> select(annotated_name, species_code), by = "annotated_name") |> # correct species names
+  mutate(habitat = str_to_lower(habitat)) %>% 
+  mutate(habitat = str_replace(habitat, "semi-arboreal", "arboreal")) |> # Semi-Arboreal is considered arboreal
+  filter(habitat %in% c("arboreal", "terrestrial"))
+
+df_rad_rename
+```
+```{r}
+df_rad_rename_noNA <- df_rad_rename |> 
+  drop_na(species_code)
+```
+
+
+```{r}
+df_hab <-  bind_rows(df_bright_noNA |> 
+                       select(microhab, species_code),
+                     df_rad_rename_noNA |> 
+                       select(microhab = habitat, species_code)
+) |> # add habitat data from brightness dataset 
+  count(microhab, species_code) |> 
+  pivot_wider(values_from = n, names_from = microhab, values_fill = 0) |> 
+  mutate(total_hab = terrestrial + arboreal)
+
+df_hab
+```
+
+### Vegetation data
+
+```{r}
+
+df_veg <- df_rad_rename_noNA %>% 
+  select(Sample, annotated_name, 
+         habitat, vegetation)%>%
+  # glimpse() |> 
+  left_join(species_names_df |> 
+              select(annotated_name, species_code), by = "annotated_name") |> # correct species names
+  # glimpse() |> 
+  mutate(vegetation = str_to_lower(vegetation)) |> 
+  # filter(vegetation %in% c("humid", "arid")) |> ## filter for only legal values -- others are typos
+  count(species_code, vegetation) |> 
+  pivot_wider(values_from = n, names_from = vegetation, values_fill = 0) |> 
+  mutate(total_veg = humid + arid)
+
+df_veg
+
+```
+
+
+## Negative binomial model with informed priors on brightness and load
+
+
+```{r}
+#| class-output: stan
+all_spp_load_constr_bright <- cmdstan_model(here::here("stan/all_spp_load_nbinom_constr_bright.stan"),
+                                          pedantic = TRUE)
+```
+
+
+load here is the diversity. Using the same name of dataset df_load to ease the amount of names in the model
+
+```{r}
+df_load <- diversity_per_snailspp
+```
+
+
+```{r}
+
+# Data code including phylogenetic covariance matrix
+constr_brightload_samp <- all_spp_load_constr_bright$sample(
+  data = list(
+  N_spp = nrow(sp_code_island_df),  # Number of species (47)
+  N_island = max(sp_code_island_df$island_code),
+  sp_id = sp_code_island_df$species_code,
+  island_area = sp_code_island_df$island_area,
+  island_age = sp_code_island_df$island_age,
+  island_index_spp = sp_code_island_df$island_code,
+  
+  # Habitat data
+  N_habitat = nrow(df_hab),
+  habitat_arboreal = df_hab$arboreal,
+  total_hab = df_hab$total_hab,
+  sp_index_hab = df_hab$species_code,
+  
+  # Vegetation zone data
+  N_veg = nrow(df_veg),
+  veg_arid = df_veg$arid,
+  total_veg = df_veg$total_veg,
+  sp_index_veg = df_veg$species_code,
+  
+  # Brightness data
+  N_bright = nrow(df_bright_noNA), 
+  brightness_obs = df_bright_noNA$brightness,
+  sp_index_bright = df_bright_noNA$species_code,
+  
+  # Nematode load data
+  N_load = nrow(df_load),  # Total observations for nematode load
+  nematode_count = df_load$nematode_species,
+  sp_index_load = df_load$species_code,  # Use species_code from df_load
+  island_index_load = df_load$island_code  # Use island_code from df_load
+  
+),
+  chains = 10, parallel_chains = 10, refresh = 0,
+iter_sampling = 500,
+output_dir = here::here("output/models/missing_data_load_nbinom_constr_brightdiv")
+)
+
+
+
+```
+
+```{r}
+# read in the model from above
+constr_brightload_samp <- as_cmdstan_fit(dir(here::here("output/models/missing_data_load_nbinom_constr_brightdiv"), full.names = TRUE))
+```
+
+
+```{r}
+# Extract the posterior samples
+posterior_samples <- constr_brightload_samp$draws()
+
+
+posterior_df <- as_draws_df(posterior_samples)
+
+#all_spp_load_samp$diagnostic_summary()
+#all_spp_load_samp$summary()
+
+mcmc_areas(
+  posterior_df,
+  pars = vars(starts_with("slope")),
+  prob = 0.8  
+)
+```
