@@ -81,7 +81,7 @@ model {
   sp_effect_bright ~ normal(0, sd_ln_bright_sp);
   island_effect_bright ~ normal(0, sd_ln_bright_island);
   slope_arbor_bright ~ normal(0.64, 0.5);  // mostly positive relationship (Kraemer et al. 2019)
-  slope_arid_bright ~ normal(-0.64, 0.5); //  mostly negative relationship (Kraemer et al. 2019)
+  slope_arid_bright ~ normal(0, 0.5); 
   slope_age_bright ~ normal(0, 0.5);
   slope_area_bright ~ normal(0, 0.5);
   sigma_bright ~ exponential(0.5);

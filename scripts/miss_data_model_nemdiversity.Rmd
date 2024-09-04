@@ -352,7 +352,7 @@ ggplot(combined_data, aes(x = value, fill = type)) +
   scale_fill_manual(values = c("Prior" = "red", "Posterior" = "blue")) +
   theme_minimal() +
   labs(
-    title = "constr_brightload_samp",
+    title = "constr_brightdiv_samp",
     x = "Parameter Values",
     y = "Density"
   ) +
@@ -433,9 +433,6 @@ model_div_constr <- cmdstan_model(here::here("stan/div_nbinom_constr.stan"),
 
 
 ```{r}
-# Extract the posterior samples
-posterior_samples <- constr_div_samp$draws()
-posterior_df <- as_draws_df(posterior_samples)
 
 constr_div_samp$diagnostic_summary()
 constr_brightdiv_samp$summary()
@@ -460,7 +457,7 @@ n_prior_samples <- nrow(posterior_df)
 set.seed(123)  # For reproducibility
 priors <- tibble(
   slope_arbor_bright = rnorm(n_prior_samples, 0.64, 0.5),
-  slope_arid_bright = rnorm(n_prior_samples, -0.64, 0.5),
+  slope_arid_bright = rnorm(n_prior_samples, 0, 0.5),
   slope_age_bright = rnorm(n_prior_samples, 0, 0.5),
   slope_area_bright = rnorm(n_prior_samples, 0, 0.5),
   slope_bright_div = rnorm(n_prior_samples, 0, 0.5),
