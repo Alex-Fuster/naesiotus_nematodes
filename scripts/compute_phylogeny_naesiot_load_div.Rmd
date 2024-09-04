@@ -47,7 +47,8 @@ library(ggtree)
 
 ```{r}
 
-tree <- read.nexus(here::here("data/phylogeny_2024/Species_tree_labelled.nex"))
+#tree <- read.nexus(here::here("data/phylogeny_2024/Species_tree_labelled.nex"))
+tree <- read.newick(here::here("data/phylogeny_2024/tree2024.nwk"))
 df_rads <- read_excel(here::here("data/phylogeny_2024/New_tree_taxa_28Aug24.xlsx"))
 species_names_df_raw <- read.csv(here::here("data/species_names_checks.csv"))
 
@@ -59,7 +60,7 @@ tree_data <- fortify(tree)
 ggtree(tree) +
   geom_tiplab() +  # Add tip labels for species
   theme_tree() +  # Remove legend
-  xlim(0, max(tree_data$x) + 3)  
+  xlim(0, max(tree_data$x) + 0.3)  
 
 ```
 
@@ -73,6 +74,8 @@ tree$tip.label[which(tree$tip.label == "'sp_nov_Volcán_Wolf_3'")]<- "sp. nov. V
 
 
 tree$tip.label[which(tree$tip.label == "'sp_nov_pinzón_1'")]<- "sp. nov. pinzon 1"
+
+#tree$tip.label <- gsub("^[\"'`]+|[\"'`]+$", "", tree$tip.label)
 
 ```
 
@@ -110,7 +113,7 @@ p <- ggtree(tree) +
               offset = 0.01,  # Adjust the position of the labels to avoid going out of margin
               inherit.aes = FALSE) +
   theme(legend.position = "none") +  # Remove legend
-  xlim(0, max(tree_data$x) + 3)  # Adjust the x-axis limit to control width
+  xlim(0, max(tree_data$x) + 0.3)  # Adjust the x-axis limit to control width
 
 print(p)
 ```

@@ -1,6 +1,5 @@
 ---
 title: "R Notebook"
-output: html_notebook
 ---
 
 ```{r setup-packages}
@@ -236,22 +235,16 @@ df_veg
 
 ```{r}
 #| class-output: stan
-all_spp_div_unconstr_bright <- cmdstan_model(here::here("stan/all_spp_load_nbinom_unconstr_brightdiv.stan"),
+model_div_unconstr <- cmdstan_model(here::here("stan/div_nbinom_unconstr.stan"),
                                           pedantic = TRUE)
 ```
 
-
-load here is the diversity. Using the same name of dataset df_load to ease the amount of names in the model
-
-```{r}
-#df_load <- diversity_per_snailspp
-```
 
 
 ```{r}
 
 # Data code including phylogenetic covariance matrix
-unconstr_brightdiv_samp <- all_spp_div_unconstr_bright$sample(
+unconstr_div_samp <- model_div_unconstr$sample(
   data = list(
   N_spp = nrow(sp_code_island_df),  # Number of species (47)
   N_island = max(sp_code_island_df$island_code),
@@ -286,7 +279,7 @@ unconstr_brightdiv_samp <- all_spp_div_unconstr_bright$sample(
 ),
   chains = 10, parallel_chains = 10, refresh = 0,
 iter_sampling = 500,
-output_dir = here::here("output/models/missing_data_load_nbinom_unconstr_brightdiv/model_output")
+output_dir = here::here("output/models/missing_data_div_nbinom_unconstr/model_output")
 )
 
 
@@ -295,31 +288,30 @@ output_dir = here::here("output/models/missing_data_load_nbinom_unconstr_brightd
 
 ```{r}
 # read in the model from above
-unconstr_brightdiv_samp <- as_cmdstan_fit(dir(here::here("output/models/missing_data_load_nbinom_unconstr_brightdiv/model_output"), full.names = TRUE))
+unconstr_div_samp <- as_cmdstan_fit(dir(here::here("output/models/missing_data_div_nbinom_unconstr/model_output"), full.names = TRUE))
 ```
 
 
 ```{r}
 # Extract the posterior samples
-posterior_samples <- unconstr_brightdiv_samp$draws()
-
-
+posterior_samples <- unconstr_div_samp$draws()
 posterior_df <- as_draws_df(posterior_samples)
 
-#all_spp_load_samp$diagnostic_summary()
-#all_spp_load_samp$summary()
+unconstr_div_samp$diagnostic_summary()
+unconstr_brightdiv_samp$summary()
 
-mcmc_areas(
-  posterior_df,
-  pars = vars(starts_with("slope")),
-  prob = 0.8  
-)
 ```
 
 ```{r}
 # Extract posterior samples
-posterior_samples <- unconstr_brightdiv_samp$draws()
+posterior_samples <- unconstr_div_samp$draws()
 posterior_df <- as_draws_df(posterior_samples)
+
+# mcmc_areas(
+#   posterior_df,
+#   pars = vars(starts_with("slope")),
+#   prob = 0.8  
+# )
 
 # Define the number of prior samples to match the posterior size
 n_prior_samples <- nrow(posterior_df)
@@ -366,33 +358,32 @@ ggplot(combined_data, aes(x = value, fill = type)) +
   ) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  
   coord_cartesian(xlim = c(-2, 2))  +
+  theme(legend.position = "right")+
   my_theme
 
-ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_brightdiv/priors_posteriors.png"), height = 10, width = 8)
+#ggsave(here::here("output/models/missing_data_div_nbinom_unconstr/priors_posteriors.png"), height = 10, width = 8)
 ```
 
 
-## Negative binomial model with informed priors on brightness and load
+
+## Negative binomial model constrained priors
+
+- brightness <- arboreal(+), aridity(-)
+- diversity <- age (+), area (-)
 
 
 ```{r}
 #| class-output: stan
-all_spp_load_constr_bright <- cmdstan_model(here::here("stan/all_spp_load_nbinom_constr_bright.stan"),
+model_div_constr <- cmdstan_model(here::here("stan/div_nbinom_constr.stan"),
                                           pedantic = TRUE)
 ```
 
-
-load here is the diversity. Using the same name of dataset df_load to ease the amount of names in the model
-
-```{r}
-df_load <- diversity_per_snailspp
-```
 
 
 ```{r}
 
 # Data code including phylogenetic covariance matrix
-constr_brightload_samp <- all_spp_load_constr_bright$sample(
+constr_div_samp <- model_div_constr$sample(
   data = list(
   N_spp = nrow(sp_code_island_df),  # Number of species (47)
   N_island = max(sp_code_island_df$island_code),
@@ -419,15 +410,15 @@ constr_brightload_samp <- all_spp_load_constr_bright$sample(
   sp_index_bright = df_bright_noNA$species_code,
   
   # Nematode load data
-  N_load = nrow(df_load),  # Total observations for nematode load
-  nematode_count = df_load$nematode_species,
-  sp_index_load = df_load$species_code,  # Use species_code from df_load
-  island_index_load = df_load$island_code  # Use island_code from df_load
+  N_div = nrow(diversity_per_snailspp),  # Total observations for nematode load
+  nematode_count = diversity_per_snailspp$nematode_species,
+  sp_index_div = diversity_per_snailspp$species_code,  # Use species_code from df_load
+  island_index_div = diversity_per_snailspp$island_code  # Use island_code from df_load
   
 ),
   chains = 10, parallel_chains = 10, refresh = 0,
 iter_sampling = 500,
-output_dir = here::here("output/models/missing_data_load_nbinom_constr_brightdiv/model_output")
+output_dir = here::here("output/models/missing_data_div_nbinom_constr/model_output")
 )
 
 
@@ -435,32 +426,32 @@ output_dir = here::here("output/models/missing_data_load_nbinom_constr_brightdiv
 ```
 
 ```{r}
-# read in the model from above
-constr_brightload_samp <- as_cmdstan_fit(dir(here::here("output/models/missing_data_load_nbinom_constr_brightdiv/model_output"), full.names = TRUE))
+#| class-output: stan
+model_div_constr <- cmdstan_model(here::here("stan/div_nbinom_constr.stan"),
+                                          pedantic = TRUE)
 ```
 
 
 ```{r}
 # Extract the posterior samples
-posterior_samples <- constr_brightload_samp$draws()
-
-
+posterior_samples <- constr_div_samp$draws()
 posterior_df <- as_draws_df(posterior_samples)
 
-#all_spp_load_samp$diagnostic_summary()
-#all_spp_load_samp$summary()
+constr_div_samp$diagnostic_summary()
+constr_brightdiv_samp$summary()
 
-mcmc_areas(
-  posterior_df,
-  pars = vars(starts_with("slope")),
-  prob = 0.8  
-)
 ```
 
 ```{r}
 # Extract posterior samples
-posterior_samples <- constr_brightload_samp$draws()
+posterior_samples <- constr_div_samp$draws()
 posterior_df <- as_draws_df(posterior_samples)
+
+# mcmc_areas(
+#   posterior_df,
+#   pars = vars(starts_with("slope")),
+#   prob = 0.8  
+# )
 
 # Define the number of prior samples to match the posterior size
 n_prior_samples <- nrow(posterior_df)
@@ -469,14 +460,14 @@ n_prior_samples <- nrow(posterior_df)
 set.seed(123)  # For reproducibility
 priors <- tibble(
   slope_arbor_bright = rnorm(n_prior_samples, 0.64, 0.5),
-  slope_arid_bright = rnorm(n_prior_samples, 0, 0.5),
-  slope_age_bright = rnorm(n_prior_samples, -0.64, 0.5),
+  slope_arid_bright = rnorm(n_prior_samples, -0.64, 0.5),
+  slope_age_bright = rnorm(n_prior_samples, 0, 0.5),
   slope_area_bright = rnorm(n_prior_samples, 0, 0.5),
-  slope_bright_load = rnorm(n_prior_samples, 0, 0.5),
-  slope_arbor_load = rnorm(n_prior_samples, -0.64, 0.5),
-  slope_arid_load = rnorm(n_prior_samples, -0.64, 0.5),
-  slope_age_load = rnorm(n_prior_samples, 0, 0.5),
-  slope_area_load = rnorm(n_prior_samples, 0, 0.5)
+  slope_bright_div = rnorm(n_prior_samples, 0, 0.5),
+  slope_arbor_div = rnorm(n_prior_samples, 0, 0.5),
+  slope_arid_div = rnorm(n_prior_samples, 0, 0.5),
+  slope_age_div = rnorm(n_prior_samples, 0.64, 0.5),
+  slope_area_div = rnorm(n_prior_samples, 0.64, 0.5)
 )
 
 # Reshape prior samples to long format
@@ -501,14 +492,181 @@ ggplot(combined_data, aes(x = value, fill = type)) +
   scale_fill_manual(values = c("Prior" = "red", "Posterior" = "blue")) +
   theme_minimal() +
   labs(
-    title = "constr_brightload_samp",
+    title = "constr_brightdiv_samp",
     x = "Parameter Values",
     y = "Density"
   ) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  
   coord_cartesian(xlim = c(-2, 2))  +
+  theme(legend.position = "right")+
   my_theme
 
-ggsave(here::here("output/models/missing_data_load_nbinom_constr_brightdiv/priors_posteriors.png"), height = 10, width = 8)
+ggsave(here::here("output/models/missing_data_div_nbinom_constr/priors_posteriors.png"), height = 10, width = 8)
+```
+```{r}
+# Extract island effects for brightness and load
+island_effect_bright_samples <- posterior_df %>%
+  select(starts_with("island_effect_bright"))
+
+island_effect_div_samples <- posterior_df %>%
+  select(starts_with("island_effect_div"))
+
+# Summarize island effects for brightness
+summary_bright <- island_effect_bright_samples %>%
+  pivot_longer(cols = everything(), names_to = "island", values_to = "effect") %>%
+  group_by(island) %>%
+  summarize(
+    mean_effect = mean(effect),
+    median_effect = median(effect),
+    lower_95 = quantile(effect, 0.025),
+    upper_95 = quantile(effect, 0.975)
+  )
+
+
+ggplot(island_effect_bright_samples %>%
+         pivot_longer(cols = everything(), names_to = "island", values_to = "effect"),
+       aes(x = effect, fill = island)) +
+  facet_wrap("island")+
+  geom_density(alpha = 0.5) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(title = "Posterior Distributions of Island Effects on Brightness",
+       x = "Island Effect", y = "Density") +
+  theme_minimal()
+
+
+# Summarize island effects for load
+summary_div <- island_effect_div_samples %>%
+  pivot_longer(cols = everything(), names_to = "island", values_to = "effect") %>%
+  group_by(island) %>%
+  summarize(
+    mean_effect = mean(effect),
+    median_effect = median(effect),
+    lower_95 = quantile(effect, 0.025),
+    upper_95 = quantile(effect, 0.975)
+  )
+
+ggplot(island_effect_div_samples %>%
+         pivot_longer(cols = everything(), names_to = "island", values_to = "effect"),
+       aes(x = effect, fill = island)) +
+  facet_wrap("island")+
+  geom_density(alpha = 0.5) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(title = "Posterior Distributions of Island Effects on Nematode diversity",
+       x = "Island Effect", y = "Density") +
+  theme_minimal()
+```
+
+## Negative binomial model constrained priors with interaction 
+
+- brightness <- arboreal(+), aridity(-)
+- diversity <- age (+), area (-)
+
+
+```{r}
+#| class-output: stan
+model_div_constr_int <- cmdstan_model(here::here("stan/div_nbinom_constr_int.stan"),
+                                          pedantic = TRUE)
+```
+
+
+
+```{r}
+
+# Data code including phylogenetic covariance matrix
+constr_div_samp <- model_div_constr_int$sample(
+  data = list(
+  N_spp = nrow(sp_code_island_df),  # Number of species (47)
+  N_island = max(sp_code_island_df$island_code),
+  sp_id = sp_code_island_df$species_code,
+  island_area = sp_code_island_df$island_area,
+  island_age = sp_code_island_df$island_age,
+  island_index_spp = sp_code_island_df$island_code,
+  
+  # Habitat data
+  N_habitat = nrow(df_hab),
+  habitat_arboreal = df_hab$arboreal,
+  total_hab = df_hab$total_hab,
+  sp_index_hab = df_hab$species_code,
+  
+  # Vegetation zone data
+  N_veg = nrow(df_veg),
+  veg_arid = df_veg$arid,
+  total_veg = df_veg$total_veg,
+  sp_index_veg = df_veg$species_code,
+  
+  # Brightness data
+  N_bright = nrow(df_bright_noNA), 
+  brightness_obs = df_bright_noNA$brightness,
+  sp_index_bright = df_bright_noNA$species_code,
+  
+  # Nematode load data
+  N_div = nrow(diversity_per_snailspp),  # Total observations for nematode load
+  nematode_count = diversity_per_snailspp$nematode_species,
+  sp_index_div = diversity_per_snailspp$species_code,  # Use species_code from df_load
+  island_index_div = diversity_per_snailspp$island_code  # Use island_code from df_load
+  
+),
+  chains = 10, parallel_chains = 10, refresh = 0,
+iter_sampling = 500,
+output_dir = here::here("output/models/missing_data_div_nbinom_constr_int/model_output")
+)
+
+
+
+```
+
+```{r}
+#| class-output: stan
+model_div_constr <- cmdstan_model(here::here("stan/div_nbinom_constr_int.stan"),
+                                          pedantic = TRUE)
+```
+
+
+```{r}
+# Extract posterior samples
+posterior_samples <- unconstr_div_samp$draws()
+
+# Convert the samples to a data frame format
+posterior_df <- as_draws_df(posterior_samples)
+
+# Extract the samples for overall slope and island effects
+slope_bright_div_samples <- posterior_df$slope_bright_div
+island_effect_div_samples <- posterior_df %>%
+  select(starts_with("island_effect_div"))
+
+# Summarize slopes for each island
+summary_slope_bright_div_island <- island_effect_div_samples %>%
+  pivot_longer(cols = everything(), names_to = "island", values_to = "slope") %>%
+  group_by(island) %>%
+  summarize(
+    mean_slope = mean(slope),
+    median_slope = median(slope),
+    lower_95 = quantile(slope, 0.025),
+    upper_95 = quantile(slope, 0.975)
+  )
+
+
+# Create a named vector for island mapping
+island_code_to_name <- setNames(df_island$island, df_island$island_code)
+
+# Transform data: Replace island indices with true names
+plot_data <- island_effect_div_samples %>%
+  pivot_longer(cols = everything(), names_to = "island", values_to = "slope") %>%
+  mutate(island = island_code_to_name[as.numeric(gsub("island_effect_div\\[|\\]", "", island))])
+
+# Plot posterior distributions of slopes for each island with true island names
+ggplot(plot_data, aes(x = slope, fill = island)) +
+  facet_wrap(~ island) +
+  geom_density(alpha = 0.5) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(
+    title = "Posterior Distributions of Slope (Brightness-Diversity) by Island",
+    x = "Slope of Brightness-Diversity Relationship",
+    y = "Density"
+  ) +
+  theme_minimal()
+
+
+df_island
 ```
 
