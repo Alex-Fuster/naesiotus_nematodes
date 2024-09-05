@@ -283,7 +283,7 @@ sp_code_island_df
 ```
 
 
-## Negative binomial model non-informed priors neither brightness nor load
+## Negative binomial model non-informed priors neither brightness nor load  (+hab/veg models and measurement error in island age)
 
 
 ```{r}
@@ -343,7 +343,7 @@ output_dir = here::here("output/models/missing_data_load_nbinom_unconstr_2_truea
 
 ```{r}
 # read in the model from above
-unconstr_brightload_samp <- as_cmdstan_fit(dir(here::here("output/models/missing_data_load_nbinom_unconstr/model_output"), full.names = TRUE))
+unconstr_brightload_samp <- as_cmdstan_fit(dir(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage/model_output"), full.names = TRUE))
 ```
 
 
@@ -414,7 +414,7 @@ ggplot(combined_data, aes(x = value, fill = type)) +
   theme(legend.position = "right")+
   my_theme
 
-#ggsave(here::here("output/models/missing_data_load_nbinom_unconstr/priors_posteriors.png"), height = 10, width = 8)
+#ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage/priors_posteriors.png"), height = 10, width = 8)
 ```
 
 
@@ -552,4 +552,140 @@ ggplot(combined_data, aes(x = value, fill = type)) +
   my_theme
 
 #ggsave(here::here("output/models/missing_data_load_nbinom_constr/priors_posteriors.png"), height = 10, width = 8)
+```
+
+
+
+## Negative binomial model constrained priors for brightness (+hab/veg models and measurement error in island age)
+
+
+```{r}
+#| class-output: stan
+load_nbinom_constr_2 <- cmdstan_model(here::here("stan/load_nbinom_constr_2_trueage.stan"),
+                                          pedantic = TRUE)
+```
+
+
+
+```{r}
+
+# Data code including phylogenetic covariance matrix
+constr_brightload_samp <- load_nbinom_constr_2$sample(
+  data = list(
+  N_spp = nrow(sp_code_island_df),  # Number of species (47)
+  N_island = max(sp_code_island_df$island_code),
+  sp_id = sp_code_island_df$species_code,
+  island_area = sp_code_island_df$island_area,
+  #island_age = sp_code_island_df$island_age,
+  min_emergence = sp_code_island_df$min_emergence,
+  max_emergence = sp_code_island_df$max_emergence,
+  island_index_spp = sp_code_island_df$island_code,
+  
+  # Habitat data
+  N_habitat = nrow(df_hab),
+  habitat_arboreal = df_hab$arboreal,
+  total_hab = df_hab$total_hab,
+  sp_index_hab = df_hab$species_code,
+  
+  # Vegetation zone data
+  N_veg = nrow(df_veg),
+  veg_arid = df_veg$arid,
+  total_veg = df_veg$total_veg,
+  sp_index_veg = df_veg$species_code,
+  
+  # Brightness data
+  N_bright = nrow(df_bright_noNA), 
+  brightness_obs = df_bright_noNA$brightness,
+  sp_index_bright = df_bright_noNA$species_code,
+  
+  # Nematode load data
+  N_load = nrow(df_load),  # Total observations for nematode load
+  nematode_count = df_load$nematode_count,
+  sp_index_load = df_load$species_code,  # Use species_code from df_load
+  island_index_load = df_load$island_code  # Use island_code from df_load
+  
+),
+  chains = 10, parallel_chains = 10, refresh = 0,
+iter_sampling = 500,
+output_dir = here::here("output/models/missing_data_load_nbinom_constr_2_trueage/model_output")
+)
+
+
+
+```
+
+```{r}
+# read in the model from above
+constr_brightload_samp <- as_cmdstan_fit(dir(here::here("output/models/missing_data_load_nbinom_constr_2_trueage/model_output"), full.names = TRUE))
+```
+
+
+
+```{r}
+
+constr_brightload_samp$diagnostic_summary()
+constr_brightload_samp$summary()
+
+```
+
+```{r}
+# Extract posterior samples
+posterior_samples <- constr_brightload_samp$draws()
+posterior_df <- as_draws_df(posterior_samples)
+
+# mcmc_areas(
+#   posterior_df,
+#   pars = vars(starts_with("slope")),
+#   prob = 0.8  
+# )
+
+# Define the number of prior samples to match the posterior size
+n_prior_samples <- nrow(posterior_df)
+
+# Generate prior samples for each parameter
+set.seed(123)  # For reproducibility
+priors <- tibble(
+  slope_arbor_bright = rnorm(n_prior_samples, 0.64, 0.5),
+  slope_arid_bright = rnorm(n_prior_samples, 0, 0.5),
+  slope_age_bright = rnorm(n_prior_samples, 0, 0.5),
+  slope_area_bright = rnorm(n_prior_samples, 0, 0.5),
+  slope_bright_load = rnorm(n_prior_samples, 0, 0.5),
+  slope_arbor_load = rnorm(n_prior_samples, 0, 0.5),
+  slope_arid_load = rnorm(n_prior_samples, 0, 0.5),
+  slope_age_load = rnorm(n_prior_samples, 0, 0.5),
+  slope_area_load = rnorm(n_prior_samples, 0, 0.5)
+)
+
+# Reshape prior samples to long format
+priors_long <- priors %>%
+  pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
+  mutate(type = "Prior")
+
+# Reshape posterior samples to long format
+posterior_long <- posterior_df %>%
+  select(starts_with("slope")) %>%
+  pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
+  mutate(type = "Posterior")
+
+# Combine prior and posterior data
+combined_data <- bind_rows(priors_long, posterior_long)
+
+
+# Plot posteriors with priors overlaid
+ggplot(combined_data, aes(x = value, fill = type)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~parameter, scales = "free", ncol = 2) +
+  scale_fill_manual(values = c("Prior" = "red", "Posterior" = "blue")) +
+  theme_minimal() +
+  labs(
+    title = "unconstr_brightload_samp",
+    x = "Parameter Values",
+    y = "Density"
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  
+  coord_cartesian(xlim = c(-2, 2))  +
+  theme(legend.position = "right")+
+  my_theme
+
+ggsave(here::here("output/models/missing_data_load_nbinom_constr_2_trueage/priors_posteriors.png"), height = 10, width = 8)
 ```

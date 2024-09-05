@@ -48,6 +48,7 @@ parameters {
   real mu_arboreal;
   real<lower=0> sd_arboreal;
   vector[N_spp] arboreal_prob_logit;
+  
   // veg zone
   real mu_arid;
   real<lower=0> sd_arid;

@@ -230,6 +230,28 @@ df_veg
 ```
 
 
+
+
+Correct species min and max emergence
+
+
+```{r}
+small_amount <- 0.1
+
+# Adjust the min and max emergence values where max_emergence is NA
+sp_code_island_df <- sp_code_island_df |>
+  dplyr::mutate(
+    max_emergence = ifelse(is.na(max_emergence)| max_emergence == min_emergence, min_emergence + small_amount, max_emergence))
+
+sp_code_island_df[which(sp_code_island_df$island_code == 9), "max_emergence"] <- 0.8
+
+sp_code_island_df
+```
+
+
+
+
+
 ## Negative binomial model non-informed priors neither brightness nor div
 
 
@@ -667,3 +689,138 @@ ggplot(plot_data, aes(x = slope, fill = island)) +
 df_island
 ```
 
+
+
+## Negative binomial model constrained priors (+habitat & veg models + measurement error on island age)
+
+- brightness <- arboreal(+)
+- div <- age(+)
+- div <- area(+)
+
+
+```{r}
+#| class-output: stan
+model_div_constr <- cmdstan_model(here::here("stan/div_nbinom_constr_2_trueage.stan"),
+                                          pedantic = TRUE)
+```
+
+
+
+```{r}
+
+# Data code including phylogenetic covariance matrix
+constr_div_samp <- model_div_constr$sample(
+  data = list(
+  N_spp = nrow(sp_code_island_df),  # Number of species (47)
+  N_island = max(sp_code_island_df$island_code),
+  sp_id = sp_code_island_df$species_code,
+  island_area = sp_code_island_df$island_area,
+  #island_age = sp_code_island_df$island_age,
+    min_emergence = as.numeric(sp_code_island_df$min_emergence),
+  max_emergence = as.numeric(sp_code_island_df$max_emergence),
+  island_index_spp = sp_code_island_df$island_code,
+  
+  # Habitat data
+  N_habitat = nrow(df_hab),
+  habitat_arboreal = df_hab$arboreal,
+  total_hab = df_hab$total_hab,
+  sp_index_hab = df_hab$species_code,
+  
+  # Vegetation zone data
+  N_veg = nrow(df_veg),
+  veg_arid = df_veg$arid,
+  total_veg = df_veg$total_veg,
+  sp_index_veg = df_veg$species_code,
+  
+  # Brightness data
+  N_bright = nrow(df_bright_noNA), 
+  brightness_obs = df_bright_noNA$brightness,
+  sp_index_bright = df_bright_noNA$species_code,
+  
+  # Nematode load data
+  N_div = nrow(diversity_per_snailspp),  # Total observations for nematode load
+  nematode_count = diversity_per_snailspp$nematode_species,
+  sp_index_div = diversity_per_snailspp$species_code,  # Use species_code from df_load
+  island_index_div = diversity_per_snailspp$island_code  # Use island_code from df_load
+  
+),
+  chains = 10, parallel_chains = 10, refresh = 0,
+iter_sampling = 500,
+output_dir = here::here("output/models/div_nbinom_constr_2_trueage/model_output")
+)
+
+
+
+```
+
+
+
+
+```{r}
+
+constr_div_samp$diagnostic_summary()
+constr_brightdiv_samp$summary()
+
+```
+
+```{r}
+# Extract posterior samples
+posterior_samples <- constr_div_samp$draws()
+posterior_df <- as_draws_df(posterior_samples)
+
+# mcmc_areas(
+#   posterior_df,
+#   pars = vars(starts_with("slope")),
+#   prob = 0.8  
+# )
+
+# Define the number of prior samples to match the posterior size
+n_prior_samples <- nrow(posterior_df)
+
+# Generate prior samples for each parameter
+set.seed(123)  # For reproducibility
+priors <- tibble(
+  slope_arbor_bright = rnorm(n_prior_samples, 0.64, 0.5),
+  slope_arid_bright = rnorm(n_prior_samples, 0, 0.5),
+  slope_age_bright = rnorm(n_prior_samples, 0, 0.5),
+  slope_area_bright = rnorm(n_prior_samples, 0, 0.5),
+  slope_bright_div = rnorm(n_prior_samples, 0, 0.5),
+  slope_arbor_div = rnorm(n_prior_samples, 0, 0.5),
+  slope_arid_div = rnorm(n_prior_samples, 0, 0.5),
+  slope_age_div = rnorm(n_prior_samples, 0.64, 0.5),
+  slope_area_div = rnorm(n_prior_samples, 0.64, 0.5)
+)
+
+# Reshape prior samples to long format
+priors_long <- priors %>%
+  pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
+  mutate(type = "Prior")
+
+# Reshape posterior samples to long format
+posterior_long <- posterior_df %>%
+  select(starts_with("slope")) %>%
+  pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
+  mutate(type = "Posterior")
+
+# Combine prior and posterior data
+combined_data <- bind_rows(priors_long, posterior_long)
+
+
+# Plot posteriors with priors overlaid
+ggplot(combined_data, aes(x = value, fill = type)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~parameter, scales = "free", ncol = 2) +
+  scale_fill_manual(values = c("Prior" = "red", "Posterior" = "blue")) +
+  theme_minimal() +
+  labs(
+    title = "constr_brightdiv_samp",
+    x = "Parameter Values",
+    y = "Density"
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  
+  coord_cartesian(xlim = c(-2, 2))  +
+  theme(legend.position = "right")+
+  my_theme
+
+ggsave(here::here("output/models/div_nbinom_constr_2_trueage/priors_posteriors.png"), height = 10, width = 8)
+```
