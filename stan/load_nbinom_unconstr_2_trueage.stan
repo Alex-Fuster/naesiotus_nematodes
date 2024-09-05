@@ -42,7 +42,7 @@ transformed data {
 parameters {
   
   // Latent parameter for island age
-  vector<lower=0>[N_spp] island_age_true;  // True island ages
+  vector<lower=min_emergence, upper=max_emergence>[N_spp] island_age_true;  // True island ages
   
   // microhabitat
   real mu_arboreal;
