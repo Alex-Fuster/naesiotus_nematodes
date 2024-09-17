@@ -283,6 +283,99 @@ sp_code_island_df
 ```
 
 
+############################################ 
+TESTING AREA
+############################################
+#
+#
+#
+#
+#
+
+```{r}
+# Create a mapping of island codes to consecutive indices
+island_df <- sp_code_island_df |>
+  dplyr::group_by(island_code) |>
+  dplyr::summarise(
+    min_emergence = min(min_emergence, na.rm = TRUE),
+    max_emergence = max(max_emergence, na.rm = TRUE),
+    island_area = first(island_area)  # Assuming all rows for the same island have the same area
+  ) |>
+  dplyr::mutate(new_island_index = dplyr::row_number()) # New consecutive island index
+
+# Join the new island index back to the species data
+sp_code_island_df <- sp_code_island_df |>
+  dplyr::left_join(island_df |> dplyr::select(island_code, new_island_index), by = "island_code")
+
+df_load <- df_load |>
+  dplyr::left_join(island_df |> dplyr::select(island_code, new_island_index), by = "island_code")
+
+# Update island index in species-level data
+sp_code_island_df$island_index_spp <- sp_code_island_df$new_island_index
+
+# Update the island-level data for Stan
+island_df <- island_df |>
+  dplyr::arrange(new_island_index)
+
+```
+
+
+
+
+```{r}
+#| class-output: stan
+load_nbinom_unconstr <- cmdstan_model(here::here("stan/load_nbinom_unconstr_2_trueage_islandindex.stan"),
+                                          pedantic = TRUE)
+```
+
+```{r}
+# Use island-level data in Stan
+unconstr_brightload_samp <- load_nbinom_unconstr$sample(
+  data = list(
+    N_spp = nrow(sp_code_island_df),  # Number of species (47)
+    N_island = nrow(island_df),  # Number of unique islands
+    sp_id = sp_code_island_df$species_code,
+    island_area = island_df$island_area,  # Island-level area
+    min_emergence = island_df$min_emergence,  # Island-level minimum emergence
+    max_emergence = island_df$max_emergence,  # Island-level maximum emergence
+    island_index_spp = sp_code_island_df$new_island_index,  # Updated island index for species
+    # Habitat data
+    N_habitat = nrow(df_hab),
+    habitat_arboreal = df_hab$arboreal,
+    total_hab = df_hab$total_hab,
+    sp_index_hab = df_hab$species_code,
+    # Vegetation zone data
+    N_veg = nrow(df_veg),
+    veg_arid = df_veg$arid,
+    total_veg = df_veg$total_veg,
+    sp_index_veg = df_veg$species_code,
+    # Brightness data
+    N_bright = nrow(df_bright_noNA), 
+    brightness_obs = df_bright_noNA$brightness,
+    sp_index_bright = df_bright_noNA$species_code,
+    # Nematode load data
+    N_load = nrow(df_load),  # Total observations for nematode load
+    nematode_count = df_load$nematode_count,
+    sp_index_load = df_load$species_code,  # Use species_code from df_load
+    island_index_load = df_load$new_island_index  # Use island_code from df_load
+  ),
+  chains = 10, parallel_chains = 10, refresh = 0,
+  iter_sampling = 500,
+  output_dir = here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/model_output")
+)
+
+```
+
+#
+#
+#
+#
+#
+############################################ 
+END OF TESTING AREA
+############################################
+
+
 ## Negative binomial model non-informed priors neither brightness nor load  (+hab/veg models and measurement error in island age)
 
 
@@ -414,7 +507,7 @@ ggplot(combined_data, aes(x = value, fill = type)) +
   theme(legend.position = "right")+
   my_theme
 
-#ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage/priors_posteriors.png"), height = 10, width = 8)
+#ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/priors_posteriors.png"), height = 10, width = 8)
 ```
 
 
