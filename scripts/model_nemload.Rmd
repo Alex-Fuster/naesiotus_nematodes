@@ -1,0 +1,736 @@
+---
+title: "Missing data model for nematode load"
+---
+
+
+
+```{r setup-packages}
+#| message: false
+#| warning: false
+library(tidyverse)
+library(readxl)
+library(naniar)
+library(cmdstanr)
+library(bayesplot)
+library(tidybayes)
+library(posterior)
+library(ggpubr)
+library(phytools)
+library(ape)
+
+```
+
+parameters for plotting
+
+```{r}
+my_theme<-theme(axis.text=element_text(size=12),
+        axis.title = element_text(size = 14),
+        legend.text=element_text(size=10),
+        legend.title = element_text(size=12),
+        plot.title = element_text(face="bold",size=14,margin=margin(0,0,20,0),hjust = 0.5),
+        axis.title.y = element_text(hjust = 0.5),
+        axis.title.x = element_text(hjust = 0.5))
+```
+
+
+## compute species code id
+
+```{r}
+species_names_df_raw <- read.csv(here::here("data/species_names_checks.csv"))
+
+# we're dropping the species with no name in this database. 
+# this indicates morphospecies which have no formal name
+species_names_df <- species_names_df_raw %>% 
+  rename(species = annotated_name)  %>% 
+  filter(species_name != "") |> 
+  mutate(species_code = as.numeric(factor(species_name)))
+
+species_code_df <- species_names_df |> 
+  select(species_name, species_code) |> 
+  distinct() |> 
+  arrange(species_code)
+
+species_code_df
+```
+
+
+
+## island info
+
+```{r}
+df_island <- read_excel(path = here::here("data/18sept24_datalab.xlsx"), sheet = "island_characteristics")
+
+df_island$min_emergence <- as.numeric(df_island$min_emergence)
+df_island$max_emergence <- as.numeric(df_island$max_emergence)
+
+# Calculate the mean difference between min_emergence and max_emergence
+mean_diff <- df_island %>%
+  filter(!is.na(min_emergence) & !is.na(max_emergence)) %>%
+  mutate(diff = max_emergence - min_emergence) %>%
+  summarise(mean_diff = mean(diff, na.rm = TRUE)) %>%
+  pull(mean_diff)
+
+# Estimate max_emergence for Champion by adding the mean difference to its min_emergence
+df_island <- df_island %>%
+  mutate(max_emergence = ifelse(is.na(max_emergence), min_emergence + mean_diff, max_emergence))
+
+# Rename the column "mean_emergence" to "island_age" in df_island
+# add an ID column
+df_island <- df_island %>% rename(island_area = area) |> 
+  mutate(island_code = as.numeric(as.factor(island)))
+
+
+# increase max. emergence of Sants Fe by a small amount - min. and max for this island are the same and this gives error in the model when trying to estimate the approximate age.
+
+df_island <- df_island |> 
+  dplyr::mutate(max_emergence = ifelse(island == "Santa_Fe", max_emergence + 0.1, max_emergence))
+
+
+df_island 
+
+```
+
+## Parasite Load dataset
+
+```{r}
+df_load_raw <- read_excel(path = here::here("data/18sept24_datalab.xlsx"), sheet = 3)
+
+df_load_raw$nematode_count[which(df_load_raw$nematode_count == ">100")] <- "100"
+df_load_raw$nematode_count <- as.numeric(df_load_raw$nematode_count)
+
+df_load_rename <- df_load_raw %>% 
+  select(id, spp, nematode_count, island) %>% 
+  rename(species = spp)
+
+# correct species names
+df_load <- df_load_rename %>%
+  left_join(species_names_df |> select(species, species_code,species_name),
+            by = "species") |> 
+  left_join(df_island |> select(island, island_code),
+            by = "island")
+
+
+df_load
+
+```
+
+## Island + species information
+
+Previously we merged all the data on islands into the load dataset, but in the last bit of code above we depart from this.
+Here we are adding only the island code. 
+Island level data will instead be added to the species data, since it is used in calculations at the species level:
+
+HOWEVER, species-island associations are only found in the load dataset
+
+```{r}
+sp_code_island_df <- df_load |> 
+  select(species_name, species_code, island, island_code) |> 
+  distinct() |> 
+  left_join(df_island) |> 
+ # left_join(species_names_df |> select(species_name, species_code)) |> 
+  distinct()
+
+sp_code_island_df$min_emergence <- as.numeric(sp_code_island_df$min_emergence)
+sp_code_island_df$max_emergence <- as.numeric(sp_code_island_df$max_emergence)
+
+sp_code_island_df
+
+sp_code_island_df |> 
+  group_by(species_name) |> 
+  filter(n() > 1)
+```
+
+## Brightness data
+
+```{r}
+
+df_bright_raw <- read_csv(here::here("data/kraemer2019_brightness_scores.csv"))
+df_bright <- df_bright_raw %>% 
+  select(location, spp, brightness, microhab) %>% 
+  rename(id = location,
+         species = spp) %>%
+  left_join(species_names_df |> select(species, species_code), by = "species")
+
+df_bright
+
+
+```
+
+In this dataset it seems that the MAJORITY of observations don't have a species name. 
+Is that correct??
+
+```{r}
+df_bright |> count(species_code) |> 
+  arrange(desc(n))
+```
+
+That's a lot of data to lose! 
+
+```{r}
+df_bright_noNA <- df_bright |> 
+  drop_na(species_code)
+```
+
+
+
+```{r}
+df_rad_raw <- read_excel(here::here("data/GPS RAD snails.xlsx"))
+df_rad_rename <- df_rad_raw %>% 
+  select(Sample, Taxon, 
+         habitat = Microhabitat, 
+         vegetation = `Vegetation Zone`)%>% 
+  rename(species = Taxon) %>% 
+  glimpse() |> 
+  left_join(species_names_df |> select(species, species_code), by = "species") |> # correct species names
+  mutate(habitat = str_to_lower(habitat)) %>% 
+  mutate(habitat = str_replace(habitat, "semi-arboreal", "arboreal")) |> # Semi-Arboreal is considered arboreal
+  filter(habitat %in% c("arboreal", "terrestrial"))
+```
+
+
+#### warning! 
+
+There should be no species in this list that are not found in the master species list! 
+However we are missing the following in the species list
+
+```{r}
+df_rad_rename |> 
+  filter(is.na(species_code))
+```
+
+
+for now we are dropping them
+
+```{r}
+df_rad_rename_noNA <- df_rad_rename |> 
+  drop_na(species_code)
+```
+
+
+
+```{r}
+df_hab <-  bind_rows(df_bright_noNA |> 
+                       select(microhab, species_code),
+                     df_rad_rename_noNA |> 
+                       select(microhab = habitat, species_code)
+) |> # add habitat data from brightness dataset 
+  count(microhab, species_code) |> 
+  pivot_wider(values_from = n, names_from = microhab, values_fill = 0) |> 
+  mutate(total_hab = terrestrial + arboreal)
+
+df_hab
+```
+
+### Vegetation data
+
+the Rad dataset is where the data on vegetation come from 
+
+Previously we filtered for only the vegetation types spelled "humid" or "arid", but now (19 August 2024)
+there seems to be no different spellings of these in the dataset. 
+Were they corrected in the original spreadsheet?
+
+
+```{r}
+
+df_veg <- df_rad_rename_noNA %>% 
+  select(Sample, species, 
+         habitat, vegetation)%>% 
+  # glimpse() |> 
+  left_join(species_names_df |> 
+              select(species, species_code), by = "species") |> # correct species names
+  # glimpse() |> 
+  mutate(vegetation = str_to_lower(vegetation)) |> 
+  # filter(vegetation %in% c("humid", "arid")) |> ## filter for only legal values -- others are typos
+  count(species_code, vegetation) |> 
+  pivot_wider(values_from = n, names_from = vegetation, values_fill = 0) |> 
+  mutate(total_veg = humid + arid)
+
+df_veg
+
+```
+
+## Summary of datasets
+
+We now have all the datasets that we need to build the model. 
+
+#### Vegetation data
+
+```{r}
+df_veg |> head() |> knitr::kable()
+```
+
+This dataset contains `r sum(df_veg$total_veg)` observations of `r nrow(df_veg)` species.
+
+#### Habitat data
+
+```{r}
+df_hab |> head() |> knitr::kable()
+```
+
+This dataset contains `r sum(df_hab$total_hab)` observations of `r nrow(df_hab)` species.
+
+#### species and island data
+
+This is the only dataset to contain one row per species with no missing species. It gives us the 
+
+```{r}
+sp_code_island_df |> 
+  head() |> 
+  knitr::kable()
+```
+
+#### brightness data
+
+```{r}
+df_bright_noNA |> head() |> knitr::kable()
+```
+
+
+#### load data
+
+```{r}
+df_load |> head() |> knitr::kable()
+```
+
+
+## Re-do island codes with remaining islands
+
+```{r}
+# Create a mapping of island codes to consecutive indices
+island_df <- sp_code_island_df |>
+  dplyr::group_by(island_code) |>
+  dplyr::summarise(
+    min_emergence = min(min_emergence, na.rm = TRUE),
+    max_emergence = max(max_emergence, na.rm = TRUE),
+    island_area = first(island_area)  # Assuming all rows for the same island have the same area
+  ) |>
+  dplyr::mutate(new_island_index = dplyr::row_number()) # New consecutive island index
+
+# Join the new island index back to the species data
+sp_code_island_df <- sp_code_island_df |>
+  dplyr::left_join(island_df |> dplyr::select(island_code, new_island_index), by = "island_code")
+
+df_load <- df_load |>
+  dplyr::left_join(island_df |> dplyr::select(island_code, new_island_index), by = "island_code")
+
+# Update island index in species-level data
+sp_code_island_df$island_index_spp <- sp_code_island_df$new_island_index
+
+# Update the island-level data for Stan
+island_df <- island_df |>
+  dplyr::arrange(new_island_index)
+
+```
+
+
+
+# Fit Model
+
+
+```{r}
+#| class-output: stan
+load_nbinom_unconstr <- cmdstan_model(here::here("stan/load_nbinom_unconstr_2_trueage_islandindex.stan"),
+                                          pedantic = TRUE)
+```
+
+```{r}
+# Use island-level data in Stan
+unconstr_brightload_samp <- load_nbinom_unconstr$sample(
+  data = list(
+    N_spp = nrow(sp_code_island_df),  # Number of species (47)
+    N_island = nrow(island_df),  # Number of unique islands
+    sp_id = sp_code_island_df$species_code,
+    island_area = island_df$island_area,  # Island-level area
+    min_emergence = island_df$min_emergence,  # Island-level minimum emergence
+    max_emergence = island_df$max_emergence,  # Island-level maximum emergence
+    island_index_spp = sp_code_island_df$new_island_index,  # Updated island index for species
+    # Habitat data
+    N_habitat = nrow(df_hab),
+    habitat_arboreal = df_hab$arboreal,
+    total_hab = df_hab$total_hab,
+    sp_index_hab = df_hab$species_code,
+    # Vegetation zone data
+    N_veg = nrow(df_veg),
+    veg_arid = df_veg$arid,
+    total_veg = df_veg$total_veg,
+    sp_index_veg = df_veg$species_code,
+    # Brightness data
+    N_bright = nrow(df_bright_noNA), 
+    brightness_obs = df_bright_noNA$brightness,
+    sp_index_bright = df_bright_noNA$species_code,
+    # Nematode load data
+    N_load = nrow(df_load),  # Total observations for nematode load
+    nematode_count = df_load$nematode_count,
+    sp_index_load = df_load$species_code,  # Use species_code from df_load
+    island_index_load = df_load$new_island_index  # Use island_code from df_load
+  ),
+  chains = 10, parallel_chains = 10, refresh = 0,
+  iter_sampling = 500,
+  output_dir = here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/model_output")
+)
+
+```
+
+
+```{r}
+# read in the model from above
+unconstr_brightload_samp <- as_cmdstan_fit(dir(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/model_output"), full.names = TRUE))
+```
+
+
+# Model summary
+
+```{r}
+
+unconstr_brightload_samp$diagnostic_summary()
+unconstr_brightload_samp$summary()
+
+```
+
+# Plot posteriors
+
+```{r}
+# Extract posterior samples
+posterior_samples <- unconstr_brightload_samp$draws()
+posterior_df <- as_draws_df(posterior_samples)
+
+# mcmc_areas(
+#   posterior_df,
+#   pars = vars(starts_with("slope")),
+#   prob = 0.8  
+# )
+
+# Define the number of prior samples to match the posterior size
+n_prior_samples <- nrow(posterior_df)
+
+# Generate prior samples for each parameter
+set.seed(123)  # For reproducibility
+priors <- tibble(
+  slope_arbor_bright = rnorm(n_prior_samples, 0, 0.5),
+  slope_arid_bright = rnorm(n_prior_samples, 0, 0.5),
+  slope_age_bright = rnorm(n_prior_samples, 0, 0.5),
+  slope_area_bright = rnorm(n_prior_samples, 0, 0.5),
+  slope_bright_load = rnorm(n_prior_samples, 0, 0.5),
+  slope_arbor_load = rnorm(n_prior_samples, 0, 0.5),
+  slope_arid_load = rnorm(n_prior_samples, 0, 0.5),
+  slope_age_load = rnorm(n_prior_samples, 0, 0.5),
+  slope_area_load = rnorm(n_prior_samples, 0, 0.5)
+)
+
+# Reshape prior samples to long format
+priors_long <- priors %>%
+  pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
+  mutate(type = "Prior")
+
+# Reshape posterior samples to long format
+posterior_long <- posterior_df %>%
+  select(starts_with("slope")) %>%
+  pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
+  mutate(type = "Posterior")
+
+# Combine prior and posterior data
+combined_data <- bind_rows(priors_long, posterior_long)
+
+
+# Plot posteriors with priors overlaid
+ggplot(combined_data, aes(x = value, fill = type)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~parameter, scales = "free", ncol = 2) +
+  scale_fill_manual(values = c("Prior" = "red", "Posterior" = "blue")) +
+  theme_minimal() +
+  labs(
+    x = "Parameter values",
+    y = "Density"
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  
+  coord_cartesian(xlim = c(-2, 2))  +
+  theme(legend.position = "right")+
+  my_theme
+
+ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/priors_posteriors.png"), height = 10, width = 8)
+```
+
+
+
+
+# Model diagnostics
+
+
+```{r}
+neff_ratio(unconstr_brightload_samp) |> mcmc_neff_hist()
+```
+
+
+```{r}
+mcmc_acf(posterior_df)
+```
+
+```{r}
+library(patchwork)
+
+wrap_plots(
+  mcmc_hist(posterior_df, facet_args = list(nrow = ncol(posterior_df))),
+  mcmc_trace(posterior_df, facet_args = list(nrow = ncol(posterior_df))),
+  widths = c(1, 1.5)
+)
+```
+
+
+
+# Model predictions
+
+```{r}
+# Create a named vector for species names
+species_code_to_name <- setNames(sp_code_island_df$species_name, sp_code_island_df$species_code)
+```
+
+
+## Predictions habitat
+
+```{r}
+# Calculate raw proportion of arboreal individuals in df_hab
+df_hab <- df_hab %>%
+  mutate(arboreal_prop = arboreal / total_hab,
+         species_name = species_code_to_name[as.character(species_code)])
+
+# Gather posterior predictions for arboreal habitat probability
+hab_rvars <- unconstr_brightload_samp |> 
+  tidybayes::gather_rvars(arboreal_prob[sp_index_hab]) |> 
+  mutate(species_code = forcats::fct_reorder(as.character(sp_index_hab), .value))
+
+# Replace species codes with species names
+hab_rvars <- hab_rvars %>%
+  mutate(species_name = species_code_to_name[as.character(species_code)])
+
+hab_rvars <- hab_rvars %>%
+  mutate(species_name = forcats::fct_reorder(species_name, -.value))
+
+# Create the plot
+p_pred_hab <- hab_rvars |> 
+  ggplot(aes(x = species_name, ydist = .value)) + 
+  stat_pointinterval() + 
+  ylab("Arboreal probability")
+
+# Add raw data points (as proportion of arboreal individuals)
+p_pred_hab <- p_pred_hab + 
+  geom_point(aes(x = species_name, y = arboreal_prop), inherit.aes = FALSE, 
+             data = df_hab, 
+             colour = "red",
+             size = 2, alpha = .5) +
+  theme_minimal() +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab(NULL)
+
+# Show the plot
+p_pred_hab
+
+#ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/p_pred_hab.png"), height = 6, width = 9)
+
+
+```
+
+
+## Predictions vegetation
+
+```{r}
+# Calculate raw proportion of individuals in arid vegetation in df_veg
+df_veg <- df_veg %>%
+  mutate(arid_prop = arid / total_veg,
+         species_name = species_code_to_name[as.character(species_code)])
+
+# Gather posterior predictions for arid vegetation probability
+veg_rvars <- unconstr_brightload_samp |> 
+  tidybayes::gather_rvars(arid_prob[sp_index_veg]) |> 
+  mutate(species_code = forcats::fct_reorder(as.character(sp_index_veg), .value))
+
+# Replace species codes with species names
+veg_rvars <- veg_rvars %>%
+  mutate(species_name = species_code_to_name[as.character(species_code)])
+
+# Reorder species_name based on the predicted probability of being in arid vegetation
+veg_rvars <- veg_rvars %>%
+  mutate(species_name = forcats::fct_reorder(species_name, -.value))
+
+# Create the plot
+p_pred_veg <- veg_rvars |> 
+  ggplot(aes(x = species_name, ydist = .value)) + 
+  stat_pointinterval() + 
+  ylab("Arid vegetation probability")
+
+# Add raw data points (as proportion of individuals in arid vegetation)
+p_pred_veg <- p_pred_veg + 
+  geom_point(aes(x = species_name, y = arid_prop), inherit.aes = FALSE, 
+             data = df_veg, 
+             colour = "red",
+             size = 2, alpha = .5) +
+  theme_minimal() +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab(NULL)
+
+# Show the plot
+p_pred_veg
+
+#ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/p_pred_veg.png"), height = 6, width = 9)
+
+```
+
+
+## Predictios brightness
+
+```{r}
+bright_rvars <- unconstr_brightload_samp |> 
+  tidybayes::gather_rvars(true_ln_bright[species_code]) |> 
+  mutate(brightness = exp(.value),
+         species_code = forcats::fct_reorder(as.character(species_code), .value))
+
+
+##################
+
+# Replace species codes with species names in bright_rvars
+bright_rvars <- bright_rvars %>%
+  mutate(species_name = species_code_to_name[as.character(species_code)])
+
+# Replace species codes with species names in df_bright_noNA
+df_bright_noNA <- df_bright_noNA %>%
+  mutate(species_name = species_code_to_name[as.character(species_code)])
+
+#################
+
+bright_rvars <- bright_rvars %>%
+  mutate(species_name = forcats::fct_reorder(species_name, -.value))
+
+bright_rvars <- bright_rvars |> 
+  ggplot(aes(x = species_name, ydist = brightness)) + 
+  stat_pointinterval() + 
+  scale_y_log10()
+
+p_pred_bright <- bright_rvars + 
+  geom_point(aes(x = species_name, y = brightness), inherit.aes = FALSE, 
+             data = df_bright_noNA, 
+             colour = "red",
+             size = .5, alpha = .5,
+             position = position_jitter(width = .3)) +
+  theme_minimal() +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  xlab(NULL)
+
+p_pred_bright
+
+#ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/p_pred_bright.png"), height = 6, width = 9)
+```
+
+
+
+
+## Predictios load
+
+```{r}
+
+predicted_load <- unconstr_brightload_samp$draws("predicted_nematode_load")
+
+# Convert the extracted predictions to a format suitable for bayesplot
+predicted_load <- as_draws_matrix(predicted_load)
+
+# Posterior predictive check for nematode load
+ppc_load <-  ppc_dens_overlay(y = df_load$nematode_count, yrep = predicted_load) +
+  scale_color_manual(name = "Legend",
+                     values = c("y" = "black", "yrep" = "red"),
+                     labels = c("Observed load", "Predicted load")) +
+  scale_fill_manual(name = "Legend",
+                    values = c("y" = "black", "yrep" = "red"),
+                    labels = c("Observed load", "Predicted load"))+
+  my_theme
+
+ppc_load
+
+
+# Gather posterior predictions for nematode load
+load_rvars <- unconstr_brightload_samp |> 
+  tidybayes::gather_rvars(predicted_nematode_load[sp_index_load]) |> 
+  mutate(species_code = forcats::fct_reorder(as.character(sp_index_load), .value))
+
+# Replace species codes with species names
+load_rvars <- load_rvars %>%
+  mutate(species_name = species_code_to_name[as.character(species_code)])
+
+
+# Calculate means of the raw nematode counts by species
+df_load_summary <- df_load %>%
+  group_by(species_code) %>%
+  summarise(mean_nematode_count = mean(nematode_count)) %>%
+  mutate(species_name = species_code_to_name[as.character(species_code)])
+
+# Calculate means of the predicted nematode load by species
+load_pred_means <- load_rvars %>%
+  group_by(species_name) %>%
+  summarise(mean_predicted_load = mean(.value))
+
+# Combine the data
+load_means_comparison <- left_join(df_load_summary, load_pred_means, by = "species_name")
+
+# Create the plot for comparing means
+post_load_mean_plot <- ggplot(load_means_comparison, aes(x = species_name)) + 
+  geom_point(aes(y = mean_nematode_count, colour = "Observed"), size = 3) + 
+  geom_point(aes(y = mean_predicted_load, colour = "Predicted"), size = 3) + 
+  scale_colour_manual(values = c("Observed" = "red", "Predicted" = "blue")) +
+  ylab("Mean Nematode Load") +
+  theme_minimal() +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab(NULL) +
+  labs(colour = "Data Type")
+
+# Show the plot
+post_load_mean_plot
+
+
+```
+
+
+```{r}
+# Extract the mean of the predicted nematode load
+load_rvars <- load_rvars %>%
+  mutate(mean_predicted_load = mean(.value))
+
+# Ensure species_name is treated as a factor in both datasets
+df_load <- df_load %>%
+  mutate(species_name = factor(species_name))
+
+load_rvars <- load_rvars %>%
+  mutate(species_name = factor(species_name))
+
+# Create the plot for individual predictions
+post_load_indiv_plot <- ggplot() + 
+  # Observed data: plot nematode counts
+  geom_point(aes(x = species_name, y = nematode_count, colour = "Observed"), 
+             size = 2, alpha = .5, 
+             position = position_jitter(width = .3),
+             data = df_load) + 
+  # Predicted data: plot mean predicted nematode load
+  geom_point(aes(x = species_name, y = mean_predicted_load, colour = "Predicted"), 
+             size = 2, alpha = .5, 
+             position = position_jitter(width = .3),
+             data = load_rvars) +
+  # Define the colors for the legend
+  scale_colour_manual(values = c("Observed" = "red", "Predicted" = "blue")) +
+  # Adjust the y-label
+  ylab("Nematode Load") +
+  # Set the theme
+  theme_minimal() +
+  my_theme +
+  # Rotate x-axis labels for better readability
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  # Remove the x-axis label
+  xlab(NULL) +
+  # Define the legend title
+  labs(colour = "Data Type")
+
+# Show the plot
+post_load_indiv_plot
+
+
+```
+
