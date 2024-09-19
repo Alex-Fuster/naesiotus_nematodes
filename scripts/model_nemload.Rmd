@@ -629,10 +629,10 @@ p_pred_bright
 
 ```{r}
 
-# predicted_load <- unconstr_brightload_samp$draws("predicted_nematode_load")
+ predicted_load <- unconstr_brightload_samp$draws("predicted_nematode_load")
 # 
 # # Convert the extracted predictions to a format suitable for bayesplot
-# predicted_load <- as_draws_matrix(predicted_load)
+ predicted_load <- as_draws_matrix(predicted_load)
 # 
 # # Posterior predictive check for nematode load
 # ppc_load <-  ppc_dens_overlay(y = df_load$nematode_count, yrep = predicted_load) +
@@ -652,10 +652,19 @@ p_pred_bright
 ```
 
 ```{r}
-# Gather posterior predictions for nematode load
-load_rvars <- unconstr_brightload_samp |> 
-  tidybayes::gather_rvars(predicted_nematode_load[species_code]) #|> 
-#  mutate(species_code = forcats::fct_reorder(as.character(sp_index_load), .value))
+
+predicted_load <- as_draws_matrix(predicted_load)
+
+# # Gather posterior predictions for nematode load
+# load_rvars <- unconstr_brightload_samp |>
+#   tidybayes::gather_rvars(avg_predicted_load) #|>
+# #  mutate(species_code = forcats::fct_reorder(as.character(sp_index_load), .value))
+
+
+load_rvars |> 
+  tidybayes::gather_rvars(avg_predicted_load[species_code]) |> 
+  mutate(brightness = exp(.value),
+         species_code = forcats::fct_reorder(as.character(species_code), .value))
 
 
 # Calculate means of the raw nematode counts by species

@@ -171,28 +171,40 @@ model {
 
 generated quantities {
   vector[N_spp] true_ln_bright = mu_ln_bright +
-                                 sp_effect_bright +
-                                 island_effect_bright[island_index_spp] +
-                                 slope_arbor_bright * arboreal_prob +
-                                 slope_arid_bright * arid_prob +
-                                 slope_age_bright * island_age_true[island_index_spp] +
-                                 slope_area_bright * log_island_area[island_index_spp];
-                                 
+  sp_effect_bright +
+  island_effect_bright[island_index_spp] +
+  slope_arbor_bright * arboreal_prob +
+  slope_arid_bright * arid_prob +
+  slope_age_bright * island_age_true[island_index_spp] +
+  slope_area_bright * log_island_area[island_index_spp];
+  
+  // average loads
+  
+  vector[N_spp] log_avg_predicted_load = mu_load +
+  sp_effect_load +
+  island_effect_load[island_index_spp] +
+  slope_bright_load * true_ln_bright +  // Use the modeled brightness directly
+  slope_arbor_load * arboreal_prob +
+  slope_arid_load * arid_prob +
+  slope_age_load * island_age_true[island_index_spp] +
+  slope_area_load * log_island_area[island_index_spp];
+  
+  
+  // transform back log_avg_predicted_load
+  
+  vector[N_spp] avg_predicted_load = exp(log_avg_predicted_load);
+  
+  
+  // predict individual's load
+  
   vector[N_load] predicted_nematode_load;
   
   // Generate predicted nematode load using the negative binomial distribution
   for (n in 1:N_load) {
     predicted_nematode_load[n] = neg_binomial_2_log_rng(
-      mu_load +
-      sp_effect_load[sp_index_load[n]] +
-      island_effect_load[island_index_load[n]] +
-      slope_bright_load * true_ln_bright[sp_index_load[n]] +  // Use the modeled brightness directly
-      slope_arbor_load * arboreal_prob[sp_index_load[n]] +
-      slope_arid_load * arid_prob[sp_index_load[n]] +
-      slope_age_load * island_age_true[island_index_load[n]] +
-      slope_area_load * log_island_area[island_index_load[n]],
+      log_avg_predicted_load[sp_index_load[n]],
       phi_load
-    );
+      );
   }
   
   // Generated quantities for habitat and vegetation zone
