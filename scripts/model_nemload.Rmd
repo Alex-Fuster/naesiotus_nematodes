@@ -381,7 +381,7 @@ unconstr_brightload_samp <- as_cmdstan_fit(dir(here::here("output/models/missing
 # Model summary
 
 ```{r}
-
+#get_variables(unconstr_brightload_samp)
 unconstr_brightload_samp$diagnostic_summary()
 unconstr_brightload_samp$summary()
 
@@ -447,7 +447,7 @@ ggplot(combined_data, aes(x = value, fill = type)) +
   theme(legend.position = "right")+
   my_theme
 
-ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/priors_posteriors.png"), height = 10, width = 8)
+#ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/priors_posteriors.png"), height = 10, width = 8)
 ```
 
 
@@ -629,32 +629,33 @@ p_pred_bright
 
 ```{r}
 
-predicted_load <- unconstr_brightload_samp$draws("predicted_nematode_load")
+# predicted_load <- unconstr_brightload_samp$draws("predicted_nematode_load")
+# 
+# # Convert the extracted predictions to a format suitable for bayesplot
+# predicted_load <- as_draws_matrix(predicted_load)
+# 
+# # Posterior predictive check for nematode load
+# ppc_load <-  ppc_dens_overlay(y = df_load$nematode_count, yrep = predicted_load) +
+#   scale_color_manual(name = "Legend",
+#                      values = c("y" = "red", "yrep" = "black"),
+#                      labels = c("Observed load", "Predicted load")) +
+#   scale_fill_manual(name = "Legend",
+#                     values = c("y" = "red", "yrep" = "black"),
+#                     labels = c("Observed load", "Predicted load"))+
+#   my_theme+
+#   xlim(0,100)
+# 
+# ppc_load
 
-# Convert the extracted predictions to a format suitable for bayesplot
-predicted_load <- as_draws_matrix(predicted_load)
 
-# Posterior predictive check for nematode load
-ppc_load <-  ppc_dens_overlay(y = df_load$nematode_count, yrep = predicted_load) +
-  scale_color_manual(name = "Legend",
-                     values = c("y" = "black", "yrep" = "red"),
-                     labels = c("Observed load", "Predicted load")) +
-  scale_fill_manual(name = "Legend",
-                    values = c("y" = "black", "yrep" = "red"),
-                    labels = c("Observed load", "Predicted load"))+
-  my_theme
+#ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/p_pred_load.png"), height = 6, width = 6)
+```
 
-ppc_load
-
-
+```{r}
 # Gather posterior predictions for nematode load
 load_rvars <- unconstr_brightload_samp |> 
-  tidybayes::gather_rvars(predicted_nematode_load[sp_index_load]) |> 
-  mutate(species_code = forcats::fct_reorder(as.character(sp_index_load), .value))
-
-# Replace species codes with species names
-load_rvars <- load_rvars %>%
-  mutate(species_name = species_code_to_name[as.character(species_code)])
+  tidybayes::gather_rvars(predicted_nematode_load[species_code]) #|> 
+#  mutate(species_code = forcats::fct_reorder(as.character(sp_index_load), .value))
 
 
 # Calculate means of the raw nematode counts by species
@@ -675,7 +676,44 @@ load_means_comparison <- left_join(df_load_summary, load_pred_means, by = "speci
 post_load_mean_plot <- ggplot(load_means_comparison, aes(x = species_name)) + 
   geom_point(aes(y = mean_nematode_count, colour = "Observed"), size = 3) + 
   geom_point(aes(y = mean_predicted_load, colour = "Predicted"), size = 3) + 
-  scale_colour_manual(values = c("Observed" = "red", "Predicted" = "blue")) +
+  scale_colour_manual(values = c("Observed" = "red", "Predicted" = "black")) +
+  ylab("Mean Nematode Load") +
+  theme_minimal() +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab(NULL) +
+  labs(colour = "Data Type")
+
+# Show the plot
+post_load_mean_plot
+```
+
+
+
+```{r}
+# Extract the mean of the predicted nematode load using tidybayes::mean_qi()
+load_rvars <- load_rvars %>%
+  mutate(mean_predicted_load = tidybayes::mean_qi(.value))
+
+# Summarize predicted nematode load by species
+load_pred_means <- load_rvars %>%
+  group_by(species_name) %>%
+  summarise(mean_predicted_load = mean(mean_predicted_load))
+
+# Calculate means of the raw nematode counts by species
+df_load_summary <- df_load %>%
+  group_by(species_code) %>%
+  summarise(mean_nematode_count = mean(nematode_count)) %>%
+  mutate(species_name = species_code_to_name[as.character(species_code)])
+
+# Combine the data
+load_means_comparison <- left_join(df_load_summary, load_pred_means, by = "species_name")
+
+# Create the plot for comparing means
+post_load_mean_plot <- ggplot(load_means_comparison, aes(x = species_name)) + 
+  geom_point(aes(y = mean_nematode_count, colour = "Observed"), size = 3) + 
+  geom_point(aes(y = mean_predicted_load, colour = "Predicted"), size = 3) + 
+  scale_colour_manual(values = c("Observed" = "red", "Predicted" = "black")) +
   ylab("Mean Nematode Load") +
   theme_minimal() +
   my_theme +
@@ -688,6 +726,8 @@ post_load_mean_plot
 
 
 ```
+
+
 
 
 ```{r}
@@ -715,7 +755,7 @@ post_load_indiv_plot <- ggplot() +
              position = position_jitter(width = .3),
              data = load_rvars) +
   # Define the colors for the legend
-  scale_colour_manual(values = c("Observed" = "red", "Predicted" = "blue")) +
+  scale_colour_manual(values = c("Observed" = "red", "Predicted" = "black")) +
   # Adjust the y-label
   ylab("Nematode Load") +
   # Set the theme
@@ -732,5 +772,13 @@ post_load_indiv_plot <- ggplot() +
 post_load_indiv_plot
 
 
+```
+
+### load and brightness in each island
+
+```{r}
+# Step 1: Extract the posterior samples for nematode load and brightness
+load_bright_rvars <- unconstr_brightload_samp |>
+  tidybayes::gather_rvars(predicted_nematode_load[sp_index_load], true_ln_bright[sp_index_load])
 ```
 
