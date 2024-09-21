@@ -378,6 +378,62 @@ unconstr_brightload_samp <- as_cmdstan_fit(dir(here::here("output/models/missing
 ```
 
 
+
+
+# Fit Model with interaction
+
+
+```{r}
+#| class-output: stan
+load_nbinom_unconstr <- cmdstan_model(here::here("stan/load_nbinom_unconstr_2_trueage_islandindex_interaction.stan"),
+                                          pedantic = TRUE)
+```
+
+```{r}
+# Use island-level data in Stan
+unconstr_brightload_samp <- load_nbinom_unconstr$sample(
+  data = list(
+    N_spp = nrow(sp_code_island_df),  # Number of species (47)
+    N_island = nrow(island_df),  # Number of unique islands
+    sp_id = sp_code_island_df$species_code,
+    island_area = island_df$island_area,  # Island-level area
+    min_emergence = island_df$min_emergence,  # Island-level minimum emergence
+    max_emergence = island_df$max_emergence,  # Island-level maximum emergence
+    island_index_spp = sp_code_island_df$new_island_index,  # Updated island index for species
+    # Habitat data
+    N_habitat = nrow(df_hab),
+    habitat_arboreal = df_hab$arboreal,
+    total_hab = df_hab$total_hab,
+    sp_index_hab = df_hab$species_code,
+    # Vegetation zone data
+    N_veg = nrow(df_veg),
+    veg_arid = df_veg$arid,
+    total_veg = df_veg$total_veg,
+    sp_index_veg = df_veg$species_code,
+    # Brightness data
+    N_bright = nrow(df_bright_noNA), 
+    brightness_obs = df_bright_noNA$brightness,
+    sp_index_bright = df_bright_noNA$species_code,
+    # Nematode load data
+    N_load = nrow(df_load),  # Total observations for nematode load
+    nematode_count = df_load$nematode_count,
+    sp_index_load = df_load$species_code,  # Use species_code from df_load
+    island_index_load = df_load$new_island_index  # Use island_code from df_load
+  ),
+  chains = 10, parallel_chains = 10, refresh = 0,
+  iter_sampling = 500,
+  output_dir = here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex_interaction/model_output")
+)
+
+```
+
+
+```{r}
+# read in the model from above
+unconstr_brightload_samp <- as_cmdstan_fit(dir(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/model_output"), full.names = TRUE))
+```
+
+
 # Model summary
 
 ```{r}
@@ -394,14 +450,21 @@ unconstr_brightload_samp$summary()
 posterior_samples <- unconstr_brightload_samp$draws()
 posterior_df <- as_draws_df(posterior_samples)
 
+posterior_long <- posterior_df %>%
+  select(starts_with("slope_arbor"), starts_with("slope_arid"),
+         starts_with("slope_age"), starts_with("slope_area"), 
+         slope_bright_load) %>%  # Only general effects, no interaction terms
+  pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
+  mutate(type = "Posterior")
+
 # mcmc_areas(
 #   posterior_df,
 #   pars = vars(starts_with("slope")),
 #   prob = 0.8  
 # )
 
-# Define the number of prior samples to match the posterior size
-n_prior_samples <- nrow(posterior_df)
+# Define the number of  samples to match the posterior size
+n_prior_samples <- nrow(general_slope_df)
 
 # Generate prior samples for each parameter
 set.seed(123)  # For reproducibility
@@ -422,11 +485,6 @@ priors_long <- priors %>%
   pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
   mutate(type = "Prior")
 
-# Reshape posterior samples to long format
-posterior_long <- posterior_df %>%
-  select(starts_with("slope")) %>%
-  pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
-  mutate(type = "Posterior")
 
 # Combine prior and posterior data
 combined_data <- bind_rows(priors_long, posterior_long)
@@ -451,6 +509,62 @@ ggplot(combined_data, aes(x = value, fill = type)) +
 ```
 
 
+```{r}
+# Extract posterior samples for interaction terms (island-specific slopes)
+posterior_samples <- unconstr_brightload_samp$draws()
+posterior_df <- as_draws_df(posterior_samples)
+
+# Extract interaction terms for island-specific slopes
+interaction_terms <- posterior_df %>%
+  select(starts_with("slope_bright_load_island")) %>%  # Select interaction terms only
+  pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
+  mutate(type = "Posterior")
+
+# Generate prior samples for island-specific slopes
+n_prior_samples <- nrow(posterior_df)  # Use the same number of samples as in the posterior
+
+# Assuming the prior for island-specific interaction slopes follows N(0, 0.5)
+priors_island_interaction <- tibble(
+  "slope_bright_load_island[1]" = rnorm(n_prior_samples, 0, 0.5),
+  "slope_bright_load_island[2]" = rnorm(n_prior_samples, 0, 0.5),
+  "slope_bright_load_island[3]" = rnorm(n_prior_samples, 0, 0.5),
+  "slope_bright_load_island[4]" = rnorm(n_prior_samples, 0, 0.5),
+  "slope_bright_load_island[5]" = rnorm(n_prior_samples, 0, 0.5),
+  "slope_bright_load_island[6]" = rnorm(n_prior_samples, 0, 0.5),
+  "slope_bright_load_island[7]" = rnorm(n_prior_samples, 0, 0.5),
+  "slope_bright_load_island[8]" = rnorm(n_prior_samples, 0, 0.5),
+  "slope_bright_load_island[9]" = rnorm(n_prior_samples, 0, 0.5),
+  "slope_bright_load_island[10]" = rnorm(n_prior_samples, 0, 0.5),
+  "slope_bright_load_island[11]" = rnorm(n_prior_samples, 0, 0.5),
+  "slope_bright_load_island[12]" = rnorm(n_prior_samples, 0, 0.5),
+  "slope_bright_load_island[13]" = rnorm(n_prior_samples, 0, 0.5)  # Add more slopes if needed
+)
+
+# Reshape prior samples for island-specific slopes into long format
+priors_island_interaction_long <- priors_island_interaction %>%
+  pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
+  mutate(type = "Prior")
+
+# Combine prior and posterior data for island-specific interaction slopes
+combined_data_interaction <- bind_rows(priors_island_interaction_long, interaction_terms)
+
+# Plot posteriors with priors overlaid for island-specific interaction terms
+ggplot(combined_data_interaction, aes(x = value, fill = type)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~parameter, scales = "free", ncol = 2) +
+  scale_fill_manual(values = c("Prior" = "red", "Posterior" = "blue")) +
+  theme_minimal() +
+  labs(
+    x = "Parameter values",
+    y = "Density",
+    title = "Posterior Distributions for Island-Specific Brightness-Load Slopes"
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  
+  coord_cartesian(xlim = c(-2, 2)) +
+  theme(legend.position = "right") +
+  my_theme
+
+```
 
 
 # Model diagnostics
@@ -625,169 +739,91 @@ p_pred_bright
 
 
 
-## Predictios load
-
 ```{r}
-
- predicted_load <- unconstr_brightload_samp$draws("predicted_nematode_load")
-# 
-# # Convert the extracted predictions to a format suitable for bayesplot
- predicted_load <- as_draws_matrix(predicted_load)
-# 
-# # Posterior predictive check for nematode load
-# ppc_load <-  ppc_dens_overlay(y = df_load$nematode_count, yrep = predicted_load) +
-#   scale_color_manual(name = "Legend",
-#                      values = c("y" = "red", "yrep" = "black"),
-#                      labels = c("Observed load", "Predicted load")) +
-#   scale_fill_manual(name = "Legend",
-#                     values = c("y" = "red", "yrep" = "black"),
-#                     labels = c("Observed load", "Predicted load"))+
-#   my_theme+
-#   xlim(0,100)
-# 
-# ppc_load
-
-
-#ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/p_pred_load.png"), height = 6, width = 6)
-```
-
-```{r}
-
-predicted_load <- as_draws_matrix(predicted_load)
-
-# # Gather posterior predictions for nematode load
-# load_rvars <- unconstr_brightload_samp |>
-#   tidybayes::gather_rvars(avg_predicted_load) #|>
-# #  mutate(species_code = forcats::fct_reorder(as.character(sp_index_load), .value))
-
-
-load_rvars |> 
+# Gather predicted nematode loads for each species from the model output
+load_rvars <- unconstr_brightload_samp |> 
   tidybayes::gather_rvars(avg_predicted_load[species_code]) |> 
-  mutate(brightness = exp(.value),
+  mutate(nematode_load = .value,
          species_code = forcats::fct_reorder(as.character(species_code), .value))
 
-
-# Calculate means of the raw nematode counts by species
-df_load_summary <- df_load %>%
-  group_by(species_code) %>%
-  summarise(mean_nematode_count = mean(nematode_count)) %>%
+# Replace species codes with species names in load_rvars
+load_rvars <- load_rvars %>%
   mutate(species_name = species_code_to_name[as.character(species_code)])
 
-# Calculate means of the predicted nematode load by species
-load_pred_means <- load_rvars %>%
-  group_by(species_name) %>%
-  summarise(mean_predicted_load = mean(.value))
-
-# Combine the data
-load_means_comparison <- left_join(df_load_summary, load_pred_means, by = "species_name")
-
-# Create the plot for comparing means
-post_load_mean_plot <- ggplot(load_means_comparison, aes(x = species_name)) + 
-  geom_point(aes(y = mean_nematode_count, colour = "Observed"), size = 3) + 
-  geom_point(aes(y = mean_predicted_load, colour = "Predicted"), size = 3) + 
-  scale_colour_manual(values = c("Observed" = "red", "Predicted" = "black")) +
-  ylab("Mean Nematode Load") +
-  theme_minimal() +
-  my_theme +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  xlab(NULL) +
-  labs(colour = "Data Type")
-
-# Show the plot
-post_load_mean_plot
-```
-
-
-
-```{r}
-# Extract the mean of the predicted nematode load using tidybayes::mean_qi()
-load_rvars <- load_rvars %>%
-  mutate(mean_predicted_load = tidybayes::mean_qi(.value))
-
-# Summarize predicted nematode load by species
-load_pred_means <- load_rvars %>%
-  group_by(species_name) %>%
-  summarise(mean_predicted_load = mean(mean_predicted_load))
-
-# Calculate means of the raw nematode counts by species
-df_load_summary <- df_load %>%
-  group_by(species_code) %>%
-  summarise(mean_nematode_count = mean(nematode_count)) %>%
-  mutate(species_name = species_code_to_name[as.character(species_code)])
-
-# Combine the data
-load_means_comparison <- left_join(df_load_summary, load_pred_means, by = "species_name")
-
-# Create the plot for comparing means
-post_load_mean_plot <- ggplot(load_means_comparison, aes(x = species_name)) + 
-  geom_point(aes(y = mean_nematode_count, colour = "Observed"), size = 3) + 
-  geom_point(aes(y = mean_predicted_load, colour = "Predicted"), size = 3) + 
-  scale_colour_manual(values = c("Observed" = "red", "Predicted" = "black")) +
-  ylab("Mean Nematode Load") +
-  theme_minimal() +
-  my_theme +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  xlab(NULL) +
-  labs(colour = "Data Type")
-
-# Show the plot
-post_load_mean_plot
-
-
-```
-
-
-
-
-```{r}
-# Extract the mean of the predicted nematode load
-load_rvars <- load_rvars %>%
-  mutate(mean_predicted_load = mean(.value))
-
-# Ensure species_name is treated as a factor in both datasets
+# Replace species codes with species names in df_load
 df_load <- df_load %>%
-  mutate(species_name = factor(species_name))
+  mutate(species_name = species_code_to_name[as.character(species_code)])
 
+# Compute the mean observed load for each species
+df_load_mean <- df_load %>%
+  group_by(species_name) %>%
+  summarize(mean_nematode_count = mean(nematode_count, na.rm = TRUE))
+
+# Reorder species names in load_rvars based on the predicted nematode load values
 load_rvars <- load_rvars %>%
-  mutate(species_name = factor(species_name))
+  mutate(species_name = forcats::fct_reorder(species_name, -.value))
 
-# Create the plot for individual predictions
-post_load_indiv_plot <- ggplot() + 
-  # Observed data: plot nematode counts
-  geom_point(aes(x = species_name, y = nematode_count, colour = "Observed"), 
-             size = 2, alpha = .5, 
-             position = position_jitter(width = .3),
-             data = df_load) + 
-  # Predicted data: plot mean predicted nematode load
-  geom_point(aes(x = species_name, y = mean_predicted_load, colour = "Predicted"), 
-             size = 2, alpha = .5, 
-             position = position_jitter(width = .3),
-             data = load_rvars) +
-  # Define the colors for the legend
-  scale_colour_manual(values = c("Observed" = "red", "Predicted" = "black")) +
-  # Adjust the y-label
-  ylab("Nematode Load") +
-  # Set the theme
+
+# Plot predicted nematode load (avg_predicted_load)
+p_pred_load <- load_rvars |> 
+  ggplot(aes(x = species_name, ydist = nematode_load)) + 
+  stat_pointinterval() + 
   theme_minimal() +
   my_theme +
-  # Rotate x-axis labels for better readability
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  # Remove the x-axis label
-  xlab(NULL) +
-  # Define the legend title
-  labs(colour = "Data Type")
+  xlab(NULL)
 
-# Show the plot
-post_load_indiv_plot
+# Overlay observed nematode loads on the plot (as jittered red points)
+p_pred_load <- p_pred_load + 
+  geom_point(aes(x = species_name, y = nematode_count), inherit.aes = FALSE, 
+             data = df_load, 
+             colour = "red",
+             size = .5, alpha = .3,
+             position = position_jitter(width = .3)) +
+  # Add mean observed load (red square) for each species
+  geom_point(aes(x = species_name, y = mean_nematode_count), inherit.aes = FALSE, 
+             data = df_load_mean, 
+             colour = "blue",
+             shape = 15,  # Red square
+             size = 2, alpha = 1) +
+  theme_minimal() +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab(NULL)
 
+# Print the plot
+p_pred_load
+
+#ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex_interaction/p_pred_load.png"), height = 6, width = 9)
 
 ```
 
-### load and brightness in each island
+
+
 
 ```{r}
-# Step 1: Extract the posterior samples for nematode load and brightness
-load_bright_rvars <- unconstr_brightload_samp |>
-  tidybayes::gather_rvars(predicted_nematode_load[sp_index_load], true_ln_bright[sp_index_load])
+# Extract predicted total slope for brightness on load for each island from the model output
+slope_rvars <- unconstr_brightload_samp |> 
+  tidybayes::gather_rvars(total_slope_bright_load_island[island_index]) |> 
+  mutate(predicted_slope = .value,
+         island_index = as.character(island_index))  # Convert island_index to character for plotting
+
+# Plot the predicted slopes using the `ydist` aesthetic for rvar objects
+p_slope_prediction <- ggplot(slope_rvars, aes(x = island_index, ydist = predicted_slope)) +
+  stat_pointinterval(size = 0.8) +  # Plot the predicted slopes with intervals
+  theme_minimal() +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    x = "Island",
+    y = "Predicted Slope of Brightness on Nematode Load",
+    title = "Predicted Total Slope of Brightness on Load for Each Island"
+  )
+
+# Print the plot
+p_slope_prediction
+
+
+
 ```
 
