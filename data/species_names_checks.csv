@@ -3,14 +3,19 @@ akamatus,akamatus
 albemarlensis,albemarlensis
 albermarlensis,albemarlensis
 cf. albemarlensis,sp_nov_CA
+cf._albemarlensis,sp_nov_CA
+cf_albemarlensis',sp_nov_CA
 cf_albemarlensis,sp_nov_CA
 amastroides,amastroides
+cf. amastroides',amastroides
 cf. amastroides,amastroides
+cf._amastroides,amastroides
 cf_amastroides,amastroides
 basiplicatus,basiplicatus
-CF. BASIPLACATUS,basiplicatus
-cf. basiplicatus,basiplicatus
-cfbasiplicatus,basiplicatus
+CF. BASIPLACATUS,
+cf.basiplicatus,
+cf. basiplicatus,
+cfbasiplicatus,
 bauri,bauri
 calvus,calvus
 canaliferus,canaliferus
@@ -25,21 +30,25 @@ eos,eos
 eschariferus,eschariferus
 hirsutus,hirsutus
 CF. HIRSUTUS,hirsutus
+cf  hirsustus,hirsutus
+cf hirsustus,hirsutus
 cf. hirsutus,hirsutus
 cfhirsutus,hirsutus
 invalidus,invalidus
 invalidus 1,invalidus
 invalidus_1,invalidus
 invalidus 2,
-cf. invalidus,invalidus
-cfinvalidus,invalidus
+cf.invalidus,
+cf. invalidus,
+cfinvalidus,
 jacobinus,jacobinus
 lycodus,lycodus
 nuciformis,nuciformis
 nucula,nucula
 nux,nux
-cf. nux,nux
-cf_nux,nux
+cf. nux,
+cf._nux',
+cf_nux,
 ochsneri,ochsneri
 olla,olla
 perspectivus,perspectivus
@@ -47,6 +56,7 @@ perspectivus 1,
 perspectivus 2,perspectivus
 perspectivus_2,perspectivus
 cf. perspectivus,perspectivus
+cf._perspectivus,perspectivus
 cf_perspectivus,perspectivus
 planospira,planospira
 rabidensis,rabidensis
@@ -55,6 +65,7 @@ rugiferus,rugiferus
 sculpturatus,sculpturatus
 sculpturatus 1,sculpturatus
 sculpturatus_1,sculpturatus
+sculpturatus_2,
 sculpturatus 2,
 sculpturatus 3,
 simrothi,simrothi
@@ -66,6 +77,8 @@ spp1,sp. nov. Darwin 1
 spp11,pinzonopsis
 spp12,sp. nov. pinzon 1
 spp13,sp. nov. Pinta 2
+sp._nov._Pinta_2',sp. nov. Pinta 2
+sp._nov._Pinta_2,sp. nov. Pinta 2
 sp_nov_Pinta_2,sp. nov. Pinta 2
 spp14,sp_nov_CH
 spp15,rugulosus
@@ -79,6 +92,7 @@ spp9,pinzonensis
 tanneri,tanneri
 tortuganus,tortuganus
 cf. tortuganus,tortuganus
+cf._tortuganus,tortuganus
 cf_tortuganus,tortuganus
 unifasciatus,unifasciatus
 ustulatus,ustulatus
@@ -88,6 +102,7 @@ ustulatus mahogany,ustulatus
 wolfi,wolfi
 wolfi 1,wolfi
 wolfi_1,wolfi
+wolfi_2,
 wolfi 2,
 wolfi 3,
 wolfi garrapatero,wolfi
@@ -138,6 +153,7 @@ olla jacobinus*,olla
 perspectivus/canaliferus??,
 sp. nov. Alcedo 1,
 sp. nov. Darwin 1,sp. nov. Darwin 1
+sp._nov_Darwin_1,sp. nov. Darwin 1
 sp_nov_Darwin_1,sp. nov. Darwin 1
 sp. nov. Darwin 2,
 sp. nov. Pinta 1,
@@ -150,5 +166,6 @@ sulcatus (yellow nux),
 testing Pinta divergence,
 ventrosus,ventrosus
 cf_reibischi,reibischi
+cf._reibischi,reibischi
 sp_nov_CA,sp_nov_CA
 rugulosus,rugulosus

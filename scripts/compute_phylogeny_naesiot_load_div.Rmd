@@ -65,58 +65,77 @@ ggtree(tree) +
 ```
 
 
-Correct typos
+Eliminate accents
 
 ```{r}
-tree$tip.label[which(tree$tip.label == "'sp_nov_VolcÃ¡n_Wolf_1'")]<- "sp. nov. Volcan Wolf 1"
-tree$tip.label[which(tree$tip.label == "'sp_nov_VolcÃ¡n_Wolf_2'")]<- "sp. nov. Volcan Wolf 2"
-tree$tip.label[which(tree$tip.label == "'sp_nov_VolcÃ¡n_Wolf_3'")]<- "sp. nov. Volcan Wolf 3"
 
+tree$tip.label <- gsub("'", "", tree$tip.label)
+tree$tip.label[grepl("sp._nov._Volcán_Wolf_1", tree$tip.label)] <- "sp. nov. Volcan Wolf 1"
+tree$tip.label[grepl("sp._nov._Volcán_Wolf_2", tree$tip.label)] <- "sp. nov. Volcan Wolf 2"
+tree$tip.label[grepl("sp._nov._Volcán_Wolf_3", tree$tip.label)] <- "sp. nov. Volcan Wolf 3"
+tree$tip.label[which(tree$tip.label == "sp._nov._pinzón_1")]<- "sp. nov. pinzon 1"
 
-tree$tip.label[which(tree$tip.label == "'sp_nov_pinzÃ³n_1'")]<- "sp. nov. pinzon 1"
-
-#tree$tip.label <- gsub("^[\"'`]+|[\"'`]+$", "", tree$tip.label)
+tree_data <- fortify(tree)
+ggtree(tree) +
+  geom_tiplab() +  # Add tip labels for species
+  theme_tree() +  # Remove legend
+  xlim(0, max(tree_data$x) + 0.3) 
 
 ```
 
 
-
 ```{r}
-# Create a named vector for species mapping
-name_mapping <- species_names_df_raw %>%
-  #filter(!is.na(species_name)) %>%
-  select(annotated_name, species_name) %>%
-  distinct() %>%
-  deframe()  # Create a named vector with annotated_name as names and species_name as values
+# Create a named vector where names are `annotated_name` and values are `species_name`
+name_mapping <- setNames(species_names_df_raw$species_name, species_names_df_raw$annotated_name)
 
-# Update the tree tip labels using the mapping
-tree$tip.label <- sapply(tree$tip.label, function(x) {
-  if (x %in% names(name_mapping)) {
-    name_mapping[[x]]  # Replace with the mapped name if it exists
+# Initialize a logical vector to track which labels were changed
+changed_labels <- rep(FALSE, length(tree$tip.label))
+
+# Loop through the tip labels and apply the conditions
+tree$tip.label <- sapply(tree$tip.label, function(label) {
+  if (label %in% names(name_mapping)) {
+    # Get the corresponding species_name
+    new_name <- name_mapping[[label]]
+    
+    # Condition 2: If species_name is blank, keep the current label
+    if (new_name == "") {
+      return(label)
+    } else {
+      # Condition 3: If species_name is not blank, change the label and mark it as changed
+      changed_labels[tree$tip.label == label] <<- TRUE
+      return(new_name)
+    }
   } else {
-    x  # Keep the original name if no mapping is found
+    # Condition 1: If label is not found in annotated_name, keep the current label
+    return(label)
   }
 })
 
-# Prepare data for plotting
+# Ensure tree_data is created from the tree
 tree_data <- fortify(tree)
-tree_data$has_name <- tree_data$label %in% name_mapping  # Check if the label has a corresponding name in the mapping
 
-# Plot the tree with conditional styling, remove the legend, and adjust plot width
-p <- ggtree(tree) +
-  geom_tiplab(data = tree_data, aes(label = label, 
-                  fontface = ifelse(has_name, "bold", "plain"), 
-                  color = ifelse(has_name, "blue", "black")), 
-              size = 3, 
-              align = TRUE,  # Align labels
-              linetype = NA,  # Remove lines connecting labels to tree
-              offset = 0.01,  # Adjust the position of the labels to avoid going out of margin
-              inherit.aes = FALSE) +
-  theme(legend.position = "none") +  # Remove legend
-  xlim(0, max(tree_data$x) + 0.3)  # Adjust the x-axis limit to control width
+# Apply `changed_labels` only to the tips (i.e., `isTip == TRUE`)
+tip_data <- tree_data %>% filter(isTip)
 
-print(p)
+# Make sure `changed_labels` is only as long as the tip labels
+tip_data$changed_labels <- changed_labels
+
+# Plot the tree using only the tip data for labeling
+ggtree(tree) +
+  geom_tiplab(aes(label = label, color = changed_labels), data = tip_data) +  # Only apply to tips
+  scale_color_manual(values = c("black", "red")) +  # Black for unchanged, red for changed
+  theme_tree() +
+  xlim(0, max(tree_data$x) + 0.3)  # Adjust x-axis limits if necessary
+
+
+
 ```
+
+
+
+
+########################################################
+
 
 Prune the tree to keep only assessed species
 

@@ -1,5 +1,0 @@
-https://github.com/BPerezLamarque/Phylosignal_network
-
-How to compute specialization (from phylo-network analysis):
-
-https://link.springer.com/article/10.1186/s40793-022-00434-0

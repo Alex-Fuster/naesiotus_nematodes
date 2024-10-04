@@ -1,0 +1,16 @@
+https://www.biorxiv.org/content/10.1101/2023.10.10.561651v1.full.pdf
+!!! - to compute evolutionary rates of clades, I need the most complete phylogeny - so I should compute them with the full tree of John (i.e. without trimming it with the species I have)
+I will simply treat the other nodes as other unsampled species...but then count the interactions only of the sampled species (?) not sure
+
+!!! - idea -> trait correlations that deal with biotic and abiotic pressures (insights about it with this system)
+
+BAMM
+
+http://bamm-project.org/quickstart.html
+
+
+https://github.com/BPerezLamarque/Phylosignal_network
+
+How to compute specialization (from phylo-network analysis):
+
+https://link.springer.com/article/10.1186/s40793-022-00434-0
