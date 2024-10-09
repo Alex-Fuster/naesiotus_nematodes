@@ -131,9 +131,180 @@ ggtree(tree) +
 
 ```
 
+Tree formatting: delete duplicate names and homogenize names format
+
+```{r}
+# Identify the positions of the duplicates in the tip labels
+amastroides_tips <- which(tree$tip.label == "amastroides")
+perspectivus_tips <- which(tree$tip.label == "perspectivus")
+
+# Append "delete" to one instance of each duplicated name
+tree$tip.label[amastroides_tips[1]] <- "amastroidesdelete"
+tree$tip.label[perspectivus_tips[1]] <- "perspectivusdelete"
+
+# Drop the tips with "delete" in their names
+tree <- drop.tip(tree, c("amastroidesdelete", "perspectivusdelete"))
+
+# Replace underscores with hyphens (or other suitable character)
+tree$tip.label <- gsub("_", "-", tree$tip.label)
+
+# Replace periods with empty space or other suitable character
+tree$tip.label <- gsub("\\.", "", tree$tip.label)
+
+# Replace hyphens with an empty string or another suitable character
+tree$tip.label <- gsub("-", "", tree$tip.label)
+
+plot(tree)
+
+write.tree(tree, file = here::here("BAMM/cleannames_tree_041024.txt"))
+```
+
+
+## Add island information
+
+```{r}
+df_load_raw <- read_excel(path = here::here("data/18sept24_datalab.xlsx"), sheet = 3)
+
+# Join df_load_raw with species_names_df to correct species names
+df_corrected <- df_load_raw %>%
+  left_join(species_names_df, by = c("spp" = "species")) %>%
+  # Replace spp with the corrected species_name from species_names_df
+  mutate(corrected_species = species_name) %>%
+  # Select relevant columns and remove duplicates
+  select(corrected_species, island) %>%
+  distinct()
+
+# Rename columns for clarity
+df_corrected <- df_corrected %>%
+  rename(species = corrected_species)
+
+# Filter to get only unique species-island combinations
+species_island_table <- df_corrected %>%
+  distinct(species, island) 
+
+# Apply the same formatting transformations to the species names
+species_island_table <- species_island_table %>%
+  mutate(
+    species = gsub("_", "-", species), # Replace underscores with hyphens
+    species = gsub("\\.", "", species), # Remove periods
+    species = gsub("-", "", species),    # Remove hyphens
+     species = gsub(" ", "", species)  # Remove spaces
+  )
+
+species_island_table
+
+```
+
+
+# Plot species sampled
+
+```{r}
+# List of species to color in red (from species_island_table$species)
+species_to_color <- species_island_table$species
+
+# Plot the tree with ggtree
+p <- ggtree(tree) +
+  geom_tiplab(aes(label = label, color = label %in% species_to_color), 
+              hjust = -0.2,          # Adjusts horizontal spacing
+              size = 2.5,            # Adjusts the size of the labels
+              angle = 0) +           # Rotates labels to horizontal
+  scale_color_manual(values = c("TRUE" = "red", "FALSE" = "black")) +
+  theme_tree2() +
+  xlim(NA, max(node.depth.edgelength(tree)) * 1.2) # Extends x-axis limit for more spacing
+
+# Display the plot
+print(p)
+```
+
+# Plot island clades
+
+```{r}
+
+# Create a data frame from tree tip labels to use for merging
+tree_data <- data.frame(label = tree$tip.label)
+
+tree_data <- tree_data %>%
+  left_join(species_island_table, by = c("label" = "species")) %>%
+  mutate(island = factor(island, levels = c(unique(na.omit(island)), "Not Assigned")))
+
+# Replace NA values in island with "Not Assigned"
+tree_data$island[is.na(tree_data$island)] <- "Not Assigned"
+
+# Define custom colors for islands, with "Not Assigned" as white
+island_colors <- c(
+  viridis::viridis_pal(option = "turbo")(length(unique(tree_data$island)) - 1), # Turbo colors for islands
+  "white"  # White for "Not Assigned"
+)
+names(island_colors) <- levels(tree_data$island)
+
+# Plot the tree with points colored by island
+p <- ggtree(tree) %<+% tree_data +
+  geom_tiplab(hjust = -0.2, size = 2.5) +
+  geom_tippoint(aes(color = island), size = 3) +  # Adds colored points at tips based on island
+  scale_color_manual(values = island_colors) +  # Apply custom color palette
+  theme_tree2() +
+  xlim(NA, max(node.depth.edgelength(tree)) * 1.4) + # Extend x-axis for spacing
+  theme(legend.position = "right")
+
+# Display the plot
+print(p)
+
+ggsave("tree_islandclades.png", height = 10, width = 8)
+```
 
 
 
+# combine both
+
+```{r}
+
+library(ggnewscale)
+
+
+tree_data <- data.frame(label = tree$tip.label)
+
+# List of species to color in red
+species_to_color <- species_island_table$species
+
+# Merge the tree data with the island information
+tree_data <- tree_data %>%
+  left_join(species_island_table, by = c("label" = "species")) %>%
+  mutate(island = factor(island, levels = c(unique(na.omit(island)), "Not Assigned")),
+         is_red = label %in% species_to_color)  # Indicates which labels should be red
+
+# Replace NA values in island with "Not Assigned"
+tree_data$island[is.na(tree_data$island)] <- "Not Assigned"
+
+# Define custom colors for islands, with "Not Assigned" as white
+island_colors <- c(
+  viridis::viridis_pal(option = "turbo")(length(unique(tree_data$island)) - 1), # Turbo colors for islands
+  "white"  # White for "Not Assigned"
+)
+names(island_colors) <- levels(tree_data$island)
+
+# Plot the tree with red-colored tip labels and points for islands
+p <- ggtree(tree) %<+% tree_data +
+  geom_tiplab(aes(label = label, color = is_red), 
+              hjust = -0.2, size = 2.5, show.legend = FALSE) + # Red for specific species
+  scale_color_manual(values = c("TRUE" = "red", "FALSE" = "black"), guide = "none") +  # Red for matching species, black otherwise
+  new_scale_color() +  # Allows separate color scale for the island points
+  geom_tippoint(aes(color = island), size = 3) +  # Island-colored points
+  scale_color_manual(values = island_colors, name = "Island") +  # Apply custom island color palette
+  theme_tree2() +
+  xlim(NA, max(node.depth.edgelength(tree)) * 1.4) + # Extend x-axis for spacing
+  theme(legend.position = "right")
+
+# Display the plot
+print(p)
+
+ggsave("tree_islandclades.png", height = 10, width = 8)
+```
+
+
+
+########################################################
+########################################################
+########################################################
 ########################################################
 
 
