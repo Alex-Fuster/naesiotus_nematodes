@@ -156,7 +156,8 @@ tree$tip.label <- gsub("-", "", tree$tip.label)
 
 plot(tree)
 
-write.tree(tree, file = here::here("BAMM/cleannames_tree_041024.txt"))
+write.tree(tree, file = here::here("BAMM/cleannames_tree_doublenames_041024.txt"))
+write.tree(tree, file = here::here("BAMM/cleannames_tree_doublenames_041024.newick"))
 ```
 
 
