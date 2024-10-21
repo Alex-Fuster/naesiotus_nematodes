@@ -94,9 +94,9 @@ otu_metadata_rar <- otu_metadata %>%
 otu_metadata <- otu_metadata %>%
   dplyr::filter(!grepl("^RAR", Sample_ID))
 
-# 3. Add a column 'naesiotus_sp' by extracting the first two letters of 'Sample_ID'
+# 3. Correctly assign 'naesiotus_sp' by extracting everything before the first dash
 otu_metadata <- otu_metadata %>%
-  dplyr::mutate(naesiotus_sp = substr(Sample_ID, 1, 2)) |> 
+  dplyr::mutate(naesiotus_sp = sub("-.*", "", Sample_ID)) |> 
   rename(island = categorical,
          pool_id = categorical.2,
          pos_neg = categorical.3)
@@ -276,6 +276,7 @@ aggregated_otu_data <- otu_metadata %>%
 
 # Check the aggregated data
 head(aggregated_otu_data)
+head(otu_metadata)
 ```
 
 
@@ -374,7 +375,7 @@ bipartite_plot <- ggraph(bipartite_network, layout = "bipartite") +
 bipartite_plot
 
 # Save the plot
-ggsave(here::here("output/figures/metanetwork_bipartiteplot.png"), height = 3, width = 12)
+#ggsave(here::here("output/figures/metanetwork_bipartiteplot.png"), height = 3, width = 12)
 
 ```
 
@@ -383,48 +384,84 @@ ggsave(here::here("output/figures/metanetwork_bipartiteplot.png"), height = 3, w
 # network per island
 
 ```{r}
-# Ensure bipartite_long has the expected species and OTUs
-bipartite_long <- otu_metadata %>%
-  select(Sample_ID, naesiotus_sp, island, everything()) %>%
-  pivot_longer(cols = starts_with("OTU"), names_to = "OTU", values_to = "count") %>%
-  filter(count > 0)
+# Step 1: Merge the two datasets by 'naesiotus_sp'
+merged_data <- aggregated_otu_data %>%
+  left_join(otu_metadata %>% select(naesiotus_sp, island), by = "naesiotus_sp")
 
-# Check the structure of bipartite_long
-str(bipartite_long)
+# Step 1.1: Aggregate the OTU data per snail species
+merged_data_persnail <- merged_data %>%
+  group_by(naesiotus_sp, island) %>%  # Group by both snail species and island
+  summarise(across(starts_with("OTU"), sum, na.rm = TRUE)) %>%  # Sum the OTU columns
+  ungroup()
+
+# Step 2: Function to create a bipartite network for each island
+create_bipartite_network <- function(island_name, data) {
+  # Filter for the specific island
+  island_data <- data %>% filter(island == !!island_name)
+  
+  # Reshape the data to long format to create the edges between snails and OTUs
+  edges <- island_data %>%
+    pivot_longer(cols = starts_with("OTU"), names_to = "OTU", values_to = "count") %>%
+    filter(count > 0) %>%
+    select(naesiotus_sp, OTU)
+  
+  # Create a bipartite graph
+  g <- graph_from_data_frame(edges, directed = FALSE)
+  
+  # Get the number of species (snails) and OTUs
+  num_species <- length(unique(edges$naesiotus_sp))
+  num_otus <- length(unique(edges$OTU))
+  
+  # Assign bipartite types (TRUE for species, FALSE for OTUs)
+  V(g)$type <- c(rep(TRUE, num_species), rep(FALSE, num_otus))
+  
+  V(g)$island <- island_name # Add island as a node trait
+  
+  return(g)
+}
+
+# Step 3: Function to plot the network with customized aesthetics
+plot_custom_bipartite_network <- function(g, island_name) {
+  ggraph(g, layout = "bipartite") +
+    # Customize edge color with a red gradient
+    geom_edge_link(aes(color = ..index..), edge_alpha = 0.8, edge_width = 0.6) +
+    scale_edge_color_gradient(low = "pink", high = "red4", guide = "none") +
+    
+    # Customize nodes with specific colors, transparency, and black borders
+    geom_node_point(aes(shape = factor(V(g)$type), 
+                        color = factor(V(g)$type)), 
+                    size = 5, stroke = 1, alpha = 0.7, fill = "white") +
+    
+    # Customize node colors based on type: snails = #999900, nematodes = #00FFCC
+    scale_color_manual(values = c("TRUE" = "#999900", "FALSE" = "#999900"), guide = "none") +
+    
+    # Show shape legend only
+    scale_shape_manual(values = c(16, 17), labels = c("Nematode OTUs", "Naesiotus sp")) +
+    
+    labs(shape = "Guild") +  # Only show shape legend
+    
+    ggtitle(island_name) +  # Add the island name as a title
+    
+    theme_void() +  # Clean background with no axes or gridlines
+    theme(legend.position = "right",  # Adjust legend position
+          plot.title = element_text(hjust = 0.5))  # Center the title
+}
+
+# Step 4: Create and plot bipartite networks for all islands
+islands <- unique(merged_data_persnail$island)
+plots <- list()
+
+for (island in islands) {
+  g <- create_bipartite_network(island, merged_data_persnail)
+  p <- plot_custom_bipartite_network(g, island)
+  plots[[island]] <- p
+}
+
+# Step 5: Arrange the plots in a grid using ggarrange
+ggarrange(plotlist = plots, ncol = 2, nrow = ceiling(length(plots)/2),
+          common.legend = TRUE, legend = "top")
+
+#ggsave(here::here("output/figures/islandnetworks_bipartiteplot.png"), height = 12, width = 12)
 
 ```
-
-```{r}
-# Create an edge list from the long data
-edge_list <- bipartite_long %>% select(naesiotus_sp, OTU)
-
-# Create a bipartite graph
-bipartite_network <- graph_from_data_frame(edge_list, directed = FALSE)
-
-# Get the number of species and OTUs
-num_species <- length(unique(bipartite_long$naesiotus_sp))
-num_otus <- length(unique(bipartite_long$OTU))
-
-# Assign bipartite types (TRUE for species, FALSE for OTUs)
-V(bipartite_network)$type <- c(rep(TRUE, num_species), rep(FALSE, num_otus))
-
-# Ensure the length of vertices is correct
-length(V(bipartite_network))
-
-```
-
-```{r}
-# Check for species that appear more than once in the species_island dataframe
-duplicate_species <- species_island %>%
-  group_by(naesiotus_sp) %>%
-  filter(n() > 1)
-
-# Print the duplicate species to inspect
-print(duplicate_species)
-
-
-
-```
-
-
 
