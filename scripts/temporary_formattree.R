@@ -58,7 +58,15 @@ tree$tip.label <- gsub("\\.", "", tree$tip.label)
 # Replace hyphens with an empty string or another suitable character
 tree$tip.label <- gsub("-", "", tree$tip.label)
 
-plot(tree)
+
+ggtree(tree) +
+  geom_tiplab(aes(label = label), 
+              hjust = -0.2,          # Adjusts horizontal spacing
+              size = 2.5,            # Adjusts the size of the labels
+              angle = 0) +           # Rotates labels to horizontal
+  scale_color_manual(values = c("TRUE" = "red", "FALSE" = "black")) +
+  theme_tree2() +
+  xlim(NA, max(node.depth.edgelength(tree)) * 1.2) # Extends x-axis limit for more spacing
 
 write.tree(tree, file = here::here("BAMM/cleannames_tree_doublenames_041024.txt"))
 write.tree(tree, file = here::here("BAMM/cleannames_tree_doublenames_041024.newick"))

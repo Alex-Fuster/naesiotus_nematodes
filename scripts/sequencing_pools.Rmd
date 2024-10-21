@@ -30,7 +30,7 @@ my_theme<-theme(axis.text=element_text(size=12),
 
 ```{r}
 
-data <- read_excel("04april24_datalab.xlsx", sheet = "pools")
+data <- read_excel(here::here("data/19july24_datalab.xlsx"), sheet = "pools")
 
 
 data <- mutate(data, id_negative_pull = ifelse(is.na(id_negative_pull), 0, id_negative_pull))
@@ -73,6 +73,26 @@ ggplot(unique_pulls, aes(x = num_unique_pulls)) +
 
 ```
 
+```{r}
+# Filter for positive pools only
+positive_pools <- data %>%
+  filter(id_positive_pull > 0)
+
+# Summarize the number of individuals per species code across all positive pulls
+summary_data <- positive_pools %>%
+  group_by(code) %>%
+  summarise(count = n(), .groups = 'drop')
+
+# Plot using ggplot
+ggplot(summary_data, aes(x = code, y = count)) +
+  geom_point(size = 2, color = "black", shape = 4) +
+  labs(
+       x = "Species Code",
+       y = "N snail individuals in positive pools") +
+  theme_classic()
+
+#ggsave(here::here("output/figures/nsnails_positivepools.png"), height = 5, width = 7)
+```
 
 
 ```{r}
@@ -85,7 +105,7 @@ speciments_counts_long <- pivot_longer(speciments_counts, cols = c(positive_pool
 # Create a grouped bar plot with rotated x-axis labels and specified colors
 ggplot(speciments_counts_long, aes(x = spp, y = count, fill = ifelse(pool_type == "positive_pools" & count < 10, "less_than_10", pool_type))) +
   geom_bar(stat = "identity", position = "dodge", color = "black") +
-  labs(title = "Number of Individuals in Pools per Species",
+  labs(
        x = "Species",
        y = "Number of Individuals",
        fill = "Pool Type") +
@@ -93,7 +113,7 @@ ggplot(speciments_counts_long, aes(x = spp, y = count, fill = ifelse(pool_type =
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))  # Rotate x-axis labels by 90 degrees
 
 
-#ggsave("output/exploratory/nind_pool_spp.png", height = 6, width = 8)
+#ggsave(here::here("output/figures/nsnails_positivepools.png"), height = 5, width = 9)
 
 
 
