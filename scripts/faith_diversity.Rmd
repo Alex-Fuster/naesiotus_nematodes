@@ -1,0 +1,23 @@
+---
+title: "R Notebook"
+
+---
+
+```{r}
+library(qiime2R)
+```
+
+
+```{r}
+# Import the Faith's PD vector using qiime2R
+faith_pd_vector <- read_qza(here::here("data/OTUs/faith_pd_vector.qza"))
+
+# Extract the Faith's PD data
+faith_pd_data <- faith_pd_vector$data
+
+# Preview the Faith's PD data
+head(faith_pd_data)
+
+
+```
+
