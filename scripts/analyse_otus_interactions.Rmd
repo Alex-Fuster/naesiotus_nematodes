@@ -10,6 +10,8 @@ library(qiime2R)
 library(igraph)
 library(ggraph)
 library(ggtree)
+library(vegan)
+library(gridExtra)
 ```
 
 
@@ -19,12 +21,21 @@ library(ggtree)
 otu_table <- read.delim(here::here("data", "OTUs","feature-table.tsv"), skip = 1)
 colnames(otu_table) <- gsub("\\.", "-", colnames(otu_table))
 colnames(otu_table)[1] <- "OTU_ID"
+# Correct sample name in OTU table
+otu_table <- otu_table %>%
+  dplyr::rename_with(~ gsub("XI-2P", "X1-2P", .))
+
 # Read your metadata file
 metadata <- read.delim(here::here("data","OTUs", "metadata.tsv"), skip = 1)
 # rename the sample ID column in either dataset to match
 colnames(metadata)[1] <- "Sample_ID"
+# Correct sample name in metadata
+metadata <- metadata %>%
+  dplyr::mutate(Sample_ID = gsub("XI-2P", "X1-2P", Sample_ID))
 
 ```
+
+
 
 checks
 
@@ -70,23 +81,35 @@ head(metadata$Sample_ID)
 
 ```{r}
 # Join OTU table with metadata
-otu_metadata <- dplyr::left_join(metadata, otu_table_t, by = "Sample_ID")
-otu_metadata$naesiotus_sp
+otu_metadata <- dplyr::inner_join(metadata, otu_table_t, by = "Sample_ID")
+
+# 1. Remove the 'categorical.1' column
+otu_metadata <- otu_metadata %>%
+  dplyr::select(-categorical.1)
+
+# 2. Remove rows where 'Sample_ID' starts with "RAR" and save in a separate dataframe
+otu_metadata_rar <- otu_metadata %>%
+  dplyr::filter(grepl("^RAR", Sample_ID))
+
+otu_metadata <- otu_metadata %>%
+  dplyr::filter(!grepl("^RAR", Sample_ID))
+
+# 3. Add a column 'naesiotus_sp' by extracting the first two letters of 'Sample_ID'
+otu_metadata <- otu_metadata %>%
+  dplyr::mutate(naesiotus_sp = substr(Sample_ID, 1, 2)) |> 
+  rename(island = categorical,
+         pool_id = categorical.2,
+         pos_neg = categorical.3)
+
+# Move the 'naesiotus_sp' column to the second position
+otu_metadata <- otu_metadata %>%
+  dplyr::select(Sample_ID, naesiotus_sp, everything())
+
+# Verify the changes
+head(otu_metadata)
 
 ```
-```{r}
-empty_species_rows <- otu_metadata[otu_metadata$naesiotus_sp == "", ]
-# Check if any OTU counts (non-NA and non-zero) are present
-has_otus <- rowSums(!is.na(empty_species_rows[, -(1:5)]) & empty_species_rows[, -(1:5)] > 0) > 0
 
-if (any(has_otus)) {
-  cat("The species with an empty name has OTUs present.\n")
-} else {
-  cat("The species with an empty name has no OTUs present.\n")
-}
-
-otu_metadata <- otu_metadata[otu_metadata$naesiotus_sp != "", ]
-```
 
 
 What negatives contain nematodes?
@@ -103,7 +126,77 @@ paste(length(unique(species_with_otus_and_negative$naesiotus_sp)),"species with 
 
 ```
 
-Read OTUS tree
+
+##check rarefraction analysis
+
+```{r}
+# Rename metadata columns
+otu_metadata_rar <- otu_metadata_rar |> 
+  rename(island = categorical,
+         pool_id = categorical.2,
+         pos_neg = categorical.3)
+
+
+# Create a column to identify the species based on Sample_ID
+otu_metadata_rar <- otu_metadata_rar %>%
+  dplyr::mutate(species = ifelse(grepl("^RAR-X", Sample_ID), "unifasciatus", "sp.nov.VolcanWolf_3"))
+
+# Extract OTU columns (all columns that are not metadata)
+otu_columns <- otu_metadata_rar %>% 
+  dplyr::select(-Sample_ID, -island, -pool_id, -pos_neg, -species)
+
+# Initialize an empty vector to store the cumulative unique OTU counts
+cumulative_unique_otus <- numeric(nrow(otu_metadata_rar))
+
+# Split the data by species
+species_groups <- split(otu_metadata_rar, otu_metadata_rar$species)
+
+# Initialize an empty list to store cumulative OTU data for each species
+cumulative_list <- list()
+
+# Loop through each species and calculate the cumulative unique OTUs
+for (species in names(species_groups)) {
+  # Subset data for this species
+  otu_subset <- species_groups[[species]]
+  otu_columns_subset <- otu_columns[rownames(otu_subset), ]
+  
+  # Initialize variables for cumulative unique OTUs
+  unique_otus <- c()
+  cumulative_unique_otus <- numeric(nrow(otu_subset))
+  
+  # Loop through each sample for this species
+  for (i in 1:nrow(otu_subset)) {
+    current_otus <- colnames(otu_columns_subset)[otu_columns_subset[i, ] > 0]
+    unique_otus <- union(unique_otus, current_otus)
+    cumulative_unique_otus[i] <- length(unique_otus)
+  }
+  
+  # Store cumulative results for this species
+  cumulative_list[[species]] <- data.frame(
+    sample_num = 1:nrow(otu_subset),
+    cumulative_unique_otus = cumulative_unique_otus,
+    species = species
+  )
+}
+
+# Combine the results from all species into one dataframe
+cumulative_df <- do.call(rbind, cumulative_list)
+
+ggplot(cumulative_df, aes(x = sample_num, y = cumulative_unique_otus, color = species)) +
+  geom_line(size = 1.2) +
+  labs(x = "Number of Samples", y = "Cumulative Unique OTUs") +
+  theme_minimal()
+
+
+
+
+
+```
+
+
+
+
+## Read OTUS tree
 
 ```{r}
 tree <- read_qza(here::here("data/OTUs/iq-rooted-clustered.qza"))
@@ -202,6 +295,33 @@ bipartite_matrix <- bipartite_matrix[, -1]
 # Check the bipartite matrix
 head(bipartite_matrix)
 
+# Convert the bipartite matrix to a long format for graph creation
+bipartite_long <- bipartite_matrix %>%
+  rownames_to_column(var = "species") %>%
+  pivot_longer(-species, names_to = "OTU", values_to = "count") %>%
+  filter(count > 0)  # Only keep connections with counts greater than 0
+
+# Create an edge list from the long data
+edge_list <- bipartite_long %>% select(species, OTU)
+
+# Create a bipartite graph
+bipartite_network <- graph_from_data_frame(edge_list, directed = FALSE)
+
+# Get the number of species and OTUs
+num_species <- length(unique(bipartite_long$species))
+num_otus <- length(unique(bipartite_long$OTU))
+
+# Assign bipartite types (TRUE for species, FALSE for OTUs)
+V(bipartite_network)$type <- c(rep(TRUE, num_species), rep(FALSE, num_otus))
+
+
+# Plot the bipartite network
+ggraph(bipartite_network, layout = "bipartite") + 
+  geom_edge_link(aes(width = 0.5), edge_color = "grey") + 
+  geom_node_point(aes(color = factor(type)), size = 5) +  # Color by type (species or OTU)
+  theme_void() +
+  theme(legend.position = "none") +
+  ggtitle("Bipartite Network of Snail Species and OTUs")
 ```
 
 
@@ -226,47 +346,85 @@ phylo_plot
 ```
 
 ```{r}
-bipartite_plot <- ggraph(g, layout = "bipartite") +
+
+# Create the customized bipartite plot
+bipartite_plot <- ggraph(bipartite_network, layout = "bipartite") +
   
   # Change link color to a red gradient
   geom_edge_link(aes(color = ..index..), edge_alpha = 0.8, edge_width = 0.6) +
   scale_edge_color_gradient(low = "pink", high = "red4", guide = "none") +  # Remove edge color legend
   
   # Customize nodes with specific colors, transparency, and black borders
-  geom_node_point(aes(shape = factor(V(g)$type), color = factor(V(g)$type)), 
+  geom_node_point(aes(shape = factor(V(bipartite_network)$type), 
+                      color = factor(V(bipartite_network)$type)), 
                   size = 5, stroke = 1, alpha = 0.7, fill = "white") +
   
   # Customize node colors based on type: snails = #999900, nematodes = #00FFCC
   scale_color_manual(values = c("#999900", "#999900"), guide = "none") +  # Remove color legend
   
   # Show shape legend only
-  scale_shape_manual(values = c(16, 17), labels = c("Naesiotus species", "Nematode OTUs")) +
+  scale_shape_manual(values = c(16, 17), labels = c("Nematode OTUs", "Naesiotus sp")) +
   
   labs(shape = "Guild") +  # Only show shape legend
   
   theme_void() +  # Clean background with no axes or gridlines
   theme(legend.position = "right")  # Adjust legend position
 
+# Plot the bipartite network
 bipartite_plot
 
 # Save the plot
 ggsave(here::here("output/figures/metanetwork_bipartiteplot.png"), height = 3, width = 12)
 
-
-
 ```
 
 
+
+# network per island
 
 ```{r}
+# Ensure bipartite_long has the expected species and OTUs
+bipartite_long <- otu_metadata %>%
+  select(Sample_ID, naesiotus_sp, island, everything()) %>%
+  pivot_longer(cols = starts_with("OTU"), names_to = "OTU", values_to = "count") %>%
+  filter(count > 0)
 
-library(cowplot)
-
-# Combine the phylogeny and bipartite network side-by-side
-combined_plot <- plot_grid(phylo_plot, bipartite_plot, ncol = 2)
-
-# View the combined plot
-combined_plot
+# Check the structure of bipartite_long
+str(bipartite_long)
 
 ```
+
+```{r}
+# Create an edge list from the long data
+edge_list <- bipartite_long %>% select(naesiotus_sp, OTU)
+
+# Create a bipartite graph
+bipartite_network <- graph_from_data_frame(edge_list, directed = FALSE)
+
+# Get the number of species and OTUs
+num_species <- length(unique(bipartite_long$naesiotus_sp))
+num_otus <- length(unique(bipartite_long$OTU))
+
+# Assign bipartite types (TRUE for species, FALSE for OTUs)
+V(bipartite_network)$type <- c(rep(TRUE, num_species), rep(FALSE, num_otus))
+
+# Ensure the length of vertices is correct
+length(V(bipartite_network))
+
+```
+
+```{r}
+# Check for species that appear more than once in the species_island dataframe
+duplicate_species <- species_island %>%
+  group_by(naesiotus_sp) %>%
+  filter(n() > 1)
+
+# Print the duplicate species to inspect
+print(duplicate_species)
+
+
+
+```
+
+
 

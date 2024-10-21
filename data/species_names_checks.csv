@@ -1,40 +1,54 @@
 annotated_name,species_name
 akamatus,akamatus
+AK,akamatus
 albemarlensis,albemarlensis
 albermarlensis,albemarlensis
+AL,albemarlensis
 cf. albemarlensis,sp_nov_CA
 cf._albemarlensis,sp_nov_CA
 cf_albemarlensis',sp_nov_CA
 cf_albemarlensis,sp_nov_CA
 amastroides,amastroides
+AM,amastroides
 cf. amastroides',amastroides
 cf. amastroides,amastroides
 cf._amastroides,amastroides
 cf_amastroides,amastroides
 basiplicatus,basiplicatus
+BA,basiplicatus
 CF. BASIPLACATUS,
 cf.basiplicatus,
 cf. basiplicatus,
 cfbasiplicatus,
 bauri,bauri
+BU,bauri
 calvus,calvus
+CA,calvus
 canaliferus,canaliferus
+CF,canaliferus
 canaliferus 1,canaliferus
 canaliferus_1,canaliferus
 canaliferus 2,canaliferus
 cavagnaroi,cavagnaroi
+CV,cavagnaroi
 chemnitzioides,chemnitzioides
+CH,chemnitzioides
 Chemnitizoides,chemnitzioides
 darwini,darwini
+DA,darwini
 eos,eos
+EO,eos
 eschariferus,eschariferus
+ES,eschariferus
 hirsutus,hirsutus
+HI,hirsutus
 CF. HIRSUTUS,hirsutus
 cf  hirsustus,hirsutus
 cf hirsustus,hirsutus
 cf. hirsutus,hirsutus
 cfhirsutus,hirsutus
 invalidus,invalidus
+IN,invalidus
 invalidus 1,invalidus
 invalidus_1,invalidus
 invalidus 2,
@@ -42,16 +56,23 @@ cf.invalidus,
 cf. invalidus,
 cfinvalidus,
 jacobinus,jacobinus
+JA,jacobinus
 lycodus,lycodus
+LY,lycodus
 nuciformis,nuciformis
 nucula,nucula
+NC,nucula
 nux,nux
+NU,nux
 cf. nux,
 cf._nux',
 cf_nux,
 ochsneri,ochsneri
+OS,ochsneri
 olla,olla
+OL,olla
 perspectivus,perspectivus
+PE,perspectivus
 perspectivus 1,
 perspectivus 2,perspectivus
 perspectivus_2,perspectivus
@@ -59,47 +80,72 @@ cf. perspectivus,perspectivus
 cf._perspectivus,perspectivus
 cf_perspectivus,perspectivus
 planospira,planospira
+PL,planospira
 rabidensis,rabidensis
+RA,rabidensis
 reibischi,reibischi
+RE,reibischi
 rugiferus,rugiferus
+RU,rugiferus
 sculpturatus,sculpturatus
+SC,sculpturatus
 sculpturatus 1,sculpturatus
 sculpturatus_1,sculpturatus
 sculpturatus_2,
 sculpturatus 2,
 sculpturatus 3,
 simrothi,simrothi
+SI,simrothi
 simrothi 1,simrothi
 simrothi_1,simrothi
 simrothi 2,
 snodgrassi,snodgrassi
+SN,snodgrassi
 spp1,sp. nov. Darwin 1
+X1,sp. nov. Darwin 1
 spp11,pinzonopsis
+X11,pinzonopsis
 spp12,sp. nov. pinzon 1
+X12,sp. nov. pinzon 1
 spp13,sp. nov. Pinta 2
+X13,sp. nov. Pinta 2
 sp._nov._Pinta_2',sp. nov. Pinta 2
 sp._nov._Pinta_2,sp. nov. Pinta 2
 sp_nov_Pinta_2,sp. nov. Pinta 2
 spp14,sp_nov_CH
+X14,sp_nov_CH
 spp15,rugulosus
+X15,rugulosus
 spp2,sp. nov. Volcan Wolf 3
+X2,sp. nov. Volcan Wolf 3
 spp3,pallidus
+X3,pallidus
 spp4,perrus 1
+X4,perrus 1
 spp6,ventrosus
+X6,ventrosus
 spp7,approximatus
+X7,approximatus
 spp8,sp_nov_CA
+X8,sp_nov_CA
 spp9,pinzonensis
+X9,pinzonensis
 tanneri,tanneri
+TA,tanneri
 tortuganus,tortuganus
+TO,tortuganus
 cf. tortuganus,tortuganus
 cf._tortuganus,tortuganus
 cf_tortuganus,tortuganus
 unifasciatus,unifasciatus
+UN,unifasciatus
 ustulatus,ustulatus
+US,ustulatus
 ustulatus pallescens,ustulatus
 ustulatus phlegonis,ustulatus
 ustulatus mahogany,ustulatus
 wolfi,wolfi
+WO,wolfi
 wolfi 1,wolfi
 wolfi_1,wolfi
 wolfi_2,
