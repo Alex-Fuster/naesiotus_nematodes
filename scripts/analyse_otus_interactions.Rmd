@@ -1,0 +1,272 @@
+---
+title: "R Notebook"
+---
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(ape)
+library(qiime2R) 
+library(igraph)
+library(ggraph)
+library(ggtree)
+```
+
+
+
+```{r}
+# Read the OTU table
+otu_table <- read.delim(here::here("data", "OTUs","feature-table.tsv"), skip = 1)
+colnames(otu_table) <- gsub("\\.", "-", colnames(otu_table))
+colnames(otu_table)[1] <- "OTU_ID"
+# Read your metadata file
+metadata <- read.delim(here::here("data","OTUs", "metadata.tsv"), skip = 1)
+# rename the sample ID column in either dataset to match
+colnames(metadata)[1] <- "Sample_ID"
+
+```
+
+checks
+
+```{r}
+# Check if all sample IDs in otu_table are present in metadata
+missing_samples <- setdiff(colnames(otu_table)[-1], metadata$Sample_ID)  # Exclude OTU_ID column
+
+# Output the missing sample IDs, if any
+if (length(missing_samples) > 0) {
+  cat("These sample IDs in the OTU table are not found in the metadata:\n")
+  print(missing_samples)
+} else {
+  cat("All sample IDs in the OTU table are present in the metadata.\n")
+}
+
+# Check if there are sample IDs in the metadata not present in the OTU table
+extra_metadata_samples <- setdiff(metadata$Sample_ID, colnames(otu_table)[-1])
+
+if (length(extra_metadata_samples) > 0) {
+  cat("These sample IDs in the metadata are not found in the OTU table - i.e. nematodes werent found in them:\n")
+  print(extra_metadata_samples)
+} else {
+  cat("All sample IDs in the metadata are present in the OTU table.\n")
+}
+
+```
+
+
+```{r}
+# Transpose OTU table so that OTUs are columns and samples are rows
+otu_table_t <- t(otu_table[-1])  # Remove the first column which is the OTU IDs, then transpose
+colnames(otu_table_t) <- otu_table$OTU_ID  # Set OTU IDs as column names
+otu_table_t <- as.data.frame(otu_table_t)  # Convert to dataframe
+otu_table_t$Sample_ID <- rownames(otu_table_t)  # Add SampleID as a column
+```
+
+```{r}
+# Check the results
+head(rownames(otu_table_t))
+head(metadata$Sample_ID)
+
+```
+
+```{r}
+# Join OTU table with metadata
+otu_metadata <- dplyr::left_join(metadata, otu_table_t, by = "Sample_ID")
+otu_metadata$naesiotus_sp
+
+```
+```{r}
+empty_species_rows <- otu_metadata[otu_metadata$naesiotus_sp == "", ]
+# Check if any OTU counts (non-NA and non-zero) are present
+has_otus <- rowSums(!is.na(empty_species_rows[, -(1:5)]) & empty_species_rows[, -(1:5)] > 0) > 0
+
+if (any(has_otus)) {
+  cat("The species with an empty name has OTUs present.\n")
+} else {
+  cat("The species with an empty name has no OTUs present.\n")
+}
+
+otu_metadata <- otu_metadata[otu_metadata$naesiotus_sp != "", ]
+```
+
+
+What negatives contain nematodes?
+
+```{r}
+# Filter for species with OTUs greater than 0 and pos_neg is "negative"
+species_with_otus_and_negative <- otu_metadata %>%
+  dplyr::filter(pos_neg == "negative") %>%
+  dplyr::filter(rowSums(.[, -(1:5)], na.rm = TRUE) > 0)
+
+unique(species_with_otus_and_negative$naesiotus_sp)
+
+paste(length(unique(species_with_otus_and_negative$naesiotus_sp)),"species with negative controls with nematodes")
+
+```
+
+Read OTUS tree
+
+```{r}
+tree <- read_qza(here::here("data/OTUs/iq-rooted-clustered.qza"))
+# Extract the phylogenetic tree from the data
+phylo_tree <- tree$data  # This extracts the phylogenetic tree in "phylo" format
+plot(phylo_tree)
+```
+check that OTU tree tip names are present in the created metadata
+
+```{r}
+# Extract OTU names from the tree tips
+otu_tree_tips <- phylo_tree$tip.label
+
+# Get the OTU IDs from otu_metadata
+otu_metadata_ids <- colnames(otu_metadata)[-(1:5)]  # Assuming OTU IDs start from column 6
+
+# Check which OTU names in the tree are present in the otu_metadata
+matching_otus <- otu_tree_tips %in% otu_metadata_ids
+
+# Output the number of matching and non-matching OTUs
+cat("Number of matching OTUs:", sum(matching_otus), "\n")
+cat("Number of non-matching OTUs:", sum(!matching_otus), "\n")
+
+```
+
+Rename OTUS names in the tree and metadata
+
+```{r}
+# Combine OTU names from the tree and metadata to ensure all OTUs are included
+all_otu_ids <- unique(c(otu_tree_tips, otu_metadata_ids))
+
+# Create a mapping of new labels: OTU1, OTU2, OTU3, ...
+otu_mapping <- data.frame(
+  original_otu = all_otu_ids,
+  new_otu_label = paste0("OTU", seq_along(all_otu_ids)),
+  stringsAsFactors = FALSE
+)
+
+# View the mapping
+head(otu_mapping)
+```
+
+Apply the mapping on the tree
+
+```{r}
+# Rename the tree tip labels based on the mapping
+phylo_tree$tip.label <- otu_mapping$new_otu_label[match(phylo_tree$tip.label, otu_mapping$original_otu)]
+
+# Check the updated tree tip labels
+head(phylo_tree$tip.label)
+
+```
+
+Apply the mapping to the metadata
+
+```{r}
+# Rename the OTU columns in the metadata table based on the mapping
+colnames(otu_metadata)[-(1:5)] <- otu_mapping$new_otu_label[match(colnames(otu_metadata)[-(1:5)], otu_mapping$original_otu)]
+
+# Check the updated column names in the metadata table (optional)
+head(colnames(otu_metadata))
+```
+
+
+```{r}
+# Verify if the OTU names in the tree and metadata are consistent
+all(phylo_tree$tip.label %in% colnames(otu_metadata)[-(1:5)])  # Should return TRUE if consistent
+```
+
+Aggregate data per naesiotus species
+
+```{r}
+# Aggregate OTU counts by naesiotus_sp, summing across all samples for each species
+aggregated_otu_data <- otu_metadata %>%
+  dplyr::group_by(naesiotus_sp) %>%
+  dplyr::summarise(across(starts_with("OTU"), sum, na.rm = TRUE))
+
+# Check the aggregated data
+head(aggregated_otu_data)
+```
+
+
+
+# PLOT NETWORK AND NEMATODE PHYLOGENY
+
+```{r}
+# Convert the aggregated data to a bipartite matrix format
+bipartite_matrix <- as.data.frame(aggregated_otu_data)
+
+# Set rownames as the naesiotus_sp (snail species)
+rownames(bipartite_matrix) <- bipartite_matrix$naesiotus_sp
+
+# Remove the naesiotus_sp column from the matrix, leaving only OTU data
+bipartite_matrix <- bipartite_matrix[, -1]
+
+# Check the bipartite matrix
+head(bipartite_matrix)
+
+```
+
+
+```{r}
+# Create the bipartite graph from the matrix
+g <- graph_from_incidence_matrix(as.matrix(bipartite_matrix))
+
+# Assign types to nodes: type=TRUE for OTUs (from columns), type=FALSE for snails (from rows)
+V(g)$type <- bipartite_mapping(g)$type
+
+# Check the graph structure (optional)
+summary(g)
+```
+
+```{r}
+# Plot the phylogeny for nematode OTUs
+phylo_plot <- ggtree(phylo_tree, layout = "rectangular") +
+  geom_tiplab()  # Add tip labels (OTU names)
+
+# View the phylogeny
+phylo_plot
+```
+
+```{r}
+bipartite_plot <- ggraph(g, layout = "bipartite") +
+  
+  # Change link color to a red gradient
+  geom_edge_link(aes(color = ..index..), edge_alpha = 0.8, edge_width = 0.6) +
+  scale_edge_color_gradient(low = "pink", high = "red4", guide = "none") +  # Remove edge color legend
+  
+  # Customize nodes with specific colors, transparency, and black borders
+  geom_node_point(aes(shape = factor(V(g)$type), color = factor(V(g)$type)), 
+                  size = 5, stroke = 1, alpha = 0.7, fill = "white") +
+  
+  # Customize node colors based on type: snails = #999900, nematodes = #00FFCC
+  scale_color_manual(values = c("#999900", "#999900"), guide = "none") +  # Remove color legend
+  
+  # Show shape legend only
+  scale_shape_manual(values = c(16, 17), labels = c("Naesiotus species", "Nematode OTUs")) +
+  
+  labs(shape = "Guild") +  # Only show shape legend
+  
+  theme_void() +  # Clean background with no axes or gridlines
+  theme(legend.position = "right")  # Adjust legend position
+
+bipartite_plot
+
+# Save the plot
+ggsave(here::here("output/figures/metanetwork_bipartiteplot.png"), height = 3, width = 12)
+
+
+
+```
+
+
+
+```{r}
+
+library(cowplot)
+
+# Combine the phylogeny and bipartite network side-by-side
+combined_plot <- plot_grid(phylo_plot, bipartite_plot, ncol = 2)
+
+# View the combined plot
+combined_plot
+
+```
+

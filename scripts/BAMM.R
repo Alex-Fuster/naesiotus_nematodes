@@ -89,3 +89,4 @@ for (node in nodes_of_interest) {
 
 # Combine all results into a single data frame
 summary_table <- do.call(rbind, results)
+summary_table
