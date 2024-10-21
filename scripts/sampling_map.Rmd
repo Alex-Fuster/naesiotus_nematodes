@@ -33,7 +33,7 @@ df_island <- df_island |> rename(island_age = mean_emergence,
 
 # Merge the dataframes based on the "island" column
 data_coord <- data_coord |> 
-  left_join(df_island |> select(island, island_age, island_area), by = "island") |> 
+  left_join(df_island |> dplyr::select(island, island_age, island_area), by = "island") |> 
   rename(species = spp)
 
 
@@ -71,13 +71,13 @@ species_names_df <- species_names_df_raw %>%
   filter(species_name != "")
 
 species_names_df <- species_names_df |> 
-  select(species, species_name) |> 
+  dplyr::select(species, species_name) |> 
   distinct()
 ```
 
 ```{r}
 data_coord <- data_coord %>%
-  left_join(species_names_df |> select(species, species_name),
+  left_join(species_names_df |> dplyr::select(species, species_name),
             by = "species")
 ```
 
@@ -143,7 +143,7 @@ plot_coord_sites <- ggplot() +
 
 plot_coord_sites
 
-#ggsave("plot_coord_sites.png", height = 7, width = 8)
+#ggsave(here::here("output/figures/plot_coord_sites.png"), height = 7, width = 8)
 
 ```
 
