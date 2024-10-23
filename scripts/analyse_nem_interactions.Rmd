@@ -81,7 +81,7 @@ colnames(interaction_matrix) <- sub("^d__Eukaryota\\.p__Nematozoa\\.", "", colna
 interaction_matrix <- apply(interaction_matrix, 2, as.numeric)
 rownames(interaction_matrix) <- rownames_snailspp
 
-#saveRDS(interaction_matrix, here::here("output/objects/metaweb.rds"))
+#saveRDS(interaction_matrix, here::here("output/objects/metaweb_by_nemtaxa.rds"))
 
 ```
 
@@ -173,83 +173,45 @@ interaction_counts <- data.frame(
 # View the interaction counts table
 interaction_counts
 
-#write.csv(interaction_counts,here::here("output/tables/diversity_per_snailspp.csv"))
+#write.csv(interaction_counts,here::here("output/tables/diversity_nemtaxa_per_snailspp.csv"))
 
 ```
 
 
-# Metaweb metrics and visualization
 
 ```{r}
+# Reshape the data to long format for easier plotting
+interaction_counts_long <- interaction_counts %>%
+  pivot_longer(cols = starts_with("nematode"), 
+               names_to = "taxonomic_level", 
+               values_to = "count")
 
+# Create grouped bar plot per snail species
+# Define a more contrasting custom color palette
 
-# Step 1: Merge metadata with interaction matrix row names to get island information for each snail species
-species_island <- metadata %>%
-  select(species, island) %>%
-  distinct() %>%
-  filter(species %in% rownames(interaction_matrix))
+# Create grouped bar plot per snail species using magma palette, avoiding yellow
+ggplot(interaction_counts_long, aes(x = species, y = count, fill = taxonomic_level)) +
+  geom_bar(stat = "identity", position = "dodge") +  # Grouped bars
+  
+  # Apply the magma viridis palette, restrict the range to avoid yellow
+  scale_fill_viridis_d(option = "magma", begin = 0, end = 0.8) +  # Adjust end to avoid yellow
+  
+  # Customize the theme
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +  # Rotate species labels for readability
+  
+  # Add labels and title
+  labs(x = "Snail Species", 
+       y = "Count",
+       title = "Nematode Interactions per Taxonomic Level for Each Snail Species",
+       fill = "Taxonomic Level") +
+  
+  coord_flip()  # Flip coordinates to make the plot horizontal
 
-
-# Prepare data for the metaweb
-# Get snail species and nematode taxa as nodes
-snail_species <- rownames(interaction_matrix)
-nematode_taxa <- colnames(interaction_matrix)
-
-# Create nodes for the graph
-nodes <- data.frame(
-  name = c(snail_species, nematode_taxa),
-  type = c(rep("snail", length(snail_species)), rep("nematode", length(nematode_taxa))),
-  stringsAsFactors = FALSE
-)
-
-# Create edges based on interactions (non-zero values)
-edges <- expand.grid(snail = snail_species, nematode = nematode_taxa, stringsAsFactors = FALSE)
-edges$weight <- as.vector(interaction_matrix) # Assign interaction strength
-
-# Filter edges with non-zero interactions
-edges <- edges %>%
-  filter(weight > 0)
-
-# Build the graph using igraph
-g <- graph_from_data_frame(d = edges, vertices = nodes, directed = FALSE)
-
-# Add island attribute to snails in the graph
-V(g)$island <- NA
-V(g)$island[V(g)$type == "snail"] <- species_island$island[match(V(g)$name[V(g)$type == "snail"], species_island$species)]
-
-# Assign islands to nematodes based on the snails they interact with
-nematode_islands <- edges %>%
-  left_join(species_island, by = c("snail" = "species")) %>%
-  group_by(nematode) %>%
-  summarize(island = list(unique(island)))
-
-# Add island information to nematode nodes in the graph
-V(g)$island[V(g)$type == "nematode"] <- sapply(V(g)$name[V(g)$type == "nematode"], function(nematode) {
-  paste(unlist(nematode_islands$island[nematode_islands$nematode == nematode]), collapse = ", ")
-})
-
-# Assign different colors for each snail species and nematode taxa
-snail_colors <- setNames(rainbow(length(snail_species)), snail_species)
-nematode_colors <- setNames(heat.colors(length(nematode_taxa)), nematode_taxa)
-
-# Set color and shape attributes
-V(g)$color <- ifelse(V(g)$type == "snail", snail_colors[V(g)$name], nematode_colors[V(g)$name])
-V(g)$shape <- ifelse(V(g)$type == "snail", "circle", "square")
-
-# Plot the metaweb using ggraph for more control and better aesthetics
-ggraph(g, layout = "fr") +  # 'fr' layout can be used to spatially group nodes
-  geom_edge_link(aes(edge_width = weight), color = "gray70", alpha = 0.6) +
-  geom_node_point(aes(color = I(color), shape = shape), size = 5) +
-  scale_shape_manual(values = c("circle" = 16, "square" = 15)) +  # Different shapes for snails and nematodes
-  theme_void() +
-  facet_wrap(~ island) +  # Group nodes by island
-  theme(legend.position = "none") +  # Adjust as needed
-  labs(title = "Metaweb of Snail-Nematode Interactions across Islands")
+#ggsave(here::here("output/figures/barplot_nemtaxa_persnail.png"), height = 10, width = 8)
 
 
 ```
-
-
 
 
 

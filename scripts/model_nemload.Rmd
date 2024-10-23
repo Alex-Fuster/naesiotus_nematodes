@@ -41,7 +41,7 @@ species_names_df_raw <- read.csv(here::here("data/species_names_checks.csv"))
 # we're dropping the species with no name in this database. 
 # this indicates morphospecies which have no formal name
 species_names_df <- species_names_df_raw %>% 
-  rename(species = annotated_name)  %>% 
+  dplyr::rename(species = annotated_name)  %>% 
   filter(species_name != "") |> 
   mutate(species_code = as.numeric(factor(species_name)))
 
@@ -76,7 +76,7 @@ df_island <- df_island %>%
 
 # Rename the column "mean_emergence" to "island_age" in df_island
 # add an ID column
-df_island <- df_island %>% rename(island_area = area) |> 
+df_island <- df_island %>% dplyr::rename(island_area = area) |> 
   mutate(island_code = as.numeric(as.factor(island)))
 
 
@@ -100,7 +100,7 @@ df_load_raw$nematode_count <- as.numeric(df_load_raw$nematode_count)
 
 df_load_rename <- df_load_raw %>% 
   select(id, spp, nematode_count, island) %>% 
-  rename(species = spp)
+  dplyr::rename(species = spp)
 
 # correct species names
 df_load <- df_load_rename %>%
@@ -147,7 +147,7 @@ sp_code_island_df |>
 df_bright_raw <- read_csv(here::here("data/kraemer2019_brightness_scores.csv"))
 df_bright <- df_bright_raw %>% 
   select(location, spp, brightness, microhab) %>% 
-  rename(id = location,
+  dplyr::rename(id = location,
          species = spp) %>%
   left_join(species_names_df |> select(species, species_code), by = "species")
 
@@ -179,7 +179,7 @@ df_rad_rename <- df_rad_raw %>%
   select(Sample, Taxon, 
          habitat = Microhabitat, 
          vegetation = `Vegetation Zone`)%>% 
-  rename(species = Taxon) %>% 
+  dplyr::rename(species = Taxon) %>% 
   glimpse() |> 
   left_join(species_names_df |> select(species, species_code), by = "species") |> # correct species names
   mutate(habitat = str_to_lower(habitat)) %>% 
@@ -302,7 +302,7 @@ island_df <- sp_code_island_df |>
   dplyr::summarise(
     min_emergence = min(min_emergence, na.rm = TRUE),
     max_emergence = max(max_emergence, na.rm = TRUE),
-    island_area = first(island_area)  # Assuming all rows for the same island have the same area
+    island_area = dplyr::first(island_area)  # Assuming all rows for the same island have the same area
   ) |>
   dplyr::mutate(new_island_index = dplyr::row_number()) # New consecutive island index
 
@@ -822,6 +822,53 @@ p_slope_prediction <- ggplot(slope_rvars, aes(x = island_index, ydist = predicte
 
 # Print the plot
 p_slope_prediction
+
+
+
+```
+
+############################
+
+predictd % 0
+
+
+```{r}
+# Extract the draws for 'log_avg_predicted_load'
+predicted_load_draws <- unconstr_brightload_samp$draws(variables = "log_avg_predicted_load")
+
+# Convert to a data frame
+predicted_load_data <- as.data.frame(predicted_load_draws)
+
+# Check the unique draw IDs
+unique_draw_ids <- unique(predicted_load_tidy$draw_id)
+length(unique_draw_ids)  # This should give you an idea of the structure
+
+
+# Extract the species number from the draw_id
+predicted_load_tidy <- predicted_load_tidy %>%
+  mutate(species_code = as.numeric(sub("\\..*", "", draw_id)))  # Extract species from draw_id
+
+
+# Calculate the mean predicted load for each species
+predicted_load_summary <- predicted_load_tidy %>%
+  group_by(species_code) %>%
+  summarize(mean_log_avg_predicted_load = mean(log_avg_predicted_load))
+
+# Transform back to raw scale
+predicted_load_summary <- predicted_load_summary %>%
+  mutate(mean_avg_predicted_load = exp(mean_log_avg_predicted_load))
+
+# Merge with species metadata
+df_pred <- sp_code_island_df %>%
+  left_join(predicted_load_summary, by = "species_code")
+
+# Plot the overall distribution of predicted nematode load for all species
+ggplot(df_pred, aes(x = mean_avg_predicted_load)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  labs(title = "Distribution of Predicted Nematode Load (All Species)",
+       x = "Predicted Load", y = "Density") +
+  theme_classic()
+
 
 
 
