@@ -138,6 +138,8 @@ sp_code_island_df
 sp_code_island_df |> 
   group_by(species_name) |> 
   filter(n() > 1)
+
+#saveRDS(sp_code_island_df, here::here("output/temporal_output/sp_island_id.rds"))
 ```
 
 ## Brightness data

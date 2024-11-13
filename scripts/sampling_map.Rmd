@@ -17,8 +17,8 @@ library(ggrepel)
 
 
 ```{r}
-data_coord <- read_excel(here::here("data/19july24_datalab.xlsx"), sheet = 3)
-df_island <- read_excel(here::here("data/19july24_datalab.xlsx"), sheet = "island_characteristics")
+data_coord <- read_excel(here::here("data/18sept24_datalab.xlsx"), sheet = 3)
+df_island <- read_excel(here::here("data/18sept24_datalab.xlsx"), sheet = "island_characteristics")
 
 ```
 

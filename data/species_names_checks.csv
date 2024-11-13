@@ -47,6 +47,7 @@ cf  hirsustus,hirsutus
 cf hirsustus,hirsutus
 cf. hirsutus,hirsutus
 cfhirsutus,hirsutus
+cf-_hirsutus,hirsutus
 invalidus,invalidus
 IN,invalidus
 invalidus 1,invalidus
@@ -63,7 +64,8 @@ nuciformis,nuciformis
 nucula,nucula
 NC,nucula
 nux,nux
-NU,nux
+NU,nuciformis
+NX,nux
 cf. nux,
 cf._nux',
 cf_nux,
@@ -107,6 +109,7 @@ spp11,pinzonopsis
 X11,pinzonopsis
 spp12,sp. nov. pinzon 1
 X12,sp. nov. pinzon 1
+sp-_nov-_pinzon_1,sp. nov. pinzon 1
 spp13,sp. nov. Pinta 2
 X13,sp. nov. Pinta 2
 sp._nov._Pinta_2',sp. nov. Pinta 2
@@ -201,12 +204,15 @@ sp. nov. Alcedo 1,
 sp. nov. Darwin 1,sp. nov. Darwin 1
 sp._nov_Darwin_1,sp. nov. Darwin 1
 sp_nov_Darwin_1,sp. nov. Darwin 1
+sp-_nov-_Darwin_1,sp. nov. Darwin 1
 sp. nov. Darwin 2,
 sp. nov. Pinta 1,
 sp. nov. Pinta 2,sp. nov. Pinta 2
+sp-_nov-_Pinta_2,sp. nov. Pinta 2
 sp. nov. Volcan Wolf 1,
 sp. nov. Volcan Wolf 2,
 sp. nov. Volcan Wolf 3,sp. nov. Volcan Wolf 3
+sp-_nov-_Volcan_Wolf_3,sp. nov. Volcan Wolf 3
 sp. nov. pinzon 1,sp. nov. pinzon 1
 sulcatus (yellow nux),
 testing Pinta divergence,

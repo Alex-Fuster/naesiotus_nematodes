@@ -1,0 +1,118 @@
+---
+title: "Diversification rates for Naesiotus using BAMM and CLaDS"
+author: "Alex Fuster et al."
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+format: 
+  html:
+    code-fold: true
+    embed-resources: true
+    theme:
+      light: spacelab
+      dark: superhero
+    fontsize: 1.2em
+    max-width: 1920px
+---
+
+```{r}
+#| echo: false
+#| label: setup
+#| warning: false
+#| message: false
+
+## installing latest version of corHMM
+#devtools::install_github("thej022214/corHMM")
+
+library("here")
+library("BAMMtools")
+library("RPANDA")
+library("ggtree")
+library("MetBrewer")
+library("patchwork")
+
+here::i_am("diversification_rates.qmd")
+
+## Importing tree
+tree <- read.tree(here::here("clads/cleannames_tree_041024.txt"))
+
+## Rescaling branch lengths by a scale of 10 to reflect time
+tree$edge.length <- tree$edge.length * 10
+
+## Making sure the tree is still ultrametric
+is.ultrametric(tree)
+
+## Replacing "." in species names for CLaDS not to complain
+tree$tip.label <- gsub(".", "-", tree$tip.label, fixed = TRUE)
+
+## Writing tree to file
+write.tree(tree, here::here("clads/naesiotus_rescaled.tre"))
+write.tree(tree, here::here("bamm/naesiotus_rescaled.tre"))
+
+load(here::here("clads/naesiotus_clads_rates.RData"))
+
+bamm.data <- getEventData(tree, here::here("bamm/event_data.txt"), burnin = 0.1)
+
+```
+
+
+# Material & Methods
+
+@fig-trait-rate-phylo shows the phylogeny obtained from Vargas \& Dick (2020) including 110 species of Lecythidoideae, and includes both information of trait states and speciation rates.
+
+```{r}
+#| echo: true
+#| label: bamm-results
+#| warning: false
+#| message: false
+#| column: page
+#| fig.width: 10
+#| fig.height: 20
+#| fig-cap: "Phylogeny of Lecythidoideae displaying the distribution of trait states in the tips and speciation rates. The colors of the symbols at the tips describe the trait state, while both the icon size and the plot to the right show the distribution of speciation rates estimated using CLaDS."
+
+plotRateThroughTime(bamm.data, intervalCol = "lightgrey")
+
+css <- credibleShiftSet(bamm.data, 1)
+plot(css, lwd = 3)
+
+tip.rates.bamm <- getTipRates(bamm.data, returnNetDiv = FALSE)
+
+```
+
+
+
+```{r}
+#| echo: true
+#| label: clads-results
+#| warning: false
+#| message: false
+#| eval: false
+#| column: page
+#| fig.width: 10
+#| fig.height: 20
+#| fig-cap: "Phylogeny of Lecythidoideae displaying the distribution of trait states in the tips and speciation rates. The colors of the symbols at the tips describe the trait state, while both the icon size and the plot to the right show the distribution of speciation rates estimated using CLaDS."
+
+plot_ClaDS_phylo(CladsOutput$tree, CladsOutput$lambdai_map, lwd = 3)
+hist(CladsOutput$lambdatip_map)
+
+```
+
+
+```{r}
+#| echo: true
+#| label: corHMM-analyses-1hid
+#| warning: false
+#| message: false
+#| eval: false
+#| column: page
+#| fig.width: 10
+#| fig.height: 20
+#| fig-cap: "Phylogeny of Lecythidoideae displaying the distribution of trait states in the tips and speciation rates. The colors of the symbols at the tips describe the trait state, while both the icon size and the plot to the right show the distribution of speciation rates estimated using CLaDS."
+
+mean.tip.rates <- data.frame(
+    species = tree$tip.label,
+    lambda.bamm = round(setNames(apply(tip.rates.bamm[[1]], 1, mean), NULL), 5),
+    mu.bamm = round(setNames(apply(tip.rates.bamm[[2]], 1, mean), NULL), 5),
+    lambda.clads = round(CladsOutput$lambdatip_map, 5))
+
+write.table(mean.tip.rates, file = here::here("output/mean_tip_rates.csv"), sep = ",", quote = FALSE, row.names = FALSE)
+
+```

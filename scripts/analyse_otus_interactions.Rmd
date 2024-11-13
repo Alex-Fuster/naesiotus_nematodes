@@ -12,6 +12,10 @@ library(ggraph)
 library(ggtree)
 library(vegan)
 library(gridExtra)
+library(ggfortify)
+library(FactoMineR) 
+library(factoextra)  
+library(centiserve)
 ```
 
 
@@ -23,7 +27,8 @@ colnames(otu_table) <- gsub("\\.", "-", colnames(otu_table))
 colnames(otu_table)[1] <- "OTU_ID"
 # Correct sample name in OTU table
 otu_table <- otu_table %>%
-  dplyr::rename_with(~ gsub("XI-2P", "X1-2P", .))
+  dplyr::rename_with(~ gsub("XI-2P", "X1-2P", .)) |> 
+  dplyr::rename_with(~ gsub("U5-1P", "US-1P-b", .))
 
 # Read your metadata file
 metadata <- read.delim(here::here("data","OTUs", "metadata.tsv"), skip = 1)
@@ -31,7 +36,9 @@ metadata <- read.delim(here::here("data","OTUs", "metadata.tsv"), skip = 1)
 colnames(metadata)[1] <- "Sample_ID"
 # Correct sample name in metadata
 metadata <- metadata %>%
-  dplyr::mutate(Sample_ID = gsub("XI-2P", "X1-2P", Sample_ID))
+  dplyr::mutate(Sample_ID = gsub("XI-2P", "X1-2P", Sample_ID)) |> 
+  dplyr::mutate(Sample_ID = gsub("U5-N", "US-N", Sample_ID)) |> 
+  dplyr::mutate(Sample_ID = gsub("U5-1P", "US-1P-b", Sample_ID))
 
 ```
 
@@ -463,5 +470,66 @@ ggarrange(plotlist = plots, ncol = 2, nrow = ceiling(length(plots)/2),
 
 #ggsave(here::here("output/figures/islandnetworks_bipartiteplot.png"), height = 12, width = 12)
 
+```
+
+
+
+# COMPUTE CENTRALITY SNAILS
+
+```{r}
+bipartite_matrix <- as.matrix(bipartite_matrix)
+
+# Define types manually based on the bipartite structure of the matrix
+num_snails <- nrow(bipartite_matrix)
+num_otus <- ncol(bipartite_matrix)
+
+# Create the bipartite graph
+g <- graph_from_biadjacency_matrix(bipartite_matrix, directed = FALSE)
+
+# Set types: FALSE for snail nodes (rows), TRUE for OTU nodes (columns)
+V(g)$type <- c(rep(FALSE, num_snails), rep(TRUE, num_otus))
+
+# Filter snail nodes to verify correct assignment
+snail_nodes <- V(g)[V(g)$type == FALSE]
+
+degree_centrality <- degree(g, v = snail_nodes)
+closeness_centrality <- closeness(g, v = snail_nodes)
+katz_centrality <- katzcent(g, alpha = 0.05, vids = snail_nodes)
+
+# Combine the centralities into a data frame and standardize them (z-score)
+centralities_df <- data.frame(
+  species = names(degree_centrality),
+  degree_z = scale(degree_centrality),
+  closeness_z = scale(closeness_centrality),
+  katz_z = scale(katz_centrality)
+)
+
+# Perform PCA on the standardized centrality measures
+pca_result <- PCA(centralities_df[, -1], scale.unit = TRUE, graph = FALSE)
+pca_centrality <- as.data.frame(pca_result$ind$coord)[, 1]  # First principal component
+
+# Add PCA centrality scores to the centralities data frame
+centralities_df <- centralities_df %>%
+  mutate(PCA_centrality = pca_centrality)
+
+centralities_df
+
+#saveRDS(centralities_df, here::here("output/tables/centralities_df.rds"))
+```
+
+```{r}
+pca_model <- prcomp(centralities_df[,-1], center = TRUE, scale. = TRUE)
+
+# Summary to get % of variance explained by each component
+pca_summary <- summary(pca_model)
+explained_variance <- pca_summary$importance[2, ] * 100  # % variance for each PC
+
+# Plot PCA
+autoplot(pca_model, data = centralities_df, 
+         loadings = TRUE, loadings.label = TRUE,
+         loadings.label.size = 3, color = 'black') +
+  labs(x = paste("PC1 (", round(explained_variance[1], 1), "%)", sep=""),
+       y = paste("PC2 (", round(explained_variance[2], 1), "%)", sep="")) +
+  theme_minimal()
 ```
 

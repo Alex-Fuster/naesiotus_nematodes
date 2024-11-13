@@ -3,6 +3,9 @@ title: "R Notebook"
 
 ---
 
+
+Need to import the new faith diversity that Ian made - per species
+
 ```{r}
 library(qiime2R)
 ```

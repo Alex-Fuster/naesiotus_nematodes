@@ -1,0 +1,211 @@
+---
+title: "analysis - speciation rates and network roles Naesiotus"
+---
+
+```{r}
+#| echo: false
+#| label: setup
+#| warning: false
+#| message: false
+#| 
+## installing latest version of corHMM
+#devtools::install_github("thej022214/corHMM")
+
+library("here")
+library("BAMMtools")
+library("RPANDA")
+library("ggtree")
+library("MetBrewer")
+library("patchwork")
+library(dplyr)
+library(ggpubr)
+library(ggplot2)
+```
+
+
+
+### Centrality
+
+```{r}
+centralities_df <- readRDS(here::here("output/tables/centralities_df.rds"))
+species_names_df_raw <- read.csv(here::here("data/species_names_checks.csv"))
+
+centralities_df <- centralities_df %>% 
+  dplyr::rename(annotated_name = species) %>%
+  left_join(species_names_df_raw |> select(annotated_name, species_name),
+            by = "annotated_name") |>
+  dplyr::mutate(species_name = gsub(".", "-", species_name, fixed = TRUE),
+                species_name = gsub(" ", "_", species_name, fixed = TRUE))
+
+centralities_df
+```
+
+
+### island characteristics
+
+```{r}
+sp_island_df <- readRDS(here::here("output/temporal_output/sp_island_id.rds"))
+
+sp_island_df <- sp_island_df |>
+  dplyr::mutate(species_name = gsub(".", "-", species_name, fixed = TRUE),
+                species_name = gsub(" ", "_", species_name, fixed = TRUE))
+
+sp_island_df
+
+```
+
+### network snail numbers
+
+```{r}
+species_counts <- sp_island_df %>%
+  dplyr::group_by(island) %>%
+  dplyr::summarise(n_snails_island = n_distinct(species_name))
+
+# Join this count back to the original dataframe
+sp_island_df <- sp_island_df %>%
+  dplyr::left_join(species_counts, by = "island")
+```
+
+
+
+### speciation rates
+
+```{r}
+## Importing tree
+tree <- read.tree(here::here("speciation_rates/clads/cleannames_tree_041024.txt"))
+
+## Rescaling branch lengths by a scale of 10 to reflect time
+tree$edge.length <- tree$edge.length * 10
+
+
+## Making sure the tree is still ultrametric
+is.ultrametric(tree)
+
+## Replacing "." in species names for CLaDS not to complain
+tree$tip.label <- gsub(".", "-", tree$tip.label, fixed = TRUE)
+
+load(here::here("speciation_rates/clads/naesiotus_clads_rates.RData"))
+
+bamm.data <- getEventData(tree, here::here("speciation_rates/bamm/event_data.txt"), burnin = 0.1)
+
+```
+
+
+
+### Get posterior samples from claDS
+
+
+```{r}
+summary(CladsOutput)
+
+summary(CladsOutput$rtt_chains)
+
+posterior_distributions <- lapply(1:274, function(species_index) {
+  unlist(lapply(1:3, function(chain_index) CladsOutput$chains[[chain_index]][[species_index]]))
+})
+
+names(posterior_distributions) <- tree$tip.label  # Assign species names if available
+
+summary(posterior_distributions)
+
+
+```
+
+
+
+### Get posterior samples from BAMM
+
+```{r}
+# Assuming your BAMM output is stored in an object called 'bamm_output'
+
+# Extract the number of posterior samples and the number of species
+num_samples <- length(bamm.data$tipLambda)
+num_species <- length(bamm.data$tipLambda[[1]])
+
+# Initialize a data frame to store the posterior samples
+posterior_samples <- data.frame()
+
+# Loop through each posterior sample to extract speciation and extinction rates
+for (i in 1:num_samples) {
+  # Create a temporary data frame for each sample
+  sample_df <- data.frame(
+    Species = bamm.data$tip.label, # Adjust if you have species names
+    SpeciationRate = bamm.data$tipLambda[[i]],
+    ExtinctionRate = bamm.data$tipMu[[i]],
+    Sample = i
+  )
+  
+  # Combine each sample's data into the main data frame
+  posterior_samples <- rbind(posterior_samples, sample_df)
+}
+
+# Convert 'Species' to a factor or use actual species names if available
+posterior_samples$Species <- as.factor(posterior_samples$Species)
+
+# View the first few rows of the result
+head(posterior_samples)
+
+```
+
+Plot posteriors
+
+```{r}
+# Initialize an empty list to store plots for each species
+plots <- list()
+
+# Loop over each species to create a density plot for its posterior distribution
+for (species in unique(posterior_samples$Species)) {
+  # Filter the data for the current species
+  species_data <- subset(posterior_samples, Species == species)
+  
+  # Create the density plot for Speciation Rate of the current species
+  p <- ggplot(species_data, aes(x = SpeciationRate)) +
+    geom_density(fill = "red4", alpha = 0.7) +
+    labs(title = species, x = "Speciation Rate", y = "Density") +
+    theme_minimal()
+  
+  # Add the plot to the list
+  plots[[species]] <- p
+}
+
+# Arrange all species plots using ggarrange in a grid layout
+ggarrange(plotlist = plots, ncol = 5, nrow = 5)  # Adjust ncol and nrow as needed
+
+```
+
+
+
+
+
+# Model
+
+
+```{r}
+library(MCMCglmm)
+
+
+rate_samples <- list() # this will contain rate samples for each iteration
+
+# Run MCMCglmm models for each sample set
+for (i in 1:num_samples) {
+    # Create a dataset with species_speciation_rate for this sample
+    data_sample <- your_data
+    data_sample$species_speciation_rate <- rate_samples[[i]]
+    
+    # Fit the model
+    model <- MCMCglmm(PCA_centrality ~ species_speciation_rate + lineage_size + island_age + island_area, 
+                      data = data_sample, 
+                      family = "gaussian", 
+                      prior = your_prior, 
+                      nitt = 10000, burnin = 2000, thin = 10)
+    
+    # Save the posterior distribution for this sample set
+    posterior_distributions[[i]] <- model$Sol
+}
+
+# Combine posterior distributions
+combined_posterior <- do.call(rbind, posterior_distributions)
+
+summary(combined_posterior)
+```
+
