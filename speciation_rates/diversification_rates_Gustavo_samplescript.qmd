@@ -1,0 +1,224 @@
+---
+title: "Diversification rates for Naesiotus using BAMM and CLaDS"
+author: "Alex Fuster et al."
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+format: 
+  html:
+    code-fold: true
+    embed-resources: true
+    theme:
+      light: spacelab
+      dark: superhero
+    fontsize: 1.2em
+    max-width: 1920px
+---
+
+```{r}
+#| echo: false
+#| label: setup
+#| warning: false
+#| message: false
+
+## installing latest version of corHMM
+#devtools::install_github("thej022214/corHMM")
+
+library("here")
+library("BAMMtools")
+library("RPANDA")
+#library("ggtree")
+library("MetBrewer")
+library("patchwork")
+
+here::i_am("diversification_rates.qmd")
+
+## Importing tree
+tree <- read.tree(here::here("clads/cleannames_tree_041024.txt"))
+
+## Rescaling branch lengths by a scale of 10 to reflect time
+tree$edge.length <- tree$edge.length * 10
+
+## Making sure the tree is still ultrametric
+is.ultrametric(tree)
+
+## Replacing "." in species names for CLaDS not to complain
+tree$tip.label <- gsub(".", "-", tree$tip.label, fixed = TRUE)
+
+## Writing tree to file
+write.tree(tree, here::here("clads/naesiotus_rescaled.tre"))
+write.tree(tree, here::here("bamm/naesiotus_rescaled.tre"))
+
+load(here::here("clads/naesiotus_clads_rates.RData"))
+
+bamm.data <- getEventData(tree, here::here("bamm/event_data.txt"), burnin = 0.1)
+
+```
+
+
+# Material & Methods
+
+@fig-trait-rate-phylo shows the phylogeny obtained from Vargas \& Dick (2020) including 110 species of Lecythidoideae, and includes both information of trait states and speciation rates.
+
+```{r}
+#| echo: true
+#| label: bamm-results
+#| warning: false
+#| message: false
+#| column: page
+#| fig.width: 10
+#| fig.height: 20
+#| fig-cap: "Phylogeny of Lecythidoideae displaying the distribution of trait states in the tips and speciation rates. The colors of the symbols at the tips describe the trait state, while both the icon size and the plot to the right show the distribution of speciation rates estimated using CLaDS."
+
+plotRateThroughTime(bamm.data, intervalCol = "lightgrey")
+
+css <- credibleShiftSet(bamm.data, 1)
+plot(css, lwd = 3)
+
+tip.rates.bamm <- getTipRates(bamm.data, returnNetDiv = FALSE)
+
+```
+
+
+
+```{r}
+#| echo: true
+#| label: clads-results
+#| warning: false
+#| message: false
+#| eval: false
+#| column: page
+#| fig.width: 10
+#| fig.height: 20
+#| fig-cap: "Phylogeny of Lecythidoideae displaying the distribution of trait states in the tips and speciation rates. The colors of the symbols at the tips describe the trait state, while both the icon size and the plot to the right show the distribution of speciation rates estimated using CLaDS."
+
+plot_ClaDS_phylo(CladsOutput$tree, CladsOutput$lambdai_map, lwd = 3)
+hist(CladsOutput$lambdatip_map)
+
+```
+
+
+```{r}
+#| echo: true
+#| label: corHMM-analyses-1hid
+#| warning: false
+#| message: false
+#| eval: false
+#| column: page
+#| fig.width: 10
+#| fig.height: 20
+#| fig-cap: "Phylogeny of Lecythidoideae displaying the distribution of trait states in the tips and speciation rates. The colors of the symbols at the tips describe the trait state, while both the icon size and the plot to the right show the distribution of speciation rates estimated using CLaDS."
+
+mean.tip.rates <- data.frame(
+    species = tree$tip.label,
+    lambda.bamm = round(setNames(apply(tip.rates.bamm[[1]], 1, mean), NULL), 5),
+    mu.bamm = round(setNames(apply(tip.rates.bamm[[2]], 1, mean), NULL), 5),
+    lambda.clads = round(CladsOutput$lambdatip_map, 5))
+
+write.table(mean.tip.rates, file = here::here("output/mean_tip_rates.csv"), sep = ",", quote = FALSE, row.names = FALSE)
+
+```
+
+
+# MCMCglmm
+
+```{r}
+#| echo: true
+#| label: corHMM-analyses-1hid
+#| warning: false
+#| message: false
+#| eval: false
+#| column: page
+#| fig.width: 10
+#| fig.height: 20
+#| fig-cap: "Phylogeny of Lecythidoideae displaying the distribution of trait states in the tips and speciation rates. The colors of the symbols at the tips describe the trait state, while both the icon size and the plot to the right show the distribution of speciation rates estimated using CLaDS."
+
+library("doMC")
+library("foreach")
+
+## Set the number of cores to be used in the parallel processing
+registerDoMC(4)
+
+## Branch indices
+br.ind <- 4:(4+144)
+
+## Tip indices
+tip.ind <- (max(br.ind)+1):(max(br.ind)+Ntip(CladsOutput$tree))
+
+## DTT indices
+dtt.ind <- (max(tip.ind)+2):length(a$chains[[1]])
+
+
+## Checking parameter values
+samp.ind <- sample(1:length(tip.ind), 1)
+d_1 <- density(sapply(CladsOutput$chains,"[[", tip.ind[samp.ind])[251:1000,])
+hist(sapply(CladsOutput$chains,"[[", tip.ind[samp.ind])[251:1000,], freq = FALSE, ylim = c(0, 1), breaks = 50)
+lines(d_1)
+abline(v = d_1$x[which.max(d_1$y)], col = 2, lwd = 3)
+abline(v = CladsOutput$lambdatip_map[samp.ind], col = 3, lwd = 3)
+legend("topright", legend = c("MAP", "lambda_tip"), lwd = 3, col = c(2, 3), cex = 2)
+
+## Extracting posterior distributions for the tips
+post.dist.tips <- lapply(1:length(tip.ind), function(x){sapply(CladsOutput$chains, "[[", tip.ind[x])})
+
+## Discarding burnin
+post.dist.tips <- lapply(post.dist.tips, function(x){x[251:1000,]})
+
+## Creating data.frame with sampled rates for each tip
+sampled.rates <- as.data.frame(t(plyr::ldply(1:50, .fun = function(x){sapply(post.dist.tips, function(y){sample(y, 1)})})))
+names(sampled.rates) <- paste0("species_speciation_rate_", 1:50)
+
+## Creating data.frame with sampled island ages
+### Let's say you have 5 islands, the first 4 of them with 15 species and the last with 13
+age.isl.1 <- c(10, 15)
+age.isl.2 <- c(11, 13)
+age.isl.3 <- c(7, 13)
+age.isl.4 <- c(5, 8)
+age.isl.5 <- c(4, 6)
+
+sampled.ages <- as.data.frame(sapply(1:50, function(x){c(rep(runif(1, age.isl.1[1], age.isl.1[2]), 15),
+                    rep(runif(1, age.isl.2[1], age.isl.2[2]), 15),
+                    rep(runif(1, age.isl.3[1], age.isl.3[2]), 15),
+                    rep(runif(1, age.isl.4[1], age.isl.4[2]), 15),
+                    rep(runif(1, age.isl.5[1], age.isl.5[2]), 13))}
+                    ))
+names(sampled.ages) <- paste0("island_age_", 1:50)
+               
+## Creating full data.frame for MCMCglmm
+
+fulldata <- data.frame(
+    species = CladsOutput$tree$tip.label,
+    PCA_centrality = rnorm(73, 0, 2),
+    lineage_size = sample(1:20, 73, replace = TRUE),
+    island_area = c(rep(2e05, 15),
+                    rep(1e06, 15),
+                    rep(1.4e05, 15),
+                    rep(1e04, 15),
+                    rep(0.8e04, 13))
+)
+
+fulldata <- cbind(fulldata,
+                  sampled.rates,
+                  sampled.ages
+                  )
+                  
+## Running the loop in parallel
+
+library("MCMCglmm")
+
+my_priors <- list(R = list(V = 1/2, nu = 0.002),
+                  G = list(G1 = list(V = 1/2, nu = 0.002)))
+
+registerDoMC(2)
+
+model.fit <-
+    foreach(i = 1:50) %dopar% {
+    MCMCglmm(formula(paste0("PCA_centrality ~ species_speciation_rate_", i, " + lineage_size + island_age_", i, " + island_area")), # Fixed effects 
+             random = ~ species, # Random intercept for clade and phylogenetic effect family = "gaussian", # Assuming a Gaussian response for PCA centrality 
+             ginverse = list(species = inverseA(CladsOutput$tree)$Ainv), # Inverse phylogenetic covariance matrix for species 
+             data = fulldata, 
+             prior = my_priors, 
+             nitt =  10000, 
+             burnin =  1000,
+             thin =  100)
+}
+    
+```
