@@ -369,9 +369,28 @@ for (i in 1:50) {
         ginverse = ginverse,  # Use species_name in ginverse
         data = sp_island_guild_size_filtered,  # Dataframe
         prior = my_priors,  # Priors
-        nitt = 1000000,  # Number of iterations
-        burnin = 500000,  # Burn-in
+        nitt = 2000000,  # Number of iterations
+        burnin = 1000000,  # Burn-in
         thin = 100  # Thinning
+    )
+}
+
+
+for (i in 1:50) {
+    model.fit[[i]] <- suppressMessages(
+        MCMCglmm(
+            formula(paste0("PCA_centrality ~ species_speciation_rate_", i, 
+                           " + guild_size + island_age_", i, 
+                           " + island_area")),  # Fixed effects
+            random = ~ species_name,  # Random effect for species_name
+            family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+            ginverse = ginverse,  # Use species_name in ginverse
+            data = sp_island_guild_size_filtered,  # Dataframe
+            prior = my_priors,  # Priors
+            nitt = 2000000,  # Number of iterations
+            burnin = 1000000,  # Burn-in
+            thin = 100  # Thinning
+        )
     )
 }
 
@@ -437,11 +456,7 @@ Interpretation:
 Point Estimate: The closer this value is to 1, the better the convergence. Values above 1.1 suggest that the chains have not fully converged.
 Upper C.I.: The upper bound of the confidence interval for the PSRF. This helps account for uncertainty in the diagnostic. Values significantly above 1.1 may indicate poor convergence.
 
-Convergence is problematic for species_speciation_rate. This parameter likely requires additional iterations.
-
-nitt = 2000000  # Total iterations
-burnin = 1000000  # Burn-in
-thin = 100  # Thinning interval
+Convergence is problematic for species_speciation_rate. 
 
 
 ## Posterior distributions
