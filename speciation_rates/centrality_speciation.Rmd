@@ -82,8 +82,6 @@ mean.tip.rates <- data.frame(
 
 
 ```{r}
-## Set the number of cores to be used in the parallel processing
-registerDoMC(4)
 
 ## Branch indices
 br.ind <- 4:(4+144)
@@ -114,7 +112,15 @@ CladsOutput$tree$tip.label <- gsub("-", ".",
                                    gsub("_", " ", CladsOutput$tree$tip.label))
 ```
 
+PCA centrality, lineage size, and island area:
 
+```{r}
+centralities_df <- readRDS(here::here("../output/tables/centralities_df.rds")) |> dplyr::select(species, PCA_centrality)
+metaweb <- readRDS(here::here("../output/temporal_output/bipartite_matrix.rds"))
+sp_island_id <- readRDS(here::here("../output/temporal_output/sp_island_id.rds"))
+species_names_checks.csv <- read.csv("../data/species_names_checks.csv")
+
+```
 
 
 Speciation rate and island ages are sampled from estimated distributions:
@@ -138,7 +144,7 @@ names(sampled.rates) <- paste0("species_speciation_rate_", 1:50)
 ############### island ages
 
 # Sample ages for each species on each island
-sp_island_guild_size <- sp_island_guild_size |>
+sp_island_guild_size <- sp_island_id |>
   group_by(island) |>
   mutate(
     sampled_age = runif(n(), min = min_emergence, max = max_emergence)
@@ -173,26 +179,11 @@ sampled.ages <- sampled.ages |>
                
 sampled.ages
 
-# Add sampled.ages to sp_island_guild_size
-sp_island_guild_size <- sp_island_guild_size |>
-  dplyr::left_join(
-    sampled.ages,
-    by = "species_name"
-  )
-
 ```
 
 
 
-PCA centrality, lineage size, and island area:
 
-```{r}
-centralities_df <- readRDS(here::here("../output/tables/centralities_df.rds")) |> dplyr::select(species, PCA_centrality)
-metaweb <- readRDS(here::here("../output/temporal_output/bipartite_matrix.rds"))
-sp_island_id <- readRDS(here::here("../output/temporal_output/sp_island_id.rds"))
-species_names_checks.csv <- read.csv("../data/species_names_checks.csv")
-
-```
 
 
 ```{r}
@@ -253,6 +244,102 @@ sp_island_guild_size <- sp_island_guild_size |>
 sp_island_guild_size
 ```
 
+Add island ages sampled
+
+```{r}
+# Add sampled.ages to sp_island_guild_size
+sp_island_guild_size <- sp_island_guild_size |>
+  dplyr::left_join(
+    sampled.ages,
+    by = "species_name"
+  )
+
+sp_island_guild_size
+
+```
+
+
+
+```{r}
+missing_species <- setdiff(sp_island_guild_size$species_name, CladsOutput$tree$tip.label)
+if (length(missing_species) > 0) {
+    print("These species are in the dataset but not in the tree:")
+    print(missing_species)
+}
+
+```
+Remove species not in the tree
+
+```{r}
+sp_island_guild_size_filtered <- sp_island_guild_size |>
+    dplyr::filter(species_name %in% CladsOutput$tree$tip.label)
+
+ Ainv <- inverseA(CladsOutput$tree)$Ainv
+
+sp_island_guild_size_filtered <- sp_island_guild_size_filtered |>
+    dplyr::filter(species_name %in% rownames(Ainv))
+
+all(sp_island_guild_size_filtered$species_name %in% rownames(Ainv))
+```
+
+Match levels in ginverse
+
+```{r}
+ Ainv <- inverseA(CladsOutput$tree)$Ainv
+
+```
+
+
+```{r}
+rownames(Ainv)  # Check the row names
+colnames(Ainv)  # Should return NULL
+colnames(Ainv) <- rownames(Ainv)
+common_species <- intersect(sp_island_guild_size_filtered$species_name, rownames(Ainv))
+Ainv_filtered <- Ainv[common_species, common_species]
+
+dim(Ainv_filtered)  # Should match the number of species in common_species
+length(common_species)  # Should be equal to the number of species in filtered Ainv
+
+ginverse <- list(species_name = Ainv_filtered)
+
+```
+
+
+## CHECKS
+
+```{r}
+setdiff(sp_island_guild_size_filtered$species_name, common_species)
+
+```
+```{r}
+all(sp_island_guild_size_filtered$species_name %in% rownames(Ainv_filtered))
+```
+
+
+
+```{r}
+sp_island_guild_size_filtered$species_name <- factor(
+    sp_island_guild_size_filtered$species_name,
+    levels = rownames(ginverse$species_name)
+)
+
+setdiff(levels(sp_island_guild_size_filtered$species_name), rownames(ginverse$species_name))
+setdiff(rownames(ginverse$species_name), levels(sp_island_guild_size_filtered$species_name))
+
+anyDuplicated(levels(sp_island_guild_size_filtered$species_name))
+anyDuplicated(rownames(ginverse$species_name))
+
+all(sp_island_guild_size_filtered$species_name %in% rownames(ginverse$species_name))
+
+required_columns <- c(
+    "PCA_centrality", paste0("species_speciation_rate_", 1), 
+    paste0("island_age_", 1), "guild_size", "island_area", "species_name"
+)
+missing_columns <- setdiff(required_columns, colnames(sp_island_guild_size_filtered))
+missing_columns
+
+```
+
 
 
 ## Model
@@ -263,31 +350,25 @@ sp_island_guild_size
 my_priors <- list(R = list(V = 1/2, nu = 0.002),
                   G = list(G1 = list(V = 1/2, nu = 0.002)))
 
-#registerDoMC(2)
-
-# model.fit <-
-#     foreach(i = 1:50) %dopar% {
-#     MCMCglmm(formula(paste0("PCA_centrality ~ species_speciation_rate_", i, " + lineage_size + island_age_", i, " + island_area")), # Fixed effects 
-#              random = ~ species, # Random intercept for clade and phylogenetic effect family = "gaussian", # Assuming a Gaussian response for PCA centrality 
-#              ginverse = list(species = inverseA(CladsOutput$tree)$Ainv), # Inverse phylogenetic covariance matrix for species 
-#              data = fulldata, 
-#              prior = my_priors, 
-#              nitt =  10000, 
-#              burnin =  1000,
-#              thin =  100)
-#     }
 
 model.fit <- vector(mode = "list", length = 50)
-for(i in 1:50){
-    model.fit[[i]] <-
-        MCMCglmm(formula(paste0("PCA_centrality ~ species_speciation_rate_", i, " + lineage_size + island_age_", i, " + island_area")), # Fixed effects 
-                 random = ~ species_name, # Random intercept for clade and phylogenetic effect family = "gaussian", # Assuming a Gaussian response for PCA centrality 
-                 ginverse = list(species = inverseA(CladsOutput$tree)$Ainv), # Inverse phylogenetic covariance matrix for species 
-                 data = sp_island_guild_size, 
-                 prior = my_priors, 
-                 nitt =  1000000, 
-                 burnin =  500000,
-                 thin =  100)
+
+for (i in 1:50) {
+    model.fit[[i]] <- MCMCglmm(
+        formula(paste0("PCA_centrality ~ species_speciation_rate_", i, 
+                       " + guild_size + island_age_", i, 
+                       " + island_area")),  # Fixed effects
+        random = ~ species_name,  # Random effect for species_name
+        family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+        ginverse = ginverse,  # Use species_name in ginverse
+        data = sp_island_guild_size_filtered,  # Dataframe
+        prior = my_priors,  # Priors
+        nitt = 1000000,  # Number of iterations
+        burnin = 500000,  # Burn-in
+        thin = 100  # Thinning
+    )
 }
+
 ```
+
 
