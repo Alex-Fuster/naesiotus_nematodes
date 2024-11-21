@@ -375,28 +375,14 @@ for (i in 1:50) {
     )
 }
 
-
-for (i in 1:50) {
-    model.fit[[i]] <- suppressMessages(
-        MCMCglmm(
-            formula(paste0("PCA_centrality ~ species_speciation_rate_", i, 
-                           " + guild_size + island_age_", i, 
-                           " + island_area")),  # Fixed effects
-            random = ~ species_name,  # Random effect for species_name
-            family = "gaussian",  # Assuming a Gaussian response for PCA centrality
-            ginverse = ginverse,  # Use species_name in ginverse
-            data = sp_island_guild_size_filtered,  # Dataframe
-            prior = my_priors,  # Priors
-            nitt = 2000000,  # Number of iterations
-            burnin = 1000000,  # Burn-in
-            thin = 100  # Thinning
-        )
-    )
-}
-
-
-
 ```
+
+
+```{r}
+#saveRDS(model.fit, here::here("../output/models/network.role_speciation/model.fit.rds"))
+model.fit <- readRDS(here::here("../output/models/network.role_speciation/model.fit.rds"))
+```
+
 
 
 # Model results
