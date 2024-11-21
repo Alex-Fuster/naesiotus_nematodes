@@ -442,7 +442,7 @@ Interpretation:
 Point Estimate: The closer this value is to 1, the better the convergence. Values above 1.1 suggest that the chains have not fully converged.
 Upper C.I.: The upper bound of the confidence interval for the PSRF. This helps account for uncertainty in the diagnostic. Values significantly above 1.1 may indicate poor convergence.
 
-Convergence is problematic for species_speciation_rate. 
+Convergence is problematic for species_speciation_rate.
 
 
 ## Posterior distributions
