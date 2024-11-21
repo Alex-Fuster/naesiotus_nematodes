@@ -15,6 +15,9 @@ library("doParallel")
 library("foreach")
 library("MCMCglmm")
 library(dplyr)
+library(coda)
+library(ggdist)
+library(tidyverse)
 
 here::i_am("centrality_speciation.Rmd")
 ```
@@ -340,6 +343,9 @@ missing_columns
 
 ```
 
+```{r}
+sp_island_guild_size_filtered <- as.data.frame(sp_island_guild_size_filtered)
+```
 
 
 ## Model
@@ -368,6 +374,114 @@ for (i in 1:50) {
         thin = 100  # Thinning
     )
 }
+
+
+
+```
+
+
+# Model results
+
+```{r}
+# Extract fixed effects (Sol) and variance components (VCV)
+fixed_effects <- lapply(model.fit, function(model) as.mcmc(model$Sol))
+variance_components <- lapply(model.fit, function(model) as.mcmc(model$VCV))
+```
+
+
+
+```{r}
+# Rename the columns to standard names
+fixed_effects_standardized <- lapply(seq_along(fixed_effects), function(i) {
+  colnames(fixed_effects[[i]]) <- c("(Intercept)", "species_speciation_rate", 
+                                    "guild_size", "island_age", "island_area")
+  fixed_effects[[i]]
+})
+
+
+## combine chains
+
+combined_fixed <- do.call(mcmc.list, fixed_effects_standardized)
+
+
+```
+
+
+## CHAINS CONVERGENCE
+
+#### Traceplot
+
+```{r}
+traceplot(combined_fixed)
+```
+
+The traceplots show horizontal bands without trends or drifts, and they overlap and mix well, indicating that chains converged.
+
+#### Autocorrelation plot
+
+```{r}
+autocorr.plot(combined_fixed)
+```
+
+There is a fast decay to zero in all cases, indicating that samples become effectively independent quickly, and there is no autocorrelation detected.
+
+#### Gelman-Rubin diagnostic
+
+```{r}
+gelman_fixed <- gelman.diag(combined_fixed)
+print(gelman_fixed)
+```
+The Gelman-Rubin diagnostic, also called the potential scale reduction factor (PSRF), is a method to assess the convergence of Markov Chain Monte Carlo (MCMC) simulations. It compares the variance within each chain to the variance between chains to determine whether the chains have converged to the same target distribution.
+
+Interpretation:
+Point Estimate: The closer this value is to 1, the better the convergence. Values above 1.1 suggest that the chains have not fully converged.
+Upper C.I.: The upper bound of the confidence interval for the PSRF. This helps account for uncertainty in the diagnostic. Values significantly above 1.1 may indicate poor convergence.
+
+Convergence is problematic for species_speciation_rate. This parameter likely requires additional iterations.
+
+nitt = 2000000  # Total iterations
+burnin = 1000000  # Burn-in
+thin = 100  # Thinning interval
+
+
+## Posterior distributions
+
+```{r}
+# Summarize fixed effects across all models
+summary_fixed <- summary(combined_fixed)
+
+print(summary_fixed)
+```
+
+```{r}
+# Convert combined_fixed to a data frame
+posterior_df <- as.data.frame(as.matrix(combined_fixed))
+
+# Reshape the posterior data frame to long format
+posterior_long <- posterior_df %>%
+  pivot_longer(cols = everything(), names_to = "Predictor", values_to = "Value")
+
+# Create the plot using stat_halfeye
+ggplot(posterior_long, aes(x = Value, y = Predictor, fill = Predictor)) +
+  stat_halfeye(
+    aes(fill = after_stat(ifelse(x < 0, "negative", "positive"))),
+    .width = c(0.5, 0.8, 0.95),
+    alpha = 0.8
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") + 
+  scale_fill_manual(
+    values = c("positive" = "skyblue", "negative" = "orange"),
+    guide = "none"
+  ) +
+  labs(
+    x = "Value",
+    y = "Predictor"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",    
+    panel.grid.major.y = element_blank()
+  )
 
 ```
 
