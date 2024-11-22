@@ -476,6 +476,8 @@ ggarrange(plotlist = plots, ncol = 2, nrow = ceiling(length(plots)/2),
 
 # COMPUTE CENTRALITY SNAILS
 
+## CENTRALITY IN THE REGIONAL NETWORK
+
 ```{r}
 bipartite_matrix <- as.matrix(bipartite_matrix)
 
@@ -531,5 +533,100 @@ autoplot(pca_model, data = centralities_df,
   labs(x = paste("PC1 (", round(explained_variance[1], 1), "%)", sep=""),
        y = paste("PC2 (", round(explained_variance[2], 1), "%)", sep="")) +
   theme_minimal()
+```
+
+
+## CENTRALITY IN THE LOCAL NETWORKS
+
+
+```{r}
+# Filter out islands with fewer than 2 snail species upfront
+valid_islands <- otu_metadata %>%
+  group_by(island) %>%
+  filter(n_distinct(naesiotus_sp) >= 2) %>%
+  pull(island) %>%
+  unique()
+
+# Prepare an empty list to store centralities for each island
+island_centralities <- list()
+
+# Loop through each valid island
+for (island in valid_islands) {
+  print(island)  # For debugging purposes
+  
+  # Filter metadata for the current island
+  island_metadata <- otu_metadata %>% filter(island == !!island)
+  
+  # Get snail species from the current island
+  island_snails <- island_metadata$naesiotus_sp
+  
+  # Subset bipartite matrix for snails from the current island
+  island_matrix <- bipartite_matrix %>%
+    filter(naesiotus_sp %in% island_snails) %>%
+    column_to_rownames(var = "naesiotus_sp") %>%  # Use species names as row names
+    as.matrix()  # Convert to matrix
+  
+  # Check if the matrix is valid (non-zero rows and columns)
+  if (all(rowSums(island_matrix) == 0) || all(colSums(island_matrix) == 0)) {
+    message("Skipping island due to invalid matrix: ", island)
+    next
+  }
+  
+  # Create bipartite graph
+  num_snails <- nrow(island_matrix)
+  num_otus <- ncol(island_matrix)
+  g_island <- graph_from_biadjacency_matrix(island_matrix, directed = FALSE)
+  
+  # Set types: FALSE for snail nodes (rows), TRUE for OTU nodes (columns)
+  V(g_island)$type <- c(rep(FALSE, num_snails), rep(TRUE, num_otus))
+  
+  # Filter snail nodes
+  snail_nodes <- V(g_island)[V(g_island)$type == FALSE]
+  
+  # Compute centralities
+  degree_centrality <- degree(g_island, v = snail_nodes)
+  closeness_centrality <- closeness(g_island, v = snail_nodes)
+  katz_centrality <- katzcent(g_island, alpha = 0.05, vids = snail_nodes)
+  
+  # Combine the centralities into a data frame
+  centralities_df <- data.frame(
+    species = names(degree_centrality),
+    degree = degree_centrality,
+    closeness = closeness_centrality,
+    katz = katz_centrality
+  )
+  
+  # Replace missing values with 0
+  centralities_df <- centralities_df %>%
+    mutate(across(degree:katz, ~ ifelse(is.na(.), 0, .)))
+  
+  # Standardize centralities (z-scores)
+  centralities_df <- centralities_df %>%
+    mutate(across(degree:katz, ~ scale(.) %>% as.numeric()))
+  
+  # Perform PCA on standardized centrality measures
+  if (ncol(centralities_df[, -1]) > 1) {
+    pca_result <- PCA(centralities_df[, -1], scale.unit = TRUE, graph = FALSE)
+    pca_centrality <- as.data.frame(pca_result$ind$coord)[, 1]  # First principal component
+  } else {
+    pca_centrality <- rep(NA, nrow(centralities_df))
+  }
+  
+  # Add PCA centrality scores and island name to the data frame
+  centralities_df <- centralities_df %>%
+    mutate(PCA_centrality = pca_centrality, island = island)
+  
+  # Append to the list
+  island_centralities[[island]] <- centralities_df
+}
+
+# Combine all island centralities into a single dataframe
+final_centralities_df <- bind_rows(island_centralities)
+
+# View the final dataframe
+head(final_centralities_df)
+
+#saveRDS(final_centralities_df, here::here("output/tables/local_centralities_df.rds"))
+
 ```
 
