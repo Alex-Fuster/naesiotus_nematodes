@@ -19,7 +19,7 @@ library(coda)
 library(ggdist)
 library(tidyverse)
 
-here::i_am("centrality_speciation.Rmd")
+here::i_am("centrality_speciation_regional.Rmd")
 ```
 
 
@@ -348,8 +348,28 @@ sp_island_guild_size_filtered <- as.data.frame(sp_island_guild_size_filtered)
 ```
 
 
+
+Standarize variables
+
+```{r}
+sp_island_guild_size_filtered <- sp_island_guild_size_filtered %>%
+    mutate(across(
+        c(starts_with("species_speciation_rate_"), 
+          guild_size, 
+          island_area, 
+          starts_with("island_age"), 
+          PCA_centrality), 
+        ~ scale(.) %>% as.numeric()
+    ))
+
+```
+
+
+
 ## Model
 
+
+Full model
 
 ```{r}
 
@@ -357,10 +377,10 @@ my_priors <- list(R = list(V = 1/2, nu = 0.002),
                   G = list(G1 = list(V = 1/2, nu = 0.002)))
 
 
-model.fit <- vector(mode = "list", length = 50)
+full_model.fit <- vector(mode = "list", length = 50)
 
 for (i in 1:50) {
-    model.fit[[i]] <- MCMCglmm(
+    full_model.fit[[i]] <- MCMCglmm(
         formula(paste0("PCA_centrality ~ species_speciation_rate_", i, 
                        " + guild_size + island_age_", i, 
                        " + island_area")),  # Fixed effects
@@ -369,18 +389,49 @@ for (i in 1:50) {
         ginverse = ginverse,  # Use species_name in ginverse
         data = sp_island_guild_size_filtered,  # Dataframe
         prior = my_priors,  # Priors
-        nitt = 2000000,  # Number of iterations
-        burnin = 1000000,  # Burn-in
+        nitt = 1000000,  # Number of iterations
+        burnin = 500000,  # Burn-in
         thin = 100  # Thinning
     )
 }
 
+saveRDS(full_model.fit, here::here("../output/models/network.role_speciation/full_model.fit.rds"))
+
+```
+
+Model with speciation rate only
+
+```{r}
+my_priors <- list(R = list(V = 1/2, nu = 0.002),
+                  G = list(G1 = list(V = 1/2, nu = 0.002)))
+
+model.fit_specrate <- vector(mode = "list", length = 50)
+
+for (i in 1:50) {
+    model.fit_specrate[[i]] <- MCMCglmm(
+        formula(paste0("PCA_centrality ~ species_speciation_rate_", i)),  # Fixed effect: only species_speciation_rate
+        random = ~ species_name,  # Random effect for species_name
+        family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+        ginverse = ginverse,  # Use species_name in ginverse
+        data = sp_island_guild_size_filtered,  # Dataframe
+        prior = my_priors,  # Priors
+        nitt = 1000000,  # Number of iterations
+        burnin = 500000,  # Burn-in
+        thin = 100  # Thinning
+    )
+}
+
+saveRDS(model.fit_specrate, here::here("../output/models/network.role_speciation/model.fit_specrate.rds"))
+
 ```
 
 
+
+
 ```{r}
-#saveRDS(model.fit, here::here("../output/models/network.role_speciation/model.fit.rds"))
 model.fit <- readRDS(here::here("../output/models/network.role_speciation/model.fit.rds"))
+model.fit <- readRDS(here::here("../output/models/network.role_speciation/model.fit_specrate.rds"))
+
 ```
 
 
@@ -400,6 +451,11 @@ variance_components <- lapply(model.fit, function(model) as.mcmc(model$VCV))
 fixed_effects_standardized <- lapply(seq_along(fixed_effects), function(i) {
   colnames(fixed_effects[[i]]) <- c("(Intercept)", "species_speciation_rate", 
                                     "guild_size", "island_age", "island_area")
+  fixed_effects[[i]]
+})
+
+fixed_effects_standardized <- lapply(seq_along(fixed_effects), function(i) {
+  colnames(fixed_effects[[i]]) <- c("(Intercept)", "species_speciation_rate")
   fixed_effects[[i]]
 })
 

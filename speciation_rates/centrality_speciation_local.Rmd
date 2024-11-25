@@ -344,6 +344,42 @@ sp_island_guild_size_filtered <- as.data.frame(sp_island_guild_size_filtered)
 ```
 
 
+Standarize variables
+
+Z score speciation rates and centrality by island
+
+```{r}
+# Z-score PCA_centrality and speciation rates by island
+sp_island_guild_size_filtered <- sp_island_guild_size_filtered %>%
+  group_by(island) %>%
+  mutate(
+    # Z-score PCA_centrality by island
+    z_PCA_centrality = scale(PCA_centrality) %>% as.numeric(),
+    
+    # Identify the columns with speciation rates
+    across(starts_with("species_speciation_rate_"), 
+           ~ scale(.) %>% as.numeric(), 
+           .names = "z_{.col}")
+  ) %>%
+  ungroup()
+
+# Check the resulting dataset
+head(sp_island_guild_size_filtered)
+```
+
+Z score guild_size and island_area
+
+```{r}
+sp_island_guild_size_filtered <- sp_island_guild_size_filtered %>%
+    mutate(across(
+        c(guild_size, 
+          island_area), 
+        ~ scale(.) %>% as.numeric()
+    ))
+```
+
+
+
 ## Model
 
 
@@ -353,17 +389,17 @@ my_priors <- list(R = list(V = 1/2, nu = 0.002),
                   G = list(G1 = list(V = 1/2, nu = 0.002)))
 
 
-model.fit <- vector(mode = "list", length = 50)
+full_model.fit <- vector(mode = "list", length = 50)
 
 for (i in 1:50) {
-    model.fit[[i]] <- MCMCglmm(
-        formula(paste0("PCA_centrality ~ species_speciation_rate_", i, 
+    full_model.fit[[i]] <- MCMCglmm(
+        formula(paste0("PCA_centrality ~ z_species_speciation_rate_", i, 
                        " + guild_size + island_age_", i, 
                        " + island_area")),  # Fixed effects
         random = ~ species_name,  # Random effect for species_name
         family = "gaussian",  # Assuming a Gaussian response for PCA centrality
         ginverse = ginverse,  # Use species_name in ginverse
-        data = sp_island_guild_size_filtered,  # Dataframe
+        data = as.data.frame(sp_island_guild_size_filtered),  # Dataframe
         prior = my_priors,  # Priors
         nitt = 1000000,  # Number of iterations
         burnin = 500000,  # Burn-in
@@ -371,12 +407,42 @@ for (i in 1:50) {
     )
 }
 
+saveRDS(full_model.fit, here::here("../output/models/network.role_speciation/full_model.fit_localcentr.rds"))
+
 ```
 
 
+Model with speciation rate only
+
 ```{r}
-#saveRDS(model.fit, here::here("../output/models/network.role_speciation/model.fit_localcentr.rds"))
-model.fit <- readRDS(here::here("../output/models/network.role_speciation/model.fit_localcentr.rds"))
+my_priors <- list(R = list(V = 1/2, nu = 0.002),
+                  G = list(G1 = list(V = 1/2, nu = 0.002)))
+
+model.fit_specrate <- vector(mode = "list", length = 50)
+
+for (i in 1:50) {
+    model.fit_specrate[[i]] <- MCMCglmm(
+        formula(paste0("PCA_centrality ~ z_species_speciation_rate_", i)),  # Fixed effect: only species_speciation_rate
+        random = ~ species_name,  # Random effect for species_name
+        family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+        ginverse = ginverse,  # Use species_name in ginverse
+        data = as.data.frame(sp_island_guild_size_filtered),  # Dataframe
+        prior = my_priors,  # Priors
+        nitt = 1000000,  # Number of iterations
+        burnin = 500000,  # Burn-in
+        thin = 100  # Thinning
+    )
+}
+
+saveRDS(model.fit_specrate, here::here("../output/models/network.role_speciation/model.fit_specrate_localcentr.rds"))
+
+```
+
+
+
+```{r}
+model.fit <- readRDS(here::here("../output/models/network.role_speciation/full_model.fit_localcentr.rds"))
+model.fit <- readRDS(here::here("../output/models/network.role_speciation/model.fit_specrate_localcentr.rds"))
 ```
 
 
@@ -398,6 +464,11 @@ fixed_effects_standardized <- lapply(seq_along(fixed_effects), function(i) {
                                     "guild_size", "island_age", "island_area")
   fixed_effects[[i]]
 })
+
+# fixed_effects_standardized <- lapply(seq_along(fixed_effects), function(i) {
+#   colnames(fixed_effects[[i]]) <- c("(Intercept)", "species_speciation_rate")
+#   fixed_effects[[i]]
+# })
 
 
 ## combine chains
@@ -483,7 +554,7 @@ ggplot(posterior_long, aes(x = Value, y = Predictor, fill = Predictor)) +
 
 ```
 
-
+------------------------- delete
 
 
 ## Model with Z scores for speciation rates - by island
@@ -543,6 +614,9 @@ for (i in 1:50) {
 ```
 
 ```{r}
-saveRDS(model.fit_z, here::here("../output/models/network.role_speciation/model.fit_z_localcentr.rds"))
+#saveRDS(model.fit_z, here::here("../output/models/network.role_speciation/model.fit_z_localcentr.rds"))
 model.fit_z <- readRDS(here::here("../output/models/network.role_speciation/model.fit_z_localcentr.rds"))
-``
+```
+
+
+
