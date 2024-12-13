@@ -142,6 +142,44 @@ sp_code_island_df |>
 #saveRDS(sp_code_island_df, here::here("output/temporal_output/sp_island_id.rds"))
 ```
 
+## Nematode diversity - faith diversity from sequencing analyses
+
+```{r}
+faith_pd_table <- read.delim(here::here("../sequencing/OTUs clustered/alpha-diversity.tsv"), 
+                             header = TRUE, 
+                             row.names = 1)
+
+faith_pd_table <- rownames_to_column(faith_pd_table, var = "species")
+faith_pd_table
+
+```
+
+
+
+```{r}
+# correct species names
+faith_pd_table <- faith_pd_table %>%
+  left_join(species_names_df |> select(species, species_code,species_name),
+            by = "species") |> 
+  left_join(sp_code_island_df |> select(island, island_code, species_name),
+            by = "species_name")
+```
+
+```{r}
+
+faith_pd_table <- faith_pd_table %>%
+  mutate(species_name = factor(species_name, levels = species_name[order(island)]))
+
+ggplot(faith_pd_table, aes(x = species_name, y = faith_pd, fill = island)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Faith's Phylogenetic Diversity", x = "Species", y = "Faith PD")
+```
+
+
+
+
 ## Brightness data
 
 ```{r}
@@ -315,6 +353,9 @@ sp_code_island_df <- sp_code_island_df |>
 df_load <- df_load |>
   dplyr::left_join(island_df |> dplyr::select(island_code, new_island_index), by = "island_code")
 
+faith_pd_table <- faith_pd_table |>
+  dplyr::left_join(island_df |> dplyr::select(island_code, new_island_index), by = "island_code")
+
 # Update island index in species-level data
 sp_code_island_df$island_index_spp <- sp_code_island_df$new_island_index
 
@@ -326,7 +367,9 @@ island_df <- island_df |>
 
 
 
-# Fit Model
+# load analysis
+
+## Fit Model
 
 
 ```{r}
@@ -382,7 +425,7 @@ unconstr_brightload_samp <- as_cmdstan_fit(dir(here::here("output/models/missing
 
 
 
-# Fit Model with interaction
+## Fit Model with interaction
 
 
 ```{r}
@@ -436,7 +479,7 @@ unconstr_brightload_samp <- as_cmdstan_fit(dir(here::here("output/models/missing
 ```
 
 
-# Model summary
+## Model summary
 
 ```{r}
 #get_variables(unconstr_brightload_samp)
@@ -445,7 +488,7 @@ unconstr_brightload_samp$summary()
 
 ```
 
-# Plot posteriors
+## Plot posteriors
 
 ```{r}
 # Extract posterior samples
@@ -569,7 +612,7 @@ ggplot(combined_data_interaction, aes(x = value, fill = type)) +
 ```
 
 
-# Model diagnostics
+## Model diagnostics
 
 
 ```{r}
@@ -593,7 +636,7 @@ wrap_plots(
 
 
 
-# Model predictions
+## Model predictions
 
 ```{r}
 # Create a named vector for species names
@@ -876,3 +919,361 @@ ggplot(df_pred, aes(x = mean_avg_predicted_load)) +
 
 ```
 
+
+# diversity analysis
+
+
+```{r}
+#| class-output: stan
+div_nbinom_unconstr <- cmdstan_model(here::here("stan/div_nbinom_unconstr_2_trueage_islandindex_v2.stan"),
+                                          pedantic = TRUE)
+```
+
+```{r}
+# Use island-level data in Stan
+unconstr_brightdiv_samp <- div_nbinom_unconstr$sample(
+  data = list(
+    N_spp = nrow(sp_code_island_df),  # Number of species (47)
+    N_island = nrow(island_df),  # Number of unique islands
+    sp_id = sp_code_island_df$species_code,
+    island_area = island_df$island_area,  # Island-level area
+    min_emergence = island_df$min_emergence,  # Island-level minimum emergence
+    max_emergence = island_df$max_emergence,  # Island-level maximum emergence
+    island_index_spp = sp_code_island_df$new_island_index,  # Updated island index for species
+    # Habitat data
+    N_habitat = nrow(df_hab),
+    habitat_arboreal = df_hab$arboreal,
+    total_hab = df_hab$total_hab,
+    sp_index_hab = df_hab$species_code,
+    # Vegetation zone data
+    N_veg = nrow(df_veg),
+    veg_arid = df_veg$arid,
+    total_veg = df_veg$total_veg,
+    sp_index_veg = df_veg$species_code,
+    # Brightness data
+    N_bright = nrow(df_bright_noNA), 
+    brightness_obs = df_bright_noNA$brightness,
+    sp_index_bright = df_bright_noNA$species_code,
+    # Nematode load data
+    N_div = nrow(faith_pd_table),  # Total observations for nematode load
+    faith_pd = faith_pd_table$faith_pd,
+    sp_index_div = faith_pd_table$species_code,  # Use species_code from df_load
+    island_index_div = faith_pd_table$new_island_index  # Use island_code from df_load
+  ),
+  chains = 10, parallel_chains = 10, refresh = 0,
+  iter_sampling = 500,
+  output_dir = here::here("output/models/missing_data_div_nbinom_unconstr_2_trueage_islandindex_v2/model_output")
+)
+
+```
+
+
+```{r}
+# read in the model from above
+unconstr_brightdiv_samp <- as_cmdstan_fit(dir(here::here("output/models/missing_data_div_nbinom_unconstr_2_trueage_islandindex_v2/model_output"), full.names = TRUE))
+```
+
+
+## Model summary
+
+```{r}
+#get_variables(unconstr_brightload_samp)
+unconstr_brightdiv_samp$diagnostic_summary()
+unconstr_brightdiv_samp$summary()
+
+```
+
+## Plot posteriors
+
+```{r}
+# Extract posterior samples
+posterior_samples <- unconstr_brightdiv_samp$draws()
+posterior_df <- as_draws_df(posterior_samples)
+
+posterior_long <- posterior_df %>%
+  select(starts_with("slope_arbor"), starts_with("slope_arid"),
+         starts_with("slope_age"), starts_with("slope_area"), 
+         slope_bright_div) %>%  # Only general effects, no interaction terms
+  pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
+  mutate(type = "Posterior")
+
+# mcmc_areas(
+#   posterior_df,
+#   pars = vars(starts_with("slope")),
+#   prob = 0.8  
+# )
+
+# Define the number of  samples to match the posterior size
+n_prior_samples <- 1000
+
+# Generate prior samples for each parameter
+set.seed(123)  # For reproducibility
+priors <- tibble(
+  slope_arbor_bright = rnorm(n_prior_samples, 0, 0.5),
+  slope_arid_bright = rnorm(n_prior_samples, 0, 0.5),
+  slope_age_bright = rnorm(n_prior_samples, 0, 0.5),
+  slope_area_bright = rnorm(n_prior_samples, 0, 0.5),
+  slope_bright_div = rnorm(n_prior_samples, 0, 0.5),
+  slope_arbor_div = rnorm(n_prior_samples, 0, 0.5),
+  slope_arid_div = rnorm(n_prior_samples, 0, 0.5),
+  slope_age_div = rnorm(n_prior_samples, 0, 0.5),
+  slope_area_div = rnorm(n_prior_samples, 0, 0.5)
+)
+
+# Reshape prior samples to long format
+priors_long <- priors %>%
+  pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
+  mutate(type = "Prior")
+
+
+# Combine prior and posterior data
+combined_data <- bind_rows(priors_long, posterior_long)
+
+
+# Plot posteriors with priors overlaid
+ggplot(combined_data, aes(x = value, fill = type)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~parameter, scales = "free", ncol = 2) +
+  scale_fill_manual(values = c("Prior" = "red", "Posterior" = "blue")) +
+  theme_minimal() +
+  labs(
+    x = "Parameter values",
+    y = "Density"
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  
+  coord_cartesian(xlim = c(-2, 2))  +
+  theme(legend.position = "right")+
+  my_theme
+
+#ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/priors_posteriors.png"), height = 10, width = 8)
+```
+
+
+
+## Model diagnostics
+
+
+```{r}
+neff_ratio(unconstr_brightdiv_samp) |> mcmc_neff_hist()
+```
+
+
+```{r}
+mcmc_acf(posterior_df)
+```
+
+```{r}
+library(patchwork)
+
+wrap_plots(
+  mcmc_hist(posterior_df, facet_args = list(nrow = ncol(posterior_df))),
+  mcmc_trace(posterior_df, facet_args = list(nrow = ncol(posterior_df))),
+  widths = c(1, 1.5)
+)
+```
+
+
+
+## Model predictions
+
+```{r}
+# Create a named vector for species names
+species_code_to_name <- setNames(sp_code_island_df$species_name, sp_code_island_df$species_code)
+```
+
+
+## Predictions habitat
+
+```{r}
+# Calculate raw proportion of arboreal individuals in df_hab
+df_hab <- df_hab %>%
+  mutate(arboreal_prop = arboreal / total_hab,
+         species_name = species_code_to_name[as.character(species_code)])
+
+# Gather posterior predictions for arboreal habitat probability
+hab_rvars <- unconstr_brightdiv_samp |> 
+  tidybayes::gather_rvars(arboreal_prob[sp_index_hab]) |> 
+  mutate(species_code = forcats::fct_reorder(as.character(sp_index_hab), .value))
+
+# Replace species codes with species names
+hab_rvars <- hab_rvars %>%
+  mutate(species_name = species_code_to_name[as.character(species_code)])
+
+hab_rvars <- hab_rvars %>%
+  mutate(species_name = forcats::fct_reorder(species_name, -.value))
+
+# Create the plot
+p_pred_hab <- hab_rvars |> 
+  ggplot(aes(x = species_name, ydist = .value)) + 
+  stat_pointinterval() + 
+  ylab("Arboreal probability")
+
+# Add raw data points (as proportion of arboreal individuals)
+p_pred_hab <- p_pred_hab + 
+  geom_point(aes(x = species_name, y = arboreal_prop), inherit.aes = FALSE, 
+             data = df_hab, 
+             colour = "red",
+             size = 2, alpha = .5) +
+  theme_minimal() +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab(NULL)
+
+# Show the plot
+p_pred_hab
+
+#ggsave(here::here("output/models/missing_data_div_nbinom_unconstr_2_trueage_islandindex/p_pred_hab.png"), height = 6, width = 9)
+
+
+```
+
+
+## Predictions vegetation
+
+```{r}
+# Calculate raw proportion of individuals in arid vegetation in df_veg
+df_veg <- df_veg %>%
+  mutate(arid_prop = arid / total_veg,
+         species_name = species_code_to_name[as.character(species_code)])
+
+# Gather posterior predictions for arid vegetation probability
+veg_rvars <- unconstr_brightdiv_samp |> 
+  tidybayes::gather_rvars(arid_prob[sp_index_veg]) |> 
+  mutate(species_code = forcats::fct_reorder(as.character(sp_index_veg), .value))
+
+# Replace species codes with species names
+veg_rvars <- veg_rvars %>%
+  mutate(species_name = species_code_to_name[as.character(species_code)])
+
+# Reorder species_name based on the predicted probability of being in arid vegetation
+veg_rvars <- veg_rvars %>%
+  mutate(species_name = forcats::fct_reorder(species_name, -.value))
+
+# Create the plot
+p_pred_veg <- veg_rvars |> 
+  ggplot(aes(x = species_name, ydist = .value)) + 
+  stat_pointinterval() + 
+  ylab("Arid vegetation probability")
+
+# Add raw data points (as proportion of individuals in arid vegetation)
+p_pred_veg <- p_pred_veg + 
+  geom_point(aes(x = species_name, y = arid_prop), inherit.aes = FALSE, 
+             data = df_veg, 
+             colour = "red",
+             size = 2, alpha = .5) +
+  theme_minimal() +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab(NULL)
+
+# Show the plot
+p_pred_veg
+
+#ggsave(here::here("output/models/missing_data_div_nbinom_unconstr_2_trueage_islandindex/p_pred_veg.png"), height = 6, width = 9)
+
+```
+
+
+## Predictios brightness
+
+```{r}
+bright_rvars <- unconstr_brightdiv_samp |> 
+  tidybayes::gather_rvars(true_ln_bright[species_code]) |> 
+  mutate(brightness = exp(.value),
+         species_code = forcats::fct_reorder(as.character(species_code), .value))
+
+
+##################
+
+# Replace species codes with species names in bright_rvars
+bright_rvars <- bright_rvars %>%
+  mutate(species_name = species_code_to_name[as.character(species_code)])
+
+# Replace species codes with species names in df_bright_noNA
+df_bright_noNA <- df_bright_noNA %>%
+  mutate(species_name = species_code_to_name[as.character(species_code)])
+
+#################
+
+bright_rvars <- bright_rvars %>%
+  mutate(species_name = forcats::fct_reorder(species_name, -.value))
+
+bright_rvars <- bright_rvars |> 
+  ggplot(aes(x = species_name, ydist = brightness)) + 
+  stat_pointinterval() + 
+  scale_y_log10()
+
+p_pred_bright <- bright_rvars + 
+  geom_point(aes(x = species_name, y = brightness), inherit.aes = FALSE, 
+             data = df_bright_noNA, 
+             colour = "red",
+             size = .5, alpha = .5,
+             position = position_jitter(width = .3)) +
+  theme_minimal() +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  xlab(NULL)
+
+p_pred_bright
+
+#ggsave(here::here("output/models/missing_data_div_nbinom_unconstr_2_trueage_islandindex/p_pred_bright.png"), height = 6, width = 9)
+```
+
+
+
+
+```{r}
+# Gather predicted Faith PD values for each observation (N_div)
+div_rvars <- unconstr_brightdiv_samp |>
+  tidybayes::gather_rvars(predicted_faith_pd[n])
+
+# Combine with observed data
+div_rvars <- div_rvars |>
+  mutate(
+    species_code = faith_pd_table$species_code[n],
+    observed_faith_pd = faith_pd_table$faith_pd[n]
+  )
+
+
+# Separate `.value` into mean and error columns
+div_rvars_clean <- div_rvars %>%
+  mutate(.value = as.character(.value)) %>%  # Ensure `.value` is treated as a character
+  separate(.value, into = c("mean_predicted", "error_predicted"), sep = " ± ", convert = TRUE)
+
+# Add credible intervals using the mean ± 1.96 * SD (approximation for 95% CI)
+div_rvars_clean <- div_rvars_clean %>%
+  mutate(
+    lower_ci = mean_predicted - 1.96 * error_predicted,
+    upper_ci = mean_predicted + 1.96 * error_predicted
+  )
+
+# Plot observed vs predicted Faith PD with credible intervals
+ggplot(div_rvars_clean, aes(x = observed_faith_pd, y = mean_predicted)) +
+  geom_point(alpha = 0.7) +  # Observed vs predicted points
+  geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci), width = 0.2, alpha = 0.5) +  # Add CI bars
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +  # Diagonal line
+  theme_minimal() +
+  labs(
+    x = "Observed Faith PD",
+    y = "Predicted Faith PD (Posterior Mean ± 95% CI)"
+  )
+
+
+#ggsave(here::here("output/models/missing_data_div_nbinom_unconstr_2_trueage_islandindex_interaction_v2/p_pred_div.png"), height = 6, width = 9)
+
+```
+
+Strong Fit on Means:
+
+Despite uncertainty, the model captures the expected patterns in Faith PD, supporting the relevance of predictors like habitat, brightness, and island characteristics.
+
+Insights Into Broad Patterns:
+
+The plot reinforces that the model is more reliable for understanding broad-scale trends than for precise predictions of Faith PD for individual species.
+
+Improvement:
+
+The observed discrepancies and large errors point to potential areas for improvement, such as:
+Including additional ecological predictors.
+Incorporating interactions among predictors.
+Considering species-specific effects.
