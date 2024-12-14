@@ -1277,3 +1277,278 @@ The observed discrepancies and large errors point to potential areas for improve
 Including additional ecological predictors.
 Incorporating interactions among predictors.
 Considering species-specific effects.
+
+
+
+
+# PLOT RAW DATA
+
+
+```{r}
+# Define manual colors for islands
+island_colors <- c(
+  "Santa_Cruz" = "#66c2a5",
+  "San_Cristobal" = "#fc8d62",
+  "Santiago" = "#8da0cb",
+  "Isabela" = "#e78ac3",
+  "Fernandina" = "#a6d854",
+  "Floreana" = "#ffd92f",
+  "Rabida" = "#e5c494",
+  "Santa_Fe" = "#b3b3b3",
+  "Espanola" = "#d73027",
+  "Pinzon" = "#4575b4",
+  "Pinta" = "#74add1",
+  "Champion" = "#f46d43",
+  "Gardner" = "#3288bd"
+)
+```
+
+
+
+```{r}
+# Compute mean age for each island and add it to sp_code_island_df
+sp_code_island_df <- sp_code_island_df %>%
+  mutate(mean_age = (min_emergence + max_emergence) / 2)
+
+# Get the island order based on mean age (youngest to oldest)
+island_order <- sp_code_island_df %>%
+  group_by(island) %>%
+  summarize(mean_age = mean(mean_age, na.rm = TRUE)) %>%
+  arrange(mean_age) %>%
+  pull(island)
+
+# Add island factor with levels ordered by age
+sp_code_island_df <- sp_code_island_df %>%
+  mutate(island = factor(island, levels = island_order))
+
+```
+
+
+
+# brightness
+
+```{r}
+
+df_bright_noNA <- df_bright_noNA %>%
+  left_join(sp_code_island_df, by = "species_code")
+
+# Prepare the brightness data with mean age
+brightness_data <- df_bright_noNA %>%
+  left_join(sp_code_island_df %>% 
+              select(island, mean_age, species_code, species_name), 
+            by = "species_code") %>%
+  mutate(island = factor(island, levels = names(island_colors)))  # Align factor levels with island colors
+
+# Filter to include only islands with data
+brightness_data <- brightness_data %>%
+  filter(!is.na(mean_age))
+
+# Create the brightness plot
+brightness_plot <- ggplot(brightness_data, 
+                          aes(x = reorder(species_name, mean_age), y = brightness, fill = island)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.7) +  # Boxplot without outliers for clarity
+  geom_jitter(color = "black", size = 0.5, alpha = 0.5, width = 0.2) +  # Raw data points in black
+  scale_fill_manual(values = island_colors) +  # Manual colors for islands
+  theme_minimal() +
+  labs(x = "Species (ordered by Island Mean Age)", 
+       y = "Brightness", 
+       fill = "Island") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme(legend.position = "none")
+
+# Display the plot
+print(brightness_plot)
+
+
+
+```
+
+
+
+```{r}
+library(ggpattern)
+
+# Prepare the habitat data with mean age
+habitat_data <- df_hab %>%
+  left_join(sp_code_island_df, by = "species_code") %>%
+  pivot_longer(cols = c(arboreal, terrestrial), 
+               names_to = "habitat_type", 
+               values_to = "count") %>%
+  mutate(island = factor(island, levels = island_order))  # Align factor levels with island order
+
+# Filter to include only islands with data
+habitat_data <- habitat_data %>%
+  filter(!is.na(mean_age))
+
+# Create the habitat plot
+habitat_plot <- ggplot(habitat_data, 
+                       aes(x = reorder(species_name, mean_age), y = count, fill = island, pattern = habitat_type)) +
+  geom_bar_pattern(stat = "identity", position = position_dodge(), 
+                   pattern_density = 0.1, pattern_fill = "black", pattern_spacing = 0.02) +
+  scale_fill_manual(values = island_colors) +  # Manual colors for islands
+  scale_pattern_manual(values = c("none", "stripe")) +  # Patterns for habitat types
+  theme_minimal() +
+  labs(x = "Species (ordered by Island Mean Age)", 
+       y = "Habitat Counts", 
+       fill = "Island", 
+       pattern = "Habitat Type") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme(legend.position = "none")
+
+# Display the plot
+print(habitat_plot)
+
+
+```
+
+
+```{r}
+# Prepare the vegetation data with mean age
+vegetation_data <- df_veg %>%
+  left_join(sp_code_island_df, by = "species_code") %>%
+  pivot_longer(cols = c(arid, humid), 
+               names_to = "vegetation_type", 
+               values_to = "count") %>%
+  mutate(island = factor(island, levels = island_order))  # Align factor levels with island order
+
+# Filter to include only islands with data
+vegetation_data <- vegetation_data %>%
+  filter(!is.na(mean_age))
+
+# Create the vegetation plot
+vegetation_plot <- ggplot(vegetation_data, 
+                          aes(x = reorder(species_name, mean_age), y = count, fill = island, pattern = vegetation_type)) +
+  geom_bar_pattern(stat = "identity", position = position_dodge(), 
+                   pattern_density = 0.1, pattern_fill = "black", pattern_spacing = 0.02) +
+  scale_fill_manual(values = island_colors) +  # Manual colors for islands
+  scale_pattern_manual(values = c("none", "stripe")) +  # Patterns for vegetation types
+  theme_minimal() +
+  labs(x = "Species (ordered by Island Mean Age)", 
+       y = "Vegetation Counts", 
+       fill = "Island", 
+       pattern = "Vegetation Type") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme(legend.position = "none")
+
+# Display the plot
+print(vegetation_plot)
+
+
+```
+```{r}
+# Prepare the nematode load data with mean age
+nematode_data <- df_load %>%
+  left_join(sp_code_island_df %>% 
+              select(mean_age, species_code), 
+            by = "species_code") %>%
+  mutate(island = factor(island, levels = island_order))  # Align factor levels with island order
+
+# Filter to include only islands with data
+nematode_data <- nematode_data %>%
+  filter(!is.na(mean_age))
+
+# Create the nematode load plot
+nematode_plot <- ggplot(nematode_data, 
+                        aes(x = reorder(species_name, mean_age), y = nematode_count, fill = island)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.7) +  # Boxplot without outliers for clarity
+  geom_jitter(color = "black", size = 0.5, alpha = 0.5, width = 0.2) +  # Raw data points in black
+  scale_fill_manual(values = island_colors) +  # Manual colors for islands
+  theme_minimal() +
+  labs(x = "Species (ordered by Island Mean Age)", 
+       y = "Nematode Count", 
+       fill = "Island") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme(legend.position = "none")
+
+# Display the plot
+print(nematode_plot)
+
+```
+
+
+```{r}
+# Prepare the diversity data with mean age
+diversity_data <- faith_pd_table %>%
+  left_join(sp_code_island_df %>% 
+              select(mean_age, species_code), 
+            by = "species_code") %>%
+  mutate(island = factor(island, levels = island_order))  # Align factor levels with island order
+
+# Filter to include only islands with data
+diversity_data <- diversity_data %>%
+  filter(!is.na(mean_age))
+
+# Create the diversity plot
+diversity_plot <- ggplot(diversity_data, 
+                         aes(x = reorder(species_name, mean_age), y = faith_pd, fill = island)) +
+  geom_bar(stat = "identity", alpha = 0.7) +  # Barplot for diversity values
+  scale_fill_manual(values = island_colors) +  # Manual colors for islands
+  theme_minimal() +
+  labs(x = "Species (ordered by Island Mean Age)", 
+       y = "Diversity (Faith's PD)", 
+       fill = "Island") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme(legend.position = "none")
+
+# Display the plot
+print(diversity_plot)
+
+```
+
+```{r}
+
+library(sf)
+
+# Read the shapefile
+galapagos_map <- st_read(here::here("../maps/gal_island.shp"))
+
+# Create a mapping between `isla` in shapefile and the dataset island names
+island_name_mapping <- data.frame(
+  isla = c("SantaCruz", "SanCristobal", "Santiago", "Isabela", "Fernandina",
+           "Floreana", "Rabida", "SantaFe", "Espanola", "Pinzon",
+           "Pinta", "Champion", "GardnerES"),  # Match names from galapagos_map
+  dataset_name = names(island_colors)
+)
+
+# Merge the shapefile with island colors
+galapagos_map <- galapagos_map %>%
+  left_join(island_name_mapping, by = "isla") %>%
+  mutate(fill_color = island_colors[dataset_name])  # Assign colors based on dataset names
+
+# Create the map plot
+galapagos_plot <- ggplot(galapagos_map) +
+  geom_sf(aes(fill = fill_color), color = "black") +
+  scale_fill_identity() +  # Use colors directly
+  theme_minimal() +
+  labs(fill = "Island") +
+  theme(legend.position = "none")
+
+# Display the map
+print(galapagos_plot)
+
+```
+
+```{r}
+
+
+ggarrange(
+  galapagos_plot +
+    theme(legend.position = "none", axis.title.x = element_blank()),
+  brightness_plot +
+    theme(legend.position = "none", axis.title.x = element_blank()),
+  habitat_plot +
+    theme(legend.position = "none", axis.title.x = element_blank()),
+  vegetation_plot +
+    theme(legend.position = "none", axis.title.x = element_blank()),
+  nematode_plot +
+    theme(legend.position = "none"),  # Keep y-axis label
+  diversity_plot +
+    theme(legend.position = "none"),  # Keep y-axis label
+  nrow = 3,
+  ncol = 2,
+  labels = LETTERS[1:6]
+)
+
+ggsave(here::here("output/figures/raw_data/raw_data_plot.png"), height = 12, width = 12)
+```
+
