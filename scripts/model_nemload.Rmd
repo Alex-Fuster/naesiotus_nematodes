@@ -1347,7 +1347,7 @@ brightness_data <- brightness_data %>%
 brightness_plot <- ggplot(brightness_data, 
                           aes(x = reorder(species_name, mean_age), y = brightness, fill = island)) +
   geom_boxplot(outlier.shape = NA, alpha = 0.7) +  # Boxplot without outliers for clarity
-  geom_jitter(color = "black", size = 0.5, alpha = 0.5, width = 0.2) +  # Raw data points in black
+  geom_jitter(color = "black", size = 0.5, alpha = 0.3, width = 0.2) +  # Raw data points in black
   scale_fill_manual(values = island_colors) +  # Manual colors for islands
   theme_minimal() +
   labs(x = "Species (ordered by Island Mean Age)", 
@@ -1451,7 +1451,7 @@ nematode_data <- nematode_data %>%
 nematode_plot <- ggplot(nematode_data, 
                         aes(x = reorder(species_name, mean_age), y = nematode_count, fill = island)) +
   geom_boxplot(outlier.shape = NA, alpha = 0.7) +  # Boxplot without outliers for clarity
-  geom_jitter(color = "black", size = 0.5, alpha = 0.5, width = 0.2) +  # Raw data points in black
+  geom_jitter(color = "black", size = 0.5, alpha = 0.3, width = 0.2) +  # Raw data points in black
   scale_fill_manual(values = island_colors) +  # Manual colors for islands
   theme_minimal() +
   labs(x = "Species (ordered by Island Mean Age)", 
@@ -1537,18 +1537,25 @@ ggarrange(
   brightness_plot +
     theme(legend.position = "none", axis.title.x = element_blank()),
   habitat_plot +
-    theme(legend.position = "none", axis.title.x = element_blank()),
+    theme(legend.position = "none", axis.title.x = element_blank(),
+          plot.margin = margin(t = 9, r = 20, b = 5, l = 5)),
   vegetation_plot +
-    theme(legend.position = "none", axis.title.x = element_blank()),
+    theme(legend.position = "none", axis.title.x = element_blank(),
+          plot.margin = margin(t = 9, r = 20, b = 5, l = 5)),
   nematode_plot +
     theme(legend.position = "none"),  # Keep y-axis label
   diversity_plot +
     theme(legend.position = "none"),  # Keep y-axis label
   nrow = 3,
   ncol = 2,
-  labels = LETTERS[1:6]
-)
+  labels = LETTERS[1:6],
+  label.x = 0.05,  # Adjust horizontal position of labels
+  label.y = 1.02,  # Adjust vertical position of labels
+  hjust = -0.5,    # Adjust label alignment for spacing
+  vjust = 1        # Adjust label alignment for spacing
+)+
+  theme(plot.margin = margin(t = 20, r = 10, b = 10, l = 10))  # Add top margin
 
-ggsave(here::here("output/figures/raw_data/raw_data_plot.png"), height = 12, width = 12)
+#ggsave(here::here("output/figures/raw_data/raw_data_plot.png"), height = 15, width = 13)
 ```
 
