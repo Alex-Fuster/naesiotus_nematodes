@@ -156,8 +156,8 @@ tree$tip.label <- gsub("-", "", tree$tip.label)
 
 plot(tree)
 
-write.tree(tree, file = here::here("BAMM/cleannames_tree_doublenames_041024.txt"))
-write.tree(tree, file = here::here("BAMM/cleannames_tree_doublenames_041024.newick"))
+#write.tree(tree, file = here::here("BAMM/cleannames_tree_doublenames_041024.txt"))
+#write.tree(tree, file = here::here("BAMM/cleannames_tree_doublenames_041024.newick"))
 ```
 
 
@@ -250,7 +250,7 @@ p <- ggtree(tree) %<+% tree_data +
 # Display the plot
 print(p)
 
-ggsave("tree_islandclades.png", height = 10, width = 8)
+#ggsave("tree_islandclades.png", height = 10, width = 8)
 ```
 
 
@@ -298,7 +298,368 @@ p <- ggtree(tree) %<+% tree_data +
 # Display the plot
 print(p)
 
-ggsave("tree_islandclades.png", height = 10, width = 8)
+#ggsave("tree_islandclades.png", height = 10, width = 8)
+```
+
+sculpturatus2 -> Santiago
+alethorhytidus -> Santa_Cruz
+chatoblack -> Santa_Cruz
+cfwolfi -> Santa_Cruz
+wolfi2 -> Santa_Cruz
+wolfi3 -> Santa_Cruz
+littleBlackGarrapatero -> Santa_Cruz
+sculpturatus3 -> Santiago
+cfhirsutus -> Santa_Cruz
+SC20070101 -> Santa_Cruz
+spnovDarwin2 -> Isabela
+perrus 1 - Isabela
+spnovAlcedo1 -> Isabela
+hemaerodes -> Isabela
+sp nov Volcan Wolf 1 -> Isabela
+sp nov Volcan Wolf 2 -> Isabela
+sp nov Volcan Wolf 3 -> Isabela
+elaeodes -> Isabela
+simrothi2 -> Isabela
+Brantsnail -> Isabela
+spnovPinta1 -> Pinta
+sp nov Pinta 2 -> Pinta
+jacobi -> Santiago
+sp nov Pinzon 1 -> Pinzon
+perspectivus1 -> San_Cristobal
+canaliferus2 -> San_Cristobal
+cfbasiplicatus -> San_Cristobal
+achatellinus -> San_Cristobal
+SF15020104 -> Santa_Fe
+SF15020103 -> Santa_Fe
+SF15020101 -> Santa_Fe
+caryonis -> Floreana
+cfinvalidus -> Floreana
+cfnux -> Floreana
+invalidus2 -> Floreana
+sulcatus -> Floreana
+Brownguys -> Floreana
+
+```{r}
+island_colors <- c(
+  "Santa_Cruz" = "#66c2a5",
+  "San_Cristobal" = "#fc8d62",
+  "Santiago" = "#8da0cb",
+  "Isabela" = "#e78ac3",
+  "Fernandina" = "#a6d854",
+  "Floreana" = "#ffd92f",
+  "Rabida" = "#e5c494",
+  "Santa_Fe" = "#b3b3b3",
+  "Espanola" = "#d73027",
+  "Pinzon" = "#4575b4",
+  "Pinta" = "#74add1",
+  "Champion" = "#f46d43",
+  "Gardner" = "#3288bd",
+  "Not Assigned" = "grey45"
+)
+```
+
+
+```{r}
+# Add missing species-island mappings
+missing_species <- data.frame(
+  species = c("sculpturatus2", "alethorhytidus", "chatoblack", "cfwolfi", "wolfi2", 
+              "wolfi3", "littleBlackGarrapatero", "sculpturatus3", "cfhirsutus", 
+              "SC20070101", "spnovDarwin2", "perrus 1", "spnovAlcedo1", 
+              "hemaerodes", "sp nov Volcan Wolf 1", "sp nov Volcan Wolf 2", 
+              "sp nov Volcan Wolf 3", "elaeodes", "simrothi2", "Brantsnail", 
+              "spnovPinta1", "sp nov Pinta 2", "jacobi", "sp nov pinzon 1", 
+              "perspectivus1", "canaliferus2", "cfbasiplicatus", "achatellinus", 
+              "SF15020104", "SF15020103", "SF15020101", "caryonis", "cfinvalidus", 
+              "cfnux", "invalidus2", "sulcatus", "Brownguys"),
+  island = c("Santiago", "Santa_Cruz", "Santa_Cruz", "Santa_Cruz", "Santa_Cruz", 
+             "Santa_Cruz", "Santa_Cruz", "Santiago", "Santa_Cruz", "Santa_Cruz", 
+             "Isabela", "Fernandina", "Isabela", "Isabela", "Isabela", "Isabela", 
+             "Isabela", "Isabela", "Isabela", "Isabela", "Pinta", "Pinta", 
+             "Santiago", "Pinzon", "San_Cristobal", "San_Cristobal", 
+             "San_Cristobal", "San_Cristobal", "Santa_Fe", "Santa_Fe", 
+             "Santa_Fe", "Floreana", "Floreana", "Floreana", "Floreana", 
+             "Floreana", "Floreana")
+)
+
+# Update the `species_island_table`
+species_island_table <- species_island_table %>%
+  bind_rows(missing_species)
+
+```
+
+
+```{r}
+tree_data <- data.frame(label = tree$tip.label) %>%
+  left_join(species_island_table, by = c("label" = "species")) %>%
+  mutate(
+    island = factor(island, levels = names(island_colors)),
+    is_red = label %in% species_to_color  # TRUE for sampled species
+  )
+
+# Replace any missing values for `island` (just in case)
+tree_data <- tree_data %>%
+  mutate(island = replace_na(island, "Not Assigned"))
+
+
+
+```
+
+
+```{r}
+
+# Define a robust Mode function
+Mode <- function(x, na.rm = FALSE) {
+  if (na.rm) x <- x[!is.na(x)]
+  if (length(x) == 0) return(NA)
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+
+
+tree_islands <- tree_data %>%
+  select(label, island, is_red) %>%
+  right_join(as_tibble(tree), by = c("label" = "label")) %>%
+  mutate(island = if_else(is.na(island), "Not Assigned", as.character(island)))
+
+# Directly assign "Pinta" to the specific parent node
+tree_islands <- tree_islands %>%
+  mutate(island = ifelse(parent == 93, "Pinta", island))
+
+
+tree_islands <- tree_islands %>%
+  mutate(is_red = ifelse(is.na(is_red), FALSE, is_red))  # Ensure no NA values
+
+
+
+
+```
+
+
+
+```{r}
+
+set.seed(42)  # Set seed for reproducibility
+p <- ggtree(tree) %<+% tree_islands +
+  # Color branches by island
+  geom_tree(aes(color = island), size = 0.8) +  
+  scale_color_manual(
+    values = island_colors, 
+    name = "Island", 
+    breaks = setdiff(names(island_colors), "Not Assigned")  # Exclude "Not Assigned" from legend
+  ) +  # Use island colors for branches
+  
+  # Explicitly set tip labels to black and align them
+  geom_tiplab(aes(label = label), 
+              color = "black",  # Force labels to be black
+              align = TRUE,  # Align all labels
+              offset = 0.01,  # Add space between branches and labels
+              size = 2.5, show.legend = FALSE) +  # Label size
+  
+  # Color tip points by island
+  geom_tippoint(aes(color = island), size = 3) +  
+  scale_color_manual(
+    values = island_colors, 
+    name = "Island", 
+    breaks = setdiff(names(island_colors), "Not Assigned"),  # Exclude "Not Assigned" from legend
+    guide = "none"
+  ) +  # Use island colors again for tips
+  
+  theme_tree2() +
+  xlim(NA, max(node.depth.edgelength(tree)) * 1.45) +  # Extend x-axis for labels
+  theme(legend.position = "right")
+
+p
+
+
+
+#ggsave(here::here("output/figures/phylo/phylo_byisland.png"), height = 10, width = 8)
+```
+
+### compute species code id
+
+```{r}
+species_names_df_raw <- read.csv(here::here("data/species_names_checks.csv"))
+
+# we're dropping the species with no name in this database. 
+# this indicates morphospecies which have no formal name
+species_names_df <- species_names_df_raw %>% 
+  dplyr::rename(species = annotated_name)  %>% 
+  filter(species_name != "") |> 
+  mutate(species_code = as.numeric(factor(species_name)))
+
+species_code_df <- species_names_df |> 
+  select(species_name, species_code) |> 
+  distinct() |> 
+  arrange(species_code)
+
+species_code_df
+```
+
+
+
+### diversity data
+
+```{r}
+faith_pd_table <- read.delim(here::here("../sequencing/OTUs clustered/alpha-diversity.tsv"), 
+                             header = TRUE, 
+                             row.names = 1)
+
+faith_pd_table <- rownames_to_column(faith_pd_table, var = "species")
+faith_pd_table
+
+```
+
+
+
+```{r}
+# correct species names
+faith_pd_table <- faith_pd_table %>%
+  left_join(species_names_df |> select(species, species_code,species_name),
+            by = "species") 
+```
+
+
+
+## Add load data
+
+
+
+## island info
+
+```{r}
+df_island <- read_excel(path = here::here("data/18sept24_datalab.xlsx"), sheet = "island_characteristics")
+
+df_island$min_emergence <- as.numeric(df_island$min_emergence)
+df_island$max_emergence <- as.numeric(df_island$max_emergence)
+
+# Calculate the mean difference between min_emergence and max_emergence
+mean_diff <- df_island %>%
+  filter(!is.na(min_emergence) & !is.na(max_emergence)) %>%
+  mutate(diff = max_emergence - min_emergence) %>%
+  summarise(mean_diff = mean(diff, na.rm = TRUE)) %>%
+  pull(mean_diff)
+
+# Estimate max_emergence for Champion by adding the mean difference to its min_emergence
+df_island <- df_island %>%
+  mutate(max_emergence = ifelse(is.na(max_emergence), min_emergence + mean_diff, max_emergence))
+
+# Rename the column "mean_emergence" to "island_age" in df_island
+# add an ID column
+df_island <- df_island %>% dplyr::rename(island_area = area) |> 
+  mutate(island_code = as.numeric(as.factor(island)))
+
+
+# increase max. emergence of Sants Fe by a small amount - min. and max for this island are the same and this gives error in the model when trying to estimate the approximate age.
+
+df_island <- df_island |> 
+  dplyr::mutate(max_emergence = ifelse(island == "Santa_Fe", max_emergence + 0.1, max_emergence))
+
+
+df_island 
+
+```
+
+
+```{r}
+df_load_raw <- read_excel(path = here::here("data/18sept24_datalab.xlsx"), sheet = 3)
+
+df_load_raw$nematode_count[which(df_load_raw$nematode_count == ">100")] <- "100"
+df_load_raw$nematode_count <- as.numeric(df_load_raw$nematode_count)
+
+df_load_rename <- df_load_raw %>% 
+  select(id, spp, nematode_count, island) %>% 
+  dplyr::rename(species = spp)
+
+# correct species names
+df_load <- df_load_rename %>%
+  left_join(species_names_df |> select(species, species_code,species_name),
+            by = "species") |> 
+  left_join(df_island |> select(island, island_code),
+            by = "island")
+
+
+df_load
+```
+
+Calculate mean load
+
+```{r}
+# Compute mean load per species and island
+mean_load_per_species <- df_load %>%
+  group_by(species_name, island) %>%  # Include island in the grouping
+  summarize(mean_load = mean(nematode_count, na.rm = TRUE), .groups = "drop")
+
+
+```
+
+Match species names with tree tips
+
+```{r}
+# Standardize species names and integrate mean load with island information
+tree_data <- data.frame(label = tree$tip.label) %>%
+  left_join(species_names_df, by = c("label" = "species")) %>%
+  left_join(mean_load_per_species, by = c("species_name" = "species_name")) %>%
+  left_join(faith_pd_table |> select(species_name, faith_pd), by = c("species_name" = "species_name")) |> 
+  mutate(
+    mean_load = ifelse(is.na(mean_load), 0, mean_load),  # Replace NA loads with 0
+    island = factor(island, levels = names(island_colors))  # Standardize island levels
+  )
+```
+
+```{r}
+
+
+# Extract tree plot data and join with tree_data
+tree_plot_data <- ggtree(tree)$data  # Extract plotting data from ggtree
+tree_data <- tree_data %>%
+  left_join(tree_plot_data %>% select(label, y), by = "label")  # Add y positions to tree_data
+
+```
+
+```{r}
+# Define a gradient for mean load
+load_colors <- scales::col_numeric(palette = viridis::viridis(100), domain = NULL)
+
+
+# Generate ggtree plot data
+p <- ggtree(tree)
+
+# Extract the plotting data (with y values)
+tree_plot_data <- p$data
+
+
+# Merge mean load and island information
+tree_plot_data <- tree_plot_data %>%
+  left_join(tree_data %>% select(label, mean_load, island, faith_pd), by = "label") %>%
+  mutate(mean_load = ifelse(is.na(mean_load), 0, mean_load))  # Replace NA loads with 0
+
+
+p <- ggtree(tree) %<+% tree_plot_data +
+  geom_tree(aes(color = island), size = 0.8) +  # Color branches by island
+  geom_tiplab(aes(label = label), hjust = -0.2, size = 2.5) +  # Add tip labels
+  geom_tippoint(aes(color = island), size = 3) +  # Add colored tip points
+  scale_color_manual(values = island_colors, name = "Island") +  # Custom color scale
+  theme_tree2() +
+  xlim(NA, max(node.depth.edgelength(tree)) * 1.6) +  # Extend space for mean load bars
+  theme(legend.position = "right")
+
+p +
+  new_scale_color() +  # Allow a separate color scale for mean load
+  geom_segment(
+    data = tree_plot_data %>% filter(faith_pd > 0),  # Only species with non-zero mean load
+    aes(x = max(node.depth.edgelength(tree)) * 1.5,  # Start of the bar
+        xend = max(node.depth.edgelength(tree)) * 1.55,  # End of the bar
+        y = y, yend = y, color = faith_pd),  # Map mean load to color gradient
+    linewidth = 3  # Adjust bar thickness
+  ) +
+  scale_color_gradientn(
+    colors = viridis::turbo(100),  # Use a gradient color palette
+    name = "Faith PD"  # Legend title
+  ) +
+  theme(legend.position = "right")  # Adjust legend position
+
+ggsave(here::here("output/figures/phylo/phylo_faith_pd.png"), height = 10, width = 8)
 ```
 
 

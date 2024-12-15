@@ -1329,8 +1329,6 @@ sp_code_island_df <- sp_code_island_df %>%
 
 ```{r}
 
-df_bright_noNA <- df_bright_noNA %>%
-  left_join(sp_code_island_df, by = "species_code")
 
 # Prepare the brightness data with mean age
 brightness_data <- df_bright_noNA %>%
@@ -1525,6 +1523,8 @@ galapagos_plot <- ggplot(galapagos_map) +
 
 # Display the map
 print(galapagos_plot)
+
+ggsave(here::here("output/figures/map_colored.png"), height = 6, width = 6)
 
 ```
 
