@@ -1,0 +1,250 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r setup-packages}
+#| message: false
+#| warning: false
+library(tidyverse)
+library(readxl)
+library(ggpubr)
+library(phytools)
+library(ape)
+library(ggtree)
+
+```
+
+```{r}
+tree <- read.newick(here::here("BAMM/cleannames_tree_doublenames_041024.newick"))
+```
+
+```{r}
+species_names_df_raw <- read.csv(here::here("data/species_names_checks.csv"))
+
+# we're dropping the species with no name in this database. 
+# this indicates morphospecies which have no formal name
+species_names_df <- species_names_df_raw %>% 
+  dplyr::rename(species = annotated_name)  %>% 
+  filter(species_name != "") |> 
+  mutate(species_code = as.numeric(factor(species_name)))
+
+species_code_df <- species_names_df |> 
+  select(species_name, species_code) |> 
+  distinct() |> 
+  arrange(species_code)
+
+species_code_df
+```
+
+```{r}
+
+# load
+df_load <- read_excel(path = here::here("data/18sept24_datalab.xlsx"), sheet = 3)
+df_load$nematode_count[which(df_load$nematode_count == ">100")] <- "100"
+df_load$nematode_count <- as.numeric(df_load$nematode_count)
+
+df_load <- df_load %>% 
+  select(id, spp, nematode_count, island) %>% 
+  dplyr::rename(species = spp)%>%
+  left_join(species_names_df |> select(species, species_code,species_name),
+            by = "species")
+```
+
+Compute mean and se load per species
+
+```{r}
+df_meanload <- df_load %>%
+  group_by(species_name) %>%
+  summarise(n = n(),
+            mean_load = mean(nematode_count, na.rm = TRUE),
+            se_load = sd(nematode_count, na.rm = TRUE)/sqrt(length(nematode_count)), 
+            sd_load = sd(nematode_count, na.rm = TRUE)) %>%
+  arrange(desc(mean_load))
+
+df_meanload
+```
+
+```{r}
+meanload<-setNames(df_meanload$mean_load, df_meanload$species_name)
+s.error<-setNames(df_meanload$se_load, df_meanload$species_name)
+```
+
+
+### diversity data
+
+```{r}
+faith_pd_table <- read.delim(here::here("../sequencing/OTUs clustered/alpha-diversity.tsv"), 
+                             header = TRUE, 
+                             row.names = 1)
+
+faith_pd_table <- rownames_to_column(faith_pd_table, var = "species")
+faith_pd_table
+
+```
+
+
+
+```{r}
+# correct species names
+faith_pd_table <- faith_pd_table %>%
+  left_join(species_names_df |> select(species, species_code,species_name),
+            by = "species") 
+```
+
+```{r}
+faith_pd <- setNames(faith_pd_table$faith_pd, faith_pd_table$species_name)
+```
+
+
+# LOAD
+
+Prune tree, discarting those species not assessed for load
+
+```{r}
+pruned.tree_load<-drop.tip(tree, setdiff(tree$tip.label, df_meanload$species_name))
+
+plot(pruned.tree_load)
+```
+
+
+Also discard those species in load that are not present in the tree
+
+```{r}
+# Filter data to include only species present in the phylogenetic tree
+tree_species <- pruned.tree_load$tip.label
+meanload_filtered <- meanload[names(meanload) %in% tree_species]
+s.error_filtered <- s.error[names(s.error) %in% tree_species]
+
+# Verify data alignment
+match_indices <- match(tree_species, names(meanload_filtered))
+meanload_filtered <- meanload_filtered[match_indices]
+s.error_filtered <- s.error_filtered[match_indices]
+```
+
+
+
+
+# Plot tree and trait values
+
+```{r}
+set.seed(42)
+
+map <- contMap(pruned.tree_load,meanload_filtered,
+        res = 800,
+        lwd = 4,
+        outline = FALSE,
+        sig = 0)
+
+# Adjust the color scale limits
+map$lims <- c(0, max(meanload_filtered, na.rm = TRUE)) 
+
+# Reverse the color scale
+map_load <- setMap(map, invert = TRUE,lwd = 4)
+
+png(here::here("output/figures/phylo/phylomap_load.png"), width = 3600, height = 4800, res = 600)
+plot(map_load,  outline = FALSE, lwd = 6)
+dev.off()
+
+```
+
+
+# Blomberg's K
+
+```{r}
+K_nemaload <- phylosig(pruned.tree_load, meanload_filtered, method = 'K', test = TRUE, se = s.error_filtered)
+K_nemaload
+plot.phylosig(K_nemaload)
+
+png(here::here("output/figures/phylo/k_test_load.png"), width = 2800, height = 2600, res = 600) 
+# Create the plot
+plot.phylosig(K_nemaload)
+
+# Close the graphics device and save the file
+dev.off()
+
+```
+
+# Lambda
+
+```{r}
+
+lambda_nemaload <- phylosig(pruned.tree_load, meanload_filtered, method = 'lambda', test = TRUE) 
+lambda_nemaload
+plot.phylosig(lambda_nemaload)
+
+```
+
+# diversity
+
+Prune tree, discarting those species not assessed for load
+
+```{r}
+pruned.tree_div<-drop.tip(tree, setdiff(tree$tip.label, faith_pd_table$species_name))
+
+plot(pruned.tree_div)
+```
+
+
+Also discard those species in load that are not present in the tree
+
+```{r}
+# Filter data to include only species present in the phylogenetic tree
+tree_species <- pruned.tree_div$tip.label
+faith_pd_filtered <- faith_pd[names(faith_pd) %in% tree_species]
+
+# Verify data alignment
+match_indices <- match(tree_species, names(faith_pd_filtered))
+faith_pd_filtered <- faith_pd_filtered[match_indices]
+```
+
+
+
+
+# Plot tree and trait values
+
+```{r}
+set.seed(42)
+
+map <- contMap(pruned.tree_div,faith_pd_filtered,
+        res = 800,
+        lwd = 4,
+        outline = FALSE,
+        sig = 0)
+
+map$lims <- c(0, max(faith_pd_filtered, na.rm = TRUE)) 
+
+# Reverse the color scale
+map_div <- setMap(map, invert = TRUE,lwd = 4,border = NA)
+
+png(here::here("output/figures/phylo/phylomap_div.png"), width = 3600, height = 4800, res = 600)
+plot(map_div,  outline = FALSE, lwd = 6)
+dev.off()
+
+```
+# Blomberg's K
+
+```{r}
+K_nemadiv <- phylosig(pruned.tree_div, faith_pd_filtered, method = 'K', test = TRUE)
+K_nemadiv
+
+
+png(here::here("output/figures/phylo/k_test_div.png"), width = 2800, height = 2600, res = 600) 
+# Create the plot
+plot.phylosig(K_nemadiv)
+
+# Close the graphics device and save the file
+dev.off()
+
+```
+
+# Lambda
+
+```{r}
+
+lambda_nemadiv <- phylosig(pruned.tree_div, faith_pd_filtered, method = 'lambda', test = TRUE) 
+lambda_nemadiv
+plot.phylosig(lambda_nemadiv)
+
+```
