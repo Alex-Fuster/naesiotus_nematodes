@@ -20,9 +20,10 @@ library(centiserve)
 
 
 
+
 ```{r}
 # Read the OTU table
-otu_table <- read.delim(here::here("data", "OTUs","feature-table.tsv"), skip = 1)
+otu_table <- read.delim(here::here("data", "OTUs","feature_table.tsv"), skip = 1)
 colnames(otu_table) <- gsub("\\.", "-", colnames(otu_table))
 colnames(otu_table)[1] <- "OTU_ID"
 # Correct sample name in OTU table
@@ -189,13 +190,18 @@ for (species in names(species_groups)) {
 # Combine the results from all species into one dataframe
 cumulative_df <- do.call(rbind, cumulative_list)
 
-ggplot(cumulative_df, aes(x = sample_num, y = cumulative_unique_otus, color = species)) +
-  geom_line(size = 1.2) +
-  labs(x = "Number of Samples", y = "Cumulative Unique OTUs") +
-  theme_minimal()
+ggplot(cumulative_df, aes(x = sample_num, y = cumulative_unique_otus, linetype = species)) +
+  geom_line(size = 0.9) +
+  geom_point(size = 2.3, shape = 21, fill = "black") + # Adds points for measurements
+  labs(
+    x = "Number of snail individuals",
+    y = "Cumulative nematode OTUs"
+  ) +
+  theme_minimal() +
+  scale_linetype_manual(values = c("solid", "dashed")) # Optional: specify line types
 
 
-
+#ggsave(here::here("output/figures/rarefract_otus.png"), height = 4, width = 6)
 
 
 ```
@@ -501,9 +507,9 @@ katz_centrality <- katzcent(g, alpha = 0.05, vids = snail_nodes)
 # Combine the centralities into a data frame and standardize them (z-score)
 centralities_df <- data.frame(
   species = names(degree_centrality),
-  degree_z = scale(degree_centrality),
-  closeness_z = scale(closeness_centrality),
-  katz_z = scale(katz_centrality)
+  degree = degree_centrality,
+  closeness = closeness_centrality,
+  katz_z = katz_centrality
 )
 
 # Perform PCA on the standardized centrality measures
@@ -516,7 +522,7 @@ centralities_df <- centralities_df %>%
 
 centralities_df
 
-#saveRDS(centralities_df, here::here("output/tables/centralities_df.rds"))
+#saveRDS(centralities_df, here::here("output/tables/centralities_regional_df.rds"))
 ```
 
 ```{r}

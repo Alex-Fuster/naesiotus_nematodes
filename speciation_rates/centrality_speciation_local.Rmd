@@ -36,8 +36,8 @@ is.ultrametric(tree)
 tree$tip.label <- gsub(".", "-", tree$tip.label, fixed = TRUE)
 
 ## Writing tree to file
-write.tree(tree, here::here("clads/naesiotus_rescaled.tre"))
-write.tree(tree, here::here("bamm/naesiotus_rescaled.tre"))
+#write.tree(tree, here::here("clads/naesiotus_rescaled.tre"))
+#write.tree(tree, here::here("bamm/naesiotus_rescaled.tre"))
 
 load(here::here("clads/naesiotus_clads_rates.RData"))
 
@@ -48,12 +48,20 @@ bamm.data <- getEventData(tree, here::here("bamm/event_data.txt"), burnin = 0.1)
 distribution of trait states in the tips and speciation rates. The colors of the symbols at the tips describe the trait state, while both the icon size and the plot to the right show the distribution of speciation rates estimated using CLaDS:
 
 ```{r}
+#png(here::here("rate_BAMM_result.png"), width = 400, height = 400) # Width and height in pixels
 plotRateThroughTime(bamm.data, intervalCol = "lightgrey")
+#dev.off()
+
 
 css <- credibleShiftSet(bamm.data, 1)
-plot(css, lwd = 3)
+png(here::here("plot_BAMM_result_s.png"), width = 500, height = 600) # Width and height in pixels
+plot(css, lwd = 3, border = FALSE, spex = "s")
+dev.off()
+
 
 tip.rates.bamm <- getTipRates(bamm.data, returnNetDiv = FALSE)
+
+
 ```
 
 
@@ -61,8 +69,16 @@ tip.rates.bamm <- getTipRates(bamm.data, returnNetDiv = FALSE)
 distribution of trait states in the tips and speciation rates. The colors of the symbols at the tips describe the trait state, while both the icon size and the plot to the right show the distribution of speciation rates estimated using CLaDS:
 
 ```{r}
+
+#png(here::here("plot_clads_result.png"), width = 600, height = 800) # Width and height in pixels
 plot_ClaDS_phylo(CladsOutput$tree, CladsOutput$lambdai_map, lwd = 3)
-hist(CladsOutput$lambdatip_map)
+#dev.off()
+
+#png(here::here("rate_claDS_result.png"), width = 400, height = 400) # Width and height in pixels
+hist(CladsOutput$lambdatip_map,xlab = "Speciation rates")
+#dev.off()
+
+
 ```
 
 distribution of trait states in the tips and speciation rates. The colors of the symbols at the tips describe the trait state, while both the icon size and the plot to the right show the distribution of speciation rates estimated using CLaDS:
@@ -116,7 +132,7 @@ CladsOutput$tree$tip.label <- gsub("-", ".",
 PCA centrality, lineage size, and island area:
 
 ```{r}
-centralities_df <- readRDS(here::here("../output/tables/local_centralities_df.rds")) |> dplyr::select(species, PCA_centrality)
+centralities_df <- readRDS(here::here("../output/tables/local_centralities_df.rds"))# |> dplyr::select(species, PCA_centrality)
 metaweb <- readRDS(here::here("../output/temporal_output/bipartite_matrix.rds"))
 sp_island_id <- readRDS(here::here("../output/temporal_output/sp_island_id.rds"))
 species_names_checks.csv <- read.csv("../data/species_names_checks.csv")
@@ -209,7 +225,7 @@ sp_island_guild_size <- filtered_sp_island_id |>
 sp_island_guild_size <- sp_island_guild_size |>
   dplyr::left_join(
     centralities_df |>
-      dplyr::select(species_name, PCA_centrality),
+      dplyr::select(species_name, PCA_centrality, degree),
     by = "species_name"
   )
 
@@ -310,6 +326,7 @@ ginverse <- list(species_name = Ainv_filtered)
 setdiff(sp_island_guild_size_filtered$species_name, common_species)
 
 ```
+
 ```{r}
 all(sp_island_guild_size_filtered$species_name %in% rownames(Ainv_filtered))
 ```
@@ -355,6 +372,7 @@ sp_island_guild_size_filtered <- sp_island_guild_size_filtered %>%
   mutate(
     # Z-score PCA_centrality by island
     z_PCA_centrality = scale(PCA_centrality) %>% as.numeric(),
+    z_degree = scale(degree) %>% as.numeric(),
     
     # Identify the columns with speciation rates
     across(starts_with("species_speciation_rate_"), 
@@ -380,7 +398,39 @@ sp_island_guild_size_filtered <- sp_island_guild_size_filtered %>%
 
 
 
-## Model
+------------------------------------------------------------------------------
+
+# Models
+
+## Partial Model: Pca centrality
+
+```{r}
+my_priors <- list(R = list(V = 1/2, nu = 0.002),
+                  G = list(G1 = list(V = 1/2, nu = 0.002)))
+
+
+full_model.fit <- vector(mode = "list", length = 50)
+
+for (i in 1:50) {
+    full_model.fit[[i]] <- MCMCglmm(
+        formula(paste0("z_PCA_centrality ~ z_species_speciation_rate_", i)),  # Fixed effects
+        random = ~ species_name,  # Random effect for species_name
+        family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+        ginverse = ginverse,  # Use species_name in ginverse
+        data = as.data.frame(sp_island_guild_size_filtered),  # Dataframe
+        prior = my_priors,  # Priors
+        nitt = 1000000,  # Number of iterations
+        burnin = 500000,  # Burn-in
+        thin = 100  # Thinning
+    )
+}
+
+saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/partial_model_pca_local.rds"))
+```
+
+
+
+## Full model with PCA centrality
 
 
 ```{r}
@@ -393,7 +443,7 @@ full_model.fit <- vector(mode = "list", length = 50)
 
 for (i in 1:50) {
     full_model.fit[[i]] <- MCMCglmm(
-        formula(paste0("PCA_centrality ~ z_species_speciation_rate_", i, 
+        formula(paste0("z_PCA_centrality ~ z_species_speciation_rate_", i, 
                        " + guild_size + island_age_", i, 
                        " + island_area")),  # Fixed effects
         random = ~ species_name,  # Random effect for species_name
@@ -407,9 +457,91 @@ for (i in 1:50) {
     )
 }
 
-saveRDS(full_model.fit, here::here("../output/models/network.role_speciation/full_model.fit_localcentr.rds"))
+saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/full_model.pca_local.rds"))
 
 ```
+
+
+## Partial Model: degree
+
+```{r}
+my_priors <- list(R = list(V = 1/2, nu = 0.002),
+                  G = list(G1 = list(V = 1/2, nu = 0.002)))
+
+
+full_model.fit <- vector(mode = "list", length = 50)
+
+for (i in 1:50) {
+    full_model.fit[[i]] <- MCMCglmm(
+        formula(paste0("z_degree ~ z_species_speciation_rate_", i)),  # Fixed effects
+        random = ~ species_name,  # Random effect for species_name
+        family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+        ginverse = ginverse,  # Use species_name in ginverse
+        data = as.data.frame(sp_island_guild_size_filtered),  # Dataframe
+        prior = my_priors,  # Priors
+        nitt = 1000000,  # Number of iterations
+        burnin = 500000,  # Burn-in
+        thin = 100  # Thinning
+    )
+}
+
+saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/partial_model_degree_local.rds"))
+```
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Full model with degree
+
+
+```{r}
+
+my_priors <- list(R = list(V = 1/2, nu = 0.002),
+                  G = list(G1 = list(V = 1/2, nu = 0.002)))
+
+
+full_model.fit <- vector(mode = "list", length = 50)
+
+for (i in 1:50) {
+    full_model.fit[[i]] <- MCMCglmm(
+        formula(paste0("z_degree ~ z_species_speciation_rate_", i, 
+                       " + guild_size + island_age_", i, 
+                       " + island_area")),  # Fixed effects
+        random = ~ species_name,  # Random effect for species_name
+        family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+        ginverse = ginverse,  # Use species_name in ginverse
+        data = as.data.frame(sp_island_guild_size_filtered),  # Dataframe
+        prior = my_priors,  # Priors
+        nitt = 1000000,  # Number of iterations
+        burnin = 500000,  # Burn-in
+        thin = 100  # Thinning
+    )
+}
+
+saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/full_model.degree_local.rds"))
+
+```
+
 
 
 Model with speciation rate only
@@ -422,7 +554,7 @@ model.fit_specrate <- vector(mode = "list", length = 50)
 
 for (i in 1:50) {
     model.fit_specrate[[i]] <- MCMCglmm(
-        formula(paste0("PCA_centrality ~ z_species_speciation_rate_", i)),  # Fixed effect: only species_speciation_rate
+        formula(paste0("z_PCA_centrality ~ z_species_speciation_rate_", i)),  # Fixed effect: only species_speciation_rate
         random = ~ species_name,  # Random effect for species_name
         family = "gaussian",  # Assuming a Gaussian response for PCA centrality
         ginverse = ginverse,  # Use species_name in ginverse
@@ -434,15 +566,42 @@ for (i in 1:50) {
     )
 }
 
-saveRDS(model.fit_specrate, here::here("../output/models/network.role_speciation/model.fit_specrate_localcentr.rds"))
+saveRDS(model.fit_specrate, here::here("../output/models/network.role_speciation/model.pca_specrate_localcentr.rds"))
 
+```
+
+Model with interactions
+
+```{r}
+my_priors <- list(R = list(V = 1/2, nu = 0.002),
+                  G = list(G1 = list(V = 1/2, nu = 0.002)))
+
+full_model.fit <- vector(mode = "list", length = 50)
+
+for (i in 1:50) {
+    full_model.fit[[i]] <- MCMCglmm(
+        formula(paste0("z_degree ~ z_species_speciation_rate_", i, 
+                       " * island_age_", i,  # Interaction between speciation rate and island age
+                       " + z_species_speciation_rate_", i, 
+                       " * island_area + guild_size")),  # Interaction between speciation rate and island area
+        random = ~ species_name,  # Random effect for species_name
+        family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+        ginverse = ginverse,  # Use species_name in ginverse
+        data = as.data.frame(sp_island_guild_size_filtered),  # Dataframe
+        prior = my_priors,  # Priors
+        nitt = 1000000,  # Number of iterations
+        burnin = 500000,  # Burn-in
+        thin = 100  # Thinning
+    )
+}
 ```
 
 
 
+
 ```{r}
-model.fit <- readRDS(here::here("../output/models/network.role_speciation/full_model.fit_localcentr.rds"))
-model.fit <- readRDS(here::here("../output/models/network.role_speciation/model.fit_specrate_localcentr.rds"))
+model.fit <- readRDS(here::here("../output/models/network.role_speciation/full_model.pca_localcentr.rds"))
+model.fit <- readRDS(here::here("../output/models/network.role_speciation/model.pca_specrate_localcentr.rds"))
 ```
 
 
@@ -557,34 +716,7 @@ ggplot(posterior_long, aes(x = Value, y = Predictor, fill = Predictor)) +
 ------------------------- delete
 
 
-## Model with Z scores for speciation rates - by island
-
-```{r}
-# Identify the columns with speciation rates
-speciation_rate_columns <- grep("^species_speciation_rate_", names(sp_island_guild_size_filtered), value = TRUE)
-
-# Z-score the speciation rates by island
-sp_island_guild_size_filtered <- sp_island_guild_size_filtered %>%
-  group_by(island) %>%
-  mutate(across(all_of(speciation_rate_columns), ~ scale(.) %>% as.numeric(), .names = "z_{.col}")) %>%
-  ungroup()
-
-# Check the resulting dataset
-head(sp_island_guild_size_filtered)
-```
-
-```{r}
-sp_island_guild_size_filtered %>%
-  select(starts_with("z_species_speciation_rate_")) %>%
-  summarise_all(~ sum(is.na(.)))
-```
-```{r}
-#Replace Missing Values with the Mean
-sp_island_guild_size_filtered <- sp_island_guild_size_filtered %>%
-  mutate(across(starts_with("z_species_speciation_rate_"), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
-
-```
-
+## Model with degree / local networks
 
 
 ```{r}
@@ -593,11 +725,11 @@ my_priors <- list(R = list(V = 1/2, nu = 0.002),
                   G = list(G1 = list(V = 1/2, nu = 0.002)))
 
 
-model.fit_z <- vector(mode = "list", length = 50)
+full_model.fit <- vector(mode = "list", length = 50)
 
 for (i in 1:50) {
-    model.fit_z[[i]] <- MCMCglmm(
-        formula(paste0("PCA_centrality ~ z_species_speciation_rate_", i, 
+    full_model.fit[[i]] <- MCMCglmm(
+        formula(paste0("z_degree ~ z_species_speciation_rate_", i, 
                        " + guild_size + island_age_", i, 
                        " + island_area")),  # Fixed effects
         random = ~ species_name,  # Random effect for species_name
@@ -611,12 +743,187 @@ for (i in 1:50) {
     )
 }
 
+saveRDS(full_model.fit, here::here("../output/models/network.role_speciation/full_model.degree_localcentr.rds"))
+
+```
+
+
+Model with interactions
+
+```{r}
+my_priors <- list(R = list(V = 1/2, nu = 0.002),
+                  G = list(G1 = list(V = 1/2, nu = 0.002)))
+
+full_model.fit <- vector(mode = "list", length = 50)
+
+for (i in 1:50) {
+    full_model.fit[[i]] <- MCMCglmm(
+        formula(paste0("z_degree ~ z_species_speciation_rate_", i, 
+                       " * island_age_", i,  # Interaction between speciation rate and island age
+                       " + z_species_speciation_rate_", i, 
+                       " * island_area + guild_size")),  # Interaction between speciation rate and island area
+        random = ~ species_name,  # Random effect for species_name
+        family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+        ginverse = ginverse,  # Use species_name in ginverse
+        data = as.data.frame(sp_island_guild_size_filtered),  # Dataframe
+        prior = my_priors,  # Priors
+        nitt = 1000000,  # Number of iterations
+        burnin = 500000,  # Burn-in
+        thin = 100  # Thinning
+    )
+}
+
+saveRDS(full_model.fit, here::here("../output/models/network.role_speciation/full_model.degree_localcentr_int.rds"))
+```
+
+
+
+
+
+
+
+
+
+
+
+Model with speciation rate only
+
+```{r}
+my_priors <- list(R = list(V = 1/2, nu = 0.002),
+                  G = list(G1 = list(V = 1/2, nu = 0.002)))
+
+model.fit_specrate <- vector(mode = "list", length = 50)
+
+for (i in 1:50) {
+    model.fit_specrate[[i]] <- MCMCglmm(
+        formula(paste0("PCA_centrality ~ z_species_speciation_rate_", i)),  # Fixed effect: only species_speciation_rate
+        random = ~ species_name,  # Random effect for species_name
+        family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+        ginverse = ginverse,  # Use species_name in ginverse
+        data = as.data.frame(sp_island_guild_size_filtered),  # Dataframe
+        prior = my_priors,  # Priors
+        nitt = 1000000,  # Number of iterations
+        burnin = 500000,  # Burn-in
+        thin = 100  # Thinning
+    )
+}
+
+saveRDS(model.fit_specrate, here::here("../output/models/network.role_speciation/model.fit_specrate_localcentr.rds"))
+
+```
+
+
+
+```{r}
+model.fit <- readRDS(here::here("../output/models/network.role_speciation/full_model.degree_localcentr.rds"))
+model.fit <- readRDS(here::here("../output/models/network.role_speciation/model.fit_specrate_localcentr.rds"))
+```
+
+
+
+# Model results
+
+```{r}
+# Extract fixed effects (Sol) and variance components (VCV)
+fixed_effects <- lapply(model.fit, function(model) as.mcmc(model$Sol))
+variance_components <- lapply(model.fit, function(model) as.mcmc(model$VCV))
+```
+
+
+
+```{r}
+# Rename the columns to standard names
+fixed_effects_standardized <- lapply(seq_along(fixed_effects), function(i) {
+  colnames(fixed_effects[[i]]) <- c("(Intercept)", "species_speciation_rate", 
+                                    "guild_size", "island_age", "island_area")
+  fixed_effects[[i]]
+})
+
+# fixed_effects_standardized <- lapply(seq_along(fixed_effects), function(i) {
+#   colnames(fixed_effects[[i]]) <- c("(Intercept)", "species_speciation_rate")
+#   fixed_effects[[i]]
+# })
+
+
+## combine chains
+
+combined_fixed <- do.call(mcmc.list, fixed_effects_standardized)
+
+
+```
+
+
+## CHAINS CONVERGENCE
+
+#### Traceplot
+
+```{r}
+traceplot(combined_fixed)
+```
+
+
+The traceplots show horizontal bands without trends or drifts, and they overlap and mix well, indicating that chains converged.
+
+#### Autocorrelation plot
+
+```{r}
+autocorr.plot(combined_fixed)
+```
+
+
+
+There is a fast decay to zero in all cases, indicating that samples become effectively independent quickly, and there is no autocorrelation detected.
+
+#### Gelman-Rubin diagnostic
+
+```{r}
+gelman_fixed <- gelman.diag(combined_fixed)
+print(gelman_fixed)
+```
+
+## Effective Sample Size
+
+```{r}
+effectiveSize(model.fit[[7]]$Sol[,2])
+```
+
+## Posterior distributions
+
+```{r}
+# Summarize fixed effects across all models
+summary_fixed <- summary(combined_fixed)
+
+print(summary_fixed)
 ```
 
 ```{r}
-#saveRDS(model.fit_z, here::here("../output/models/network.role_speciation/model.fit_z_localcentr.rds"))
-model.fit_z <- readRDS(here::here("../output/models/network.role_speciation/model.fit_z_localcentr.rds"))
+# Convert combined_fixed to a data frame
+posterior_df <- as.data.frame(as.matrix(combined_fixed))
+
+# Reshape the posterior data frame to long format
+posterior_long <- posterior_df %>%
+  pivot_longer(cols = everything(), names_to = "Predictor", values_to = "Value")
+
+# Create the plot using stat_halfeye
+ggplot(posterior_long, aes(x = Value, y = Predictor, fill = Predictor)) +
+  stat_halfeye(
+    aes(fill = after_stat(ifelse(x < 0, "negative", "positive"))),
+    .width = c(0.5, 0.8, 0.95),
+    alpha = 0.8
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") + 
+  scale_fill_manual(
+    values = c("positive" = "skyblue", "negative" = "orange"),
+    guide = "none"
+  ) +
+  labs(
+    x = "Value",
+    y = "Predictor"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",    
+    panel.grid.major.y = element_blank()
+  )
+
 ```
-
-
-

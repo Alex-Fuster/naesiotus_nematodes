@@ -118,7 +118,7 @@ CladsOutput$tree$tip.label <- gsub("-", ".",
 PCA centrality, lineage size, and island area:
 
 ```{r}
-centralities_df <- readRDS(here::here("../output/tables/centralities_df.rds")) |> dplyr::select(species, PCA_centrality)
+centralities_df <- readRDS(here::here("../output/tables/centralities_regional_df.rds.rds")) |> dplyr::select(species, PCA_centrality, degree)
 metaweb <- readRDS(here::here("../output/temporal_output/bipartite_matrix.rds"))
 sp_island_id <- readRDS(here::here("../output/temporal_output/sp_island_id.rds"))
 species_names_checks.csv <- read.csv("../data/species_names_checks.csv")
@@ -212,7 +212,7 @@ sp_island_guild_size <- filtered_sp_island_id |>
 sp_island_guild_size <- sp_island_guild_size |>
   dplyr::left_join(
     centralities_df |>
-      dplyr::select(species_name, PCA_centrality),
+      dplyr::select(species_name, PCA_centrality, degree),
     by = "species_name"
   )
 
@@ -351,21 +351,162 @@ sp_island_guild_size_filtered <- as.data.frame(sp_island_guild_size_filtered)
 
 Standarize variables
 
+Z score speciation rates and centrality by island
+
+```{r}
+# Z-score PCA_centrality and speciation rates by island
+sp_island_guild_size_filtered <- sp_island_guild_size_filtered %>%
+  group_by(island) %>%
+  mutate(
+    # Z-score PCA_centrality by island
+    z_PCA_centrality = scale(PCA_centrality) %>% as.numeric(),
+    z_degree = scale(degree) %>% as.numeric(),
+    
+    # Identify the columns with speciation rates
+    across(starts_with("species_speciation_rate_"), 
+           ~ scale(.) %>% as.numeric(), 
+           .names = "z_{.col}")
+  ) %>%
+  ungroup()
+
+# Check the resulting dataset
+head(sp_island_guild_size_filtered)
+```
+
+
+Z score guild_size and island_area
+
 ```{r}
 sp_island_guild_size_filtered <- sp_island_guild_size_filtered %>%
     mutate(across(
-        c(starts_with("species_speciation_rate_"), 
-          guild_size, 
-          island_area, 
-          starts_with("island_age"), 
-          PCA_centrality), 
+        c(guild_size, 
+          island_area), 
         ~ scale(.) %>% as.numeric()
     ))
+```
+
+
+
+```{r}
+# sp_island_guild_size_filtered <- sp_island_guild_size_filtered %>%
+#     mutate(across(
+#         c(starts_with("species_speciation_rate_"), 
+#           guild_size, 
+#           island_area, 
+#           starts_with("island_age"), 
+#           PCA_centrality), 
+#         ~ scale(.) %>% as.numeric()
+#     ))
 
 ```
 
 
 
+
+------------------------------------------------------------------------------
+
+
+# Models
+
+## Partial Model: Pca centrality
+
+```{r}
+my_priors <- list(R = list(V = 1/2, nu = 0.002),
+                  G = list(G1 = list(V = 1/2, nu = 0.002)))
+
+
+full_model.fit <- vector(mode = "list", length = 50)
+
+for (i in 1:50) {
+    full_model.fit[[i]] <- MCMCglmm(
+        formula(paste0("z_PCA_centrality ~ z_species_speciation_rate_", i)),  # Fixed effects
+        random = ~ species_name,  # Random effect for species_name
+        family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+        ginverse = ginverse,  # Use species_name in ginverse
+        data = as.data.frame(sp_island_guild_size_filtered),  # Dataframe
+        prior = my_priors,  # Priors
+        nitt = 1000000,  # Number of iterations
+        burnin = 500000,  # Burn-in
+        thin = 100  # Thinning
+    )
+}
+
+saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/partial_model_pca_regional.rds"))
+```
+
+
+
+## Full model with PCA centrality
+
+
+```{r}
+
+my_priors <- list(R = list(V = 1/2, nu = 0.002),
+                  G = list(G1 = list(V = 1/2, nu = 0.002)))
+
+
+full_model.fit <- vector(mode = "list", length = 50)
+
+for (i in 1:50) {
+    full_model.fit[[i]] <- MCMCglmm(
+        formula(paste0("z_PCA_centrality ~ z_species_speciation_rate_", i, 
+                       " + guild_size + island_age_", i, 
+                       " + island_area")),  # Fixed effects
+        random = ~ species_name,  # Random effect for species_name
+        family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+        ginverse = ginverse,  # Use species_name in ginverse
+        data = as.data.frame(sp_island_guild_size_filtered),  # Dataframe
+        prior = my_priors,  # Priors
+        nitt = 1000000,  # Number of iterations
+        burnin = 500000,  # Burn-in
+        thin = 100  # Thinning
+    )
+}
+
+saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/full_model.pca_local.rds"))
+
+```
+
+
+## Partial Model: degree
+
+```{r}
+my_priors <- list(R = list(V = 1/2, nu = 0.002),
+                  G = list(G1 = list(V = 1/2, nu = 0.002)))
+
+
+full_model.fit <- vector(mode = "list", length = 50)
+
+for (i in 1:50) {
+    full_model.fit[[i]] <- MCMCglmm(
+        formula(paste0("z_degree ~ z_species_speciation_rate_", i)),  # Fixed effects
+        random = ~ species_name,  # Random effect for species_name
+        family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+        ginverse = ginverse,  # Use species_name in ginverse
+        data = as.data.frame(sp_island_guild_size_filtered),  # Dataframe
+        prior = my_priors,  # Priors
+        nitt = 1000000,  # Number of iterations
+        burnin = 500000,  # Burn-in
+        thin = 100  # Thinning
+    )
+}
+
+saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/partial_model_degree_local.rds"))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+-----------------------------------------------
 ## Model
 
 

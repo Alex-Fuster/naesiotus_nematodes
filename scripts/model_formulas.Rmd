@@ -1,0 +1,139 @@
+---
+title: "formulas_model"
+author: "AF"
+date: "2025-01-09"
+output: html_document
+---
+
+
+## Explanation of the General Model
+
+### How the Model Works
+This is a hierarchical Bayesian model that predicts nematode load for different snail species by integrating data from various sources (e.g., habitat, vegetation, brightness). The model is hierarchical because it uses shared group-level parameters (priors) to estimate species- or island-specific effects, even for species with missing data.
+
+### Hierarchies in the Model
+1. **Island-Level Hierarchy**:
+    - Each island has unique characteristics (e.g., age, area), which influence species inhabiting the island. These island-specific parameters are modeled hierarchically using priors.
+    
+2. **Species-Level Hierarchy**:
+    - Species effects for brightness, habitat, vegetation, and nematode load are modeled hierarchically, sharing information across species to improve predictions for unmeasured species.
+
+3. **Multilevel Covariate Structure**:
+    - Covariates like habitat and vegetation probabilities are estimated at the species level, which then inform other processes like brightness and nematode load.
+
+---
+
+## Mathematical Formulation
+
+### 1. Island-Level Parameters
+**Explanation:**
+The model estimates true island ages as latent variables bounded by observed minimum and maximum emergence values. The island area is log-transformed to account for its non-linear effect on other processes.
+
+- True island ages are modeled as:
+$$
+island\_age\_true[j] \sim \text{Uniform}(min\_emergence[j], max\_emergence[j])
+$$
+- Log-transformed island area:
+$$
+log\_island\_area[j] = \log(island\_area[j])
+$$
+
+---
+
+### 2. Habitat and Vegetation Zone Models
+
+#### Habitat Model
+**Explanation:**
+The probability of arboreal habitat use for each species is modeled hierarchically. The model uses observed arboreal habitat data (counts) to estimate species-specific probabilities.
+
+- Arboreal probability (logit scale):
+$$
+logit(arboreal\_prob[i]) \sim \mathcal{N}(\mu_{arboreal}, \sigma_{arboreal})
+$$
+- Observed arboreal habitat data:
+$$
+habitat\_arboreal[h] \sim \text{Binomial}(total\_hab[h], logit(arboreal\_prob[sp\_index\_hab[h]]))
+$$
+
+#### Vegetation Model
+**Explanation:**
+The probability of arid vegetation use for each species is estimated using a similar hierarchical approach.
+
+- Arid probability (logit scale):
+$$
+logit(arid\_prob[i]) \sim \mathcal{N}(\mu_{arid}, \sigma_{arid})
+$$
+- Observed arid vegetation data:
+$$
+veg\_arid[v] \sim \text{Binomial}(total\_veg[v], logit(arid\_prob[sp\_index\_veg[v]]))
+$$
+
+---
+
+### 3. Brightness Model
+**Explanation:**
+The true brightness (log-transformed) is modeled as a function of species- and island-level effects, habitat/vegetation probabilities, and island characteristics (e.g., area, age).
+
+- True brightness:
+$$
+true\_ln\_bright[i] = \mu_{bright} + sp\_effect\_bright[i] + island\_effect\_bright[island\_index\_spp[i]] +
+\beta_{arboreal} \cdot arboreal\_prob[i] + \beta_{arid} \cdot arid\_prob[i] +
+\beta_{age} \cdot island\_age\_true[island\_index\_spp[i]] +
+\beta_{area} \cdot log\_island\_area[island\_index\_spp[i]]
+$$
+
+Species- and island-level effects:
+$$
+sp\_effect\_bright[i] \sim \mathcal{N}(0, \sigma_{bright, sp}), \quad island\_effect\_bright[j] \sim \mathcal{N}(0, \sigma_{bright, island})
+$$
+
+Observed brightness data:
+$$
+log\_brightness\_obs[n] \sim \mathcal{N}(true\_ln\_bright[sp\_index\_bright[n]], \sigma_{bright})
+$$
+
+---
+
+### 4. Nematode Load Model
+**Explanation:**
+The nematode load (log-transformed) is modeled using brightness, habitat/vegetation probabilities, and island characteristics as predictors. Species- and island-level random effects capture unexplained variability.
+
+- Mean nematode load (log scale):
+$$
+mean\_load[i] = \mu_{load} + sp\_effect\_load[i] + island\_effect\_load[island\_index\_spp[i]] +
+\beta_{brightness} \cdot true\_ln\_bright[i] + \beta_{arboreal} \cdot arboreal\_prob[i] +
+\beta_{arid} \cdot arid\_prob[i] + \beta_{age} \cdot island\_age\_true[island\_index\_spp[i]] +
+\beta_{area} \cdot log\_island\_area[island\_index\_spp[i]]
+$$
+
+Species- and island-level effects:
+$$
+sp\_effect\_load[i] \sim \mathcal{N}(0, \sigma_{load, sp}), \quad island\_effect\_load[j] \sim \mathcal{N}(0, \sigma_{load, island})
+$$
+
+Observed nematode counts:
+$$
+nematode\_count[n] \sim \text{NegBinomial}_2(\exp(mean\_load[sp\_index\_load[n]]), \phi_{load})
+$$
+
+---
+
+### 5. Generated Quantities
+**Explanation:**
+After fitting the model, posterior samples allow the computation of:
+1. Predicted brightness for each species:
+   $$
+   predicted\_ln\_bright[i] = true\_ln\_bright[i]
+   $$
+2. Predicted mean nematode load (raw scale):
+   $$
+   predicted\_load[i] = \exp(mean\_load[i])
+   $$
+3. Simulated nematode counts:
+   $$
+   predicted\_nematode\_load[n] \sim \text{NegBinomial}_2(\exp(mean\_load[sp\_index\_load[n]]), \phi_{load})
+   $$
+
+---
+
+## Schematic Representation

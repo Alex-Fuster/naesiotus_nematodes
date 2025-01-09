@@ -120,6 +120,8 @@ tip_data <- tree_data %>% filter(isTip)
 # Make sure `changed_labels` is only as long as the tip labels
 tip_data$changed_labels <- changed_labels
 
+set.seed(42)
+
 # Plot the tree using only the tip data for labeling
 ggtree(tree) +
   geom_tiplab(aes(label = label, color = changed_labels), data = tip_data) +  # Only apply to tips
@@ -154,7 +156,15 @@ tree$tip.label <- gsub("\\.", "", tree$tip.label)
 # Replace hyphens with an empty string or another suitable character
 tree$tip.label <- gsub("-", "", tree$tip.label)
 
-plot(tree)
+
+set.seed(42)
+
+# Plot the tree using only the tip data for labeling
+ggtree(tree) +
+  geom_tiplab(aes(label = label, color = changed_labels), data = tip_data) +  # Only apply to tips
+  scale_color_manual(values = c("black", "red")) +  # Black for unchanged, red for changed
+  theme_tree() +
+  xlim(0, max(tree_data$x) + 0.3)  # Adjust x-axis limits if necessary
 
 #write.tree(tree, file = here::here("BAMM/cleannames_tree_doublenames_041024.txt"))
 #write.tree(tree, file = here::here("BAMM/cleannames_tree_doublenames_041024.newick"))
@@ -659,7 +669,7 @@ p +
   ) +
   theme(legend.position = "right")  # Adjust legend position
 
-ggsave(here::here("output/figures/phylo/phylo_faith_pd.png"), height = 10, width = 8)
+#ggsave(here::here("output/figures/phylo/phylo_faith_pd.png"), height = 10, width = 8)
 ```
 
 
