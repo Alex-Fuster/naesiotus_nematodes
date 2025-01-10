@@ -16,6 +16,9 @@ library(ggfortify)
 library(FactoMineR) 
 library(factoextra)  
 library(centiserve)
+library(bipartite)
+library(readxl)
+library(ggpubr)
 ```
 
 
@@ -117,6 +120,7 @@ otu_metadata <- otu_metadata %>%
 head(otu_metadata)
 
 ```
+
 
 
 
@@ -482,9 +486,12 @@ ggarrange(plotlist = plots, ncol = 2, nrow = ceiling(length(plots)/2),
 
 # COMPUTE CENTRALITY SNAILS
 
-## CENTRALITY IN THE REGIONAL NETWORK
+
+
+## Naesiotus CENTRALITY IN THE REGIONAL NETWORK
 
 ```{r}
+# Convert bipartite_matrix to a proper matrix if not already
 bipartite_matrix <- as.matrix(bipartite_matrix)
 
 # Define types manually based on the bipartite structure of the matrix
@@ -497,47 +504,71 @@ g <- graph_from_biadjacency_matrix(bipartite_matrix, directed = FALSE)
 # Set types: FALSE for snail nodes (rows), TRUE for OTU nodes (columns)
 V(g)$type <- c(rep(FALSE, num_snails), rep(TRUE, num_otus))
 
-# Filter snail nodes to verify correct assignment
+# Filter snail nodes
 snail_nodes <- V(g)[V(g)$type == FALSE]
 
-degree_centrality <- degree(g, v = snail_nodes)
-closeness_centrality <- closeness(g, v = snail_nodes)
+# Compute centrality measures
+degree_centrality <- igraph::degree(g, v = snail_nodes)
+closeness_centrality <- igraph::closeness(g, v = snail_nodes, normalized = TRUE)
 katz_centrality <- katzcent(g, alpha = 0.05, vids = snail_nodes)
 
-# Combine the centralities into a data frame and standardize them (z-score)
-centralities_df <- data.frame(
+# Compute specialization index d' using dfun from bipartite package
+dfun_results <- dfun(bipartite_matrix)
+d_snails <- dfun_results$d  # Extract d' for the lower trophic level (snails)
+
+# Combine the metrics into a data frame
+naesiotus_centralities_regional_df <- data.frame(
   species = names(degree_centrality),
   degree = degree_centrality,
   closeness = closeness_centrality,
-  katz_z = katz_centrality
+  katz_z = katz_centrality,
+  d = d_snails
 )
 
-# Perform PCA on the standardized centrality measures
-pca_result <- PCA(centralities_df[, -1], scale.unit = TRUE, graph = FALSE)
+# Z-score standardization
+naesiotus_centralities_regional_df <- naesiotus_centralities_regional_df %>%
+  mutate(
+    degree_z = scale(degree),
+    closeness_z = scale(closeness),
+    katz_z_z = scale(katz_z),
+    d_z = scale(d)
+  )
+
+# Perform PCA on standardized centrality measures (excluding species column)
+pca_result <- PCA(naesiotus_centralities_regional_df[, c("degree_z", "closeness_z", "katz_z_z")], scale.unit = FALSE, graph = FALSE)
 pca_centrality <- as.data.frame(pca_result$ind$coord)[, 1]  # First principal component
 
-# Add PCA centrality scores to the centralities data frame
-centralities_df <- centralities_df %>%
-  mutate(PCA_centrality = pca_centrality)
+# Add PCA centrality and z-scored PCA centrality to the data frame
+naesiotus_centralities_regional_df <- naesiotus_centralities_regional_df %>%
+  mutate(
+    PCA_centrality = pca_centrality
+  )
 
-centralities_df
+# Final centralities data frame
+naesiotus_centralities_regional_df
 
-#saveRDS(centralities_df, here::here("output/tables/centralities_regional_df.rds"))
+# Save the final data frame
+saveRDS(naesiotus_centralities_regional_df, here::here("output/tables/naesiotus_centralities_regional_df.rds"))
+
 ```
 
 ```{r}
-pca_model <- prcomp(centralities_df[,-1], center = TRUE, scale. = TRUE)
+# Perform PCA using prcomp
+pca_model <- prcomp(naesiotus_centralities_regional_df[, c("degree_z", "closeness_z", "katz_z_z")], 
+                    center = FALSE, scale. = FALSE)
 
 # Summary to get % of variance explained by each component
 pca_summary <- summary(pca_model)
 explained_variance <- pca_summary$importance[2, ] * 100  # % variance for each PC
 
 # Plot PCA
-autoplot(pca_model, data = centralities_df, 
+autoplot(pca_model, data = naesiotus_centralities_regional_df, 
          loadings = TRUE, loadings.label = TRUE,
          loadings.label.size = 3, color = 'black') +
-  labs(x = paste("PC1 (", round(explained_variance[1], 1), "%)", sep=""),
-       y = paste("PC2 (", round(explained_variance[2], 1), "%)", sep="")) +
+  labs(
+    x = paste0("PC1 (", round(explained_variance[1], 1), "%)"),
+    y = paste0("PC2 (", round(explained_variance[2], 1), "%)")
+  ) +
   theme_minimal()
 ```
 
@@ -545,9 +576,14 @@ autoplot(pca_model, data = centralities_df,
 ## CENTRALITY IN THE LOCAL NETWORKS
 
 
+Gardner island merged with Espanola
+
+
 ```{r}
+
 # Filter out islands with fewer than 2 snail species upfront
 valid_islands <- otu_metadata %>%
+  mutate(island = ifelse(island == "Gardner", "Espanola", island))  %>%
   group_by(island) %>%
   filter(n_distinct(naesiotus_sp) >= 2) %>%
   pull(island) %>%
@@ -558,22 +594,20 @@ island_centralities <- list()
 
 # Loop through each valid island
 for (island in valid_islands) {
-  print(island)  # For debugging purposes
+  print(paste("Processing island:", island))  # For debugging purposes
   
   # Filter metadata for the current island
   island_metadata <- otu_metadata %>% filter(island == !!island)
   
   # Get snail species from the current island
-  island_snails <- island_metadata$naesiotus_sp
+  island_snails <- unique(island_metadata$naesiotus_sp)
   
   # Subset bipartite matrix for snails from the current island
-  island_matrix <- bipartite_matrix %>%
-    filter(naesiotus_sp %in% island_snails) %>%
-    column_to_rownames(var = "naesiotus_sp") %>%  # Use species names as row names
-    as.matrix()  # Convert to matrix
+  island_matrix <- bipartite_matrix[rownames(bipartite_matrix) %in% island_snails, , drop = FALSE]
   
   # Check if the matrix is valid (non-zero rows and columns)
-  if (all(rowSums(island_matrix) == 0) || all(colSums(island_matrix) == 0)) {
+  if (nrow(island_matrix) == 0 || ncol(island_matrix) == 0 || 
+      all(rowSums(island_matrix) == 0) || all(colSums(island_matrix) == 0)) {
     message("Skipping island due to invalid matrix: ", island)
     next
   }
@@ -590,33 +624,50 @@ for (island in valid_islands) {
   snail_nodes <- V(g_island)[V(g_island)$type == FALSE]
   
   # Compute centralities
-  degree_centrality <- degree(g_island, v = snail_nodes)
-  closeness_centrality <- closeness(g_island, v = snail_nodes)
+  degree_centrality <- igraph::degree(g_island, v = snail_nodes)
+  closeness_centrality <- igraph::closeness(g_island, v = snail_nodes, normalized = TRUE)
   katz_centrality <- katzcent(g_island, alpha = 0.05, vids = snail_nodes)
   
-  # Combine the centralities into a data frame
+  # Compute specialization index d' using dfun from bipartite package
+  dfun_results <- dfun(island_matrix)
+  d_snails <- dfun_results$d  # Extract raw specialization index (d) for snails
+  
+  # Combine the metrics into a data frame
   centralities_df <- data.frame(
     species = names(degree_centrality),
     degree = degree_centrality,
     closeness = closeness_centrality,
-    katz = katz_centrality
+    katz_z = katz_centrality,
+    d = d_snails
   )
   
   # Replace missing values with 0
   centralities_df <- centralities_df %>%
-    mutate(across(degree:katz, ~ ifelse(is.na(.), 0, .)))
+    mutate(across(degree:d, ~ ifelse(is.na(.), 0, .)))
   
   # Standardize centralities (z-scores)
   centralities_df <- centralities_df %>%
-    mutate(across(degree:katz, ~ scale(.) %>% as.numeric()))
+    mutate(
+      degree_z = scale(degree),
+      closeness_z = scale(closeness),
+      katz_z_z = scale(katz_z),
+      d_z = scale(d)
+    )
   
-  # Perform PCA on standardized centrality measures
-  if (ncol(centralities_df[, -1]) > 1) {
-    pca_result <- PCA(centralities_df[, -1], scale.unit = TRUE, graph = FALSE)
+# Perform PCA on standardized centrality measures
+  pca_variables <- if (nrow(centralities_df) > 2) {
+    c("degree_z", "closeness_z", "katz_z_z")
+  } else {
+    c("degree_z", "katz_z_z")
+  }
+  
+  if (length(pca_variables) > 1) {
+    pca_result <- PCA(centralities_df[, pca_variables], scale.unit = FALSE, graph = FALSE)
     pca_centrality <- as.data.frame(pca_result$ind$coord)[, 1]  # First principal component
   } else {
     pca_centrality <- rep(NA, nrow(centralities_df))
   }
+
   
   # Add PCA centrality scores and island name to the data frame
   centralities_df <- centralities_df %>%
@@ -627,12 +678,500 @@ for (island in valid_islands) {
 }
 
 # Combine all island centralities into a single dataframe
-final_centralities_df <- bind_rows(island_centralities)
+naesiotus_centralities_local_df <- bind_rows(island_centralities)
+
+# Save the results
+saveRDS(naesiotus_centralities_local_df, here::here("output/tables/naesiotus_centralities_local_df.rds"))
 
 # View the final dataframe
-head(final_centralities_df)
+head(naesiotus_centralities_local_df)
 
-#saveRDS(final_centralities_df, here::here("output/tables/local_centralities_df.rds"))
+
+```
+
+
+
+# Centrality Nematodes
+
+```{r}
+# Convert bipartite_matrix to a proper matrix if not already
+bipartite_matrix <- as.matrix(bipartite_matrix)
+
+# Define types manually based on the bipartite structure of the matrix
+num_snails <- nrow(bipartite_matrix)
+num_otus <- ncol(bipartite_matrix)
+
+# Create the bipartite graph
+g <- graph_from_biadjacency_matrix(bipartite_matrix, directed = FALSE)
+
+# Set types: FALSE for snail nodes (rows), TRUE for OTU nodes (columns)
+V(g)$type <- c(rep(FALSE, num_snails), rep(TRUE, num_otus))
+
+
+# Ensure OTU names match across centrality measures and specialization index
+common_otus <- intersect(names(degree_centrality), names(d_otus))
+
+# Filter centrality measures to include only OTUs with valid d values
+degree_centrality <- degree_centrality[common_otus]
+closeness_centrality <- closeness_centrality[common_otus]
+katz_centrality <- katz_centrality[common_otus]
+d_otus <- d_otus[common_otus]
+
+# Combine the metrics into a data frame
+otu_centralities_regional_df <- data.frame(
+  species = common_otus,
+  degree = degree_centrality,
+  closeness = closeness_centrality,
+  katz_z = katz_centrality,
+  d = d_otus
+)
+
+# Z-score standardization
+otu_centralities_regional_df <- otu_centralities_regional_df %>%
+  mutate(
+    degree_z = scale(degree),
+    closeness_z = scale(closeness),
+    katz_z_z = scale(katz_z),
+    d_z = scale(d)
+  )
+
+# Perform PCA on standardized centrality measures (excluding species column)
+pca_result <- PCA(otu_centralities_regional_df[, c("degree_z", "closeness_z", "katz_z_z")], scale.unit = FALSE, graph = FALSE)
+pca_centrality <- as.data.frame(pca_result$ind$coord)[, 1]  # First principal component
+
+# Add PCA centrality to the data frame
+otu_centralities_regional_df <- otu_centralities_regional_df %>%
+  mutate(PCA_centrality = pca_centrality)
+
+# Save the results
+saveRDS(otu_centralities_regional_df, here::here("output/tables/otu_centralities_regional_df.rds"))
+
+# View the final dataframe
+head(otu_centralities_regional_df)
+
+```
+```{r}
+# Perform PCA using prcomp
+pca_model <- prcomp(otu_centralities_regional_df[, c("degree_z", "closeness_z", "katz_z_z")], 
+                    center = FALSE, scale. = FALSE)
+
+# Summary to get % of variance explained by each component
+pca_summary <- summary(pca_model)
+explained_variance <- pca_summary$importance[2, ] * 100  # % variance for each PC
+
+# Plot PCA
+autoplot(pca_model, data = otu_centralities_regional_df, 
+         loadings = TRUE, loadings.label = TRUE,
+         loadings.label.size = 3, color = 'black') +
+  labs(
+    x = paste0("PC1 (", round(explained_variance[1], 1), "%)"),
+    y = paste0("PC2 (", round(explained_variance[2], 1), "%)")
+  ) +
+  theme_minimal()
+```
+
+```{r}
+# Ensure Gardner island is merged with Espanola
+otu_metadata <- otu_metadata %>%
+  mutate(island = ifelse(island == "Gardner", "Espanola", island))
+
+# Filter out islands with fewer than 2 snail species upfront
+valid_islands <- otu_metadata %>%
+  group_by(island) %>%
+  filter(n_distinct(naesiotus_sp) >= 2) %>%
+  pull(island) %>%
+  unique()
+
+# Prepare an empty list to store centralities for each island
+island_otu_centralities <- list()
+
+# Loop through each valid island
+for (island in valid_islands) {
+  print(paste("Processing island:", island))  # For debugging purposes
+  
+  # Filter metadata for the current island
+  island_metadata <- otu_metadata %>% filter(island == !!island)
+  
+  # Get snail species from the current island
+  island_snails <- unique(island_metadata$naesiotus_sp)
+  
+  # Subset bipartite matrix for snails from the current island
+  island_matrix <- bipartite_matrix[rownames(bipartite_matrix) %in% island_snails, , drop = FALSE]
+  
+  # Check if the matrix is valid (non-zero rows and columns)
+  if (nrow(island_matrix) == 0 || ncol(island_matrix) == 0 || 
+      all(rowSums(island_matrix) == 0) || all(colSums(island_matrix) == 0)) {
+    message("Skipping island due to invalid matrix: ", island)
+    next
+  }
+  
+  # Create bipartite graph
+  num_snails <- nrow(island_matrix)
+  num_otus <- ncol(island_matrix)
+  g_island <- graph_from_biadjacency_matrix(island_matrix, directed = FALSE)
+  
+  # Set types: FALSE for snail nodes (rows), TRUE for OTU nodes (columns)
+  V(g_island)$type <- c(rep(FALSE, num_snails), rep(TRUE, num_otus))
+  
+  # Filter OTU nodes
+  otu_nodes <- V(g_island)[V(g_island)$type == TRUE]
+  
+  # Compute centrality measures
+  degree_centrality <- igraph::degree(g_island, v = otu_nodes)
+  closeness_centrality <- igraph::closeness(g_island, v = otu_nodes, normalized = TRUE)
+  katz_centrality <- katzcent(g_island, alpha = 0.05, vids = otu_nodes)
+  
+  # Compute specialization index d' using dfun from bipartite package
+  dfun_results <- dfun(t(island_matrix))  # Transpose for OTU focus
+  d_otus <- dfun_results$d  # Extract raw specialization index (d) for OTUs
+  
+  # Ensure OTU names match across centrality measures and specialization index
+  common_otus <- intersect(names(degree_centrality), names(d_otus))
+  
+  # Filter centrality measures to include only OTUs with valid d values
+  degree_centrality <- degree_centrality[common_otus]
+  closeness_centrality <- closeness_centrality[common_otus]
+  katz_centrality <- katz_centrality[common_otus]
+  d_otus <- d_otus[common_otus]
+  
+  # Combine the metrics into a data frame
+  centralities_df <- data.frame(
+    species = common_otus,
+    degree = degree_centrality,
+    closeness = closeness_centrality,
+    katz_z = katz_centrality,
+    d = d_otus
+  )
+  
+  # Replace missing values with 0
+  centralities_df <- centralities_df %>%
+    mutate(across(degree:d, ~ ifelse(is.na(.), 0, .)))
+  
+  # Standardize centralities (z-scores)
+  centralities_df <- centralities_df %>%
+    mutate(
+      degree_z = scale(degree),
+      closeness_z = scale(closeness),
+      katz_z_z = scale(katz_z),
+      d_z = scale(d)
+    )
+  
+  # Perform PCA on standardized centrality measures
+  pca_variables <- if (nrow(centralities_df) > 2) {
+    c("degree_z", "closeness_z", "katz_z_z")
+  } else {
+    c("degree_z", "katz_z_z")
+  }
+  
+  if (length(pca_variables) > 1) {
+    pca_result <- PCA(centralities_df[, pca_variables], scale.unit = FALSE, graph = FALSE)
+    pca_centrality <- as.data.frame(pca_result$ind$coord)[, 1]  # First principal component
+  } else {
+    pca_centrality <- rep(NA, nrow(centralities_df))
+  }
+  
+  # Add PCA centrality scores and island name to the data frame
+  centralities_df <- centralities_df %>%
+    mutate(PCA_centrality = pca_centrality, island = island)
+  
+  # Append to the list
+  island_otu_centralities[[island]] <- centralities_df
+}
+
+# Combine all island centralities into a single dataframe
+otu_centralities_local_df <- bind_rows(island_otu_centralities)
+
+# Save the results
+saveRDS(otu_centralities_local_df, here::here("output/tables/otu_centralities_local_df.rds"))
+
+# View the final dataframe
+head(otu_centralities_local_df)
+
+```
+
+
+
+# Network-ages
+
+
+## island characteristics
+
+```{r}
+df_island <- read_excel(path = here::here("data/19july24_datalab.xlsx"), sheet = "island_characteristics")
+
+df_island$min_emergence <- as.numeric(df_island$min_emergence)
+df_island$max_emergence <- as.numeric(df_island$max_emergence)
+
+# Calculate the mean difference between min_emergence and max_emergence
+mean_diff <- df_island %>%
+  filter(!is.na(min_emergence) & !is.na(max_emergence)) %>%
+  mutate(diff = max_emergence - min_emergence) %>%
+  summarise(mean_diff = mean(diff, na.rm = TRUE)) %>%
+  pull(mean_diff)
+
+# Estimate max_emergence for Champion by adding the mean difference to its min_emergence
+df_island <- df_island %>%
+  mutate(max_emergence = ifelse(is.na(max_emergence), min_emergence + mean_diff, max_emergence))
+
+# Rename the column "mean_emergence" to "island_age" in df_island
+# add an ID column
+df_island <- df_island %>% dplyr::rename(island_area = area) |> 
+  mutate(island_code = as.numeric(as.factor(island)))
+
+
+# increase max. emergence of Sants Fe by a small amount - min. and max for this island are the same and this gives error in the model when trying to estimate the approximate age.
+
+df_island <- df_island |> 
+  dplyr::mutate(max_emergence = ifelse(island == "Santa_Fe", max_emergence + 0.1, max_emergence))
+
+
+df_island 
+```
+
+
+
+```{r}
+# Merge Gardner with Espanola
+otu_metadata <- otu_metadata %>%
+  mutate(island = ifelse(island == "Gardner", "Espanola", island))
+
+# Filter islands with at least two snail species
+valid_islands <- otu_metadata %>%
+  group_by(island) %>%
+  filter(n_distinct(naesiotus_sp) >= 2) %>%
+  pull(island) %>%
+  unique()
+
+# Prepare data frame to store results
+network_statistics <- data.frame()
+
+# Loop through each valid island
+for (island in valid_islands) {
+  print(paste("Processing island:", island))
+  
+  # Filter metadata for the current island
+  island_metadata <- otu_metadata %>% filter(island == !!island)
+  
+  # Get snail species for the island
+  island_snails <- unique(island_metadata$naesiotus_sp)
+  
+  # Subset bipartite matrix
+  island_matrix <- bipartite_matrix[rownames(bipartite_matrix) %in% island_snails, , drop = FALSE]
+  
+  # Skip invalid matrices
+  if (nrow(island_matrix) == 0 || ncol(island_matrix) == 0 || 
+      all(rowSums(island_matrix) == 0) || all(colSums(island_matrix) == 0)) {
+    message("Skipping island due to invalid matrix: ", island)
+    next
+  }
+  
+  # Create graph
+  g <- graph_from_biadjacency_matrix(island_matrix, directed = FALSE)
+  
+  # Compute modularity
+  compute_modularity <- function(g) {
+    mod_louvain <- cluster_louvain(g)$modularity
+    mod_walktrap <- modularity(cluster_walktrap(g))
+    mod_fast_greedy <- modularity(cluster_fast_greedy(g))
+    mod_leading_eigen <- cluster_leading_eigen(g)$modularity
+    mean_modularity <- mean(c(mod_louvain, mod_walktrap, mod_fast_greedy, mod_leading_eigen), na.rm = TRUE)
+    return(mean_modularity)
+  }
+  modularity <- compute_modularity(g)
+  
+  # Compute nestedness
+  nestedness <- nestednodf(island_matrix)$statistic["NODF"]
+  
+  # Compute H2 specialization
+  H2_specialization <- H2fun(island_matrix)
+  
+  # Compute mean and SD specialization (d) for snails and OTUs
+  snail_d <- dfun(island_matrix)$dprime
+  otu_d <- dfun(t(island_matrix))$dprime
+  
+  mean_snail_d <- mean(snail_d, na.rm = TRUE)
+  sd_snail_d <- sd(snail_d, na.rm = TRUE)
+  mean_otu_d <- mean(otu_d, na.rm = TRUE)
+  sd_otu_d <- sd(otu_d, na.rm = TRUE)
+  
+  # Append results to data frame
+  network_statistics <- rbind(network_statistics, data.frame(
+    island = island,
+    modularity = modularity,
+    nestedness = nestedness,
+    H2 = H2_specialization,
+    mean_snail_d = mean_snail_d,
+    sd_snail_d = sd_snail_d,
+    mean_otu_d = mean_otu_d,
+    sd_otu_d = sd_otu_d
+  ))
+}
+
+# Add island age and area to the statistics
+df_island <- df_island %>%
+  mutate(mean_age = (min_emergence + max_emergence) / 2)
+
+network_statistics <- network_statistics %>%
+  left_join(df_island %>% select(island, mean_age, island_area), by = "island")
+
+network_statistics
+
+#saveRDS(network_statistics, here::here("output/tables/network_statistics.rds"))
+```
+
+
+
+
+```{r}
+
+# Transform age and area in the data
+network_statistics <- network_statistics %>%
+  mutate(
+    sqrt_mean_age = sqrt(mean_age),
+    log_island_area = log(island_area)
+  )
+
+# Plot 1: Modularity vs. Network Age
+plot_age_modularity <- ggplot(network_statistics) +
+  geom_point(aes(x = sqrt_mean_age, y = modularity), shape = 16, color = "black") +
+  scale_x_continuous(
+    trans = "sqrt",
+    breaks = scales::trans_breaks("sqrt", function(x) x^2),
+    labels = scales::trans_format("sqrt", math_format(.x^2))
+  ) +
+  labs(
+    x = "Mean island age (My)",
+    y = "Modularity"
+  ) +
+  theme_minimal()
+
+# Plot 2: Modularity vs. Island Area
+plot_area_modularity <- ggplot(network_statistics) +
+  geom_point(aes(x = log_island_area, y = modularity), shape = 16, color = "black") +
+  scale_x_continuous(
+    trans = "log10",
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10", math_format(10^.x))
+  ) +
+  labs(
+    x = expression("Island area (km"^2*")"),
+    y = "Modularity"
+  ) +
+  theme_minimal()
+
+# Plot 3: Nestedness vs. Network Age
+plot_age_nestedness <- ggplot(network_statistics) +
+  geom_point(aes(x = sqrt_mean_age, y = nestedness), shape = 16, color = "black") +
+  scale_x_continuous(
+    trans = "sqrt",
+    breaks = scales::trans_breaks("sqrt", function(x) x^2),
+    labels = scales::trans_format("sqrt", math_format(.x^2))
+  ) +
+  labs(
+    x = "Mean island age (My)",
+    y = "Nestedness (NODF)"
+  ) +
+  theme_minimal()
+
+# Plot 4: Nestedness vs. Island Area
+plot_area_nestedness <- ggplot(network_statistics) +
+  geom_point(aes(x = log_island_area, y = nestedness), shape = 16, color = "black") +
+  scale_x_continuous(
+    trans = "log10",
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10", math_format(10^.x))
+  ) +
+  labs(
+    x = expression("Island area (km"^2*")"),
+    y = "Nestedness (NODF)"
+  ) +
+  theme_minimal()
+
+# Plot 5: H2 vs. Network Age
+plot_age_H2 <- ggplot(network_statistics) +
+  geom_point(aes(x = sqrt_mean_age, y = H2), shape = 16, color = "black") +
+  scale_x_continuous(
+    trans = "sqrt",
+    breaks = scales::trans_breaks("sqrt", function(x) x^2),
+    labels = scales::trans_format("sqrt", math_format(.x^2))
+  ) +
+  labs(
+    x = "Mean island age (My)",
+    y = "H2 specialization"
+  ) +
+  theme_minimal()
+
+# Plot 6: H2 vs. Island Area
+plot_area_H2 <- ggplot(network_statistics) +
+  geom_point(aes(x = log_island_area, y = H2), shape = 16, color = "black") +
+  scale_x_continuous(
+    trans = "log10",
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10", math_format(10^.x))
+  ) +
+  labs(
+    x = expression("Island area (km"^2*")"),
+    y = "H2 specialization"
+  ) +
+  theme_minimal()
+
+# Mean Specialization (d') vs. Mean Island Age 
+plot_age_mean_d <- ggplot(network_statistics) +
+  geom_point(aes(x = sqrt_mean_age, y = mean_snail_d), shape = 16, color = "#009E73") +  # Snails
+  # geom_ribbon(aes(x = sqrt_mean_age, ymin = mean_snail_d - sd_snail_d, ymax = mean_snail_d + sd_snail_d), 
+  #             fill = "#009E73", alpha = 0.3) +  # Ribbon for Snails
+  geom_point(aes(x = sqrt_mean_age, y = mean_otu_d), shape = 2, color = "#E69F00") +  # Nematodes
+  # geom_ribbon(aes(x = sqrt_mean_age, ymin = mean_otu_d - sd_otu_d, ymax = mean_otu_d + sd_otu_d), 
+  #             fill = "#E69F00", alpha = 0.3) +  # Ribbon for Nematodes
+  scale_x_continuous(
+    trans = "sqrt",
+    breaks = scales::trans_breaks("sqrt", function(x) x^2),
+    labels = scales::trans_format("sqrt", math_format(.x^2))
+  ) +
+  labs(
+    x = "Mean island age (My)",
+    y = "Mean specialization (d')"
+  ) +
+  theme_minimal()
+
+# Mean Specialization (d') vs. Island Area 
+plot_area_mean_d <- ggplot(network_statistics) +
+  geom_point(aes(x = log_island_area, y = mean_snail_d), shape = 16, color = "#009E73") +  # Snails
+  # geom_ribbon(aes(x = log_island_area, ymin = mean_snail_d - sd_snail_d, ymax = mean_snail_d + sd_snail_d), 
+  #             fill = "#009E73", alpha = 0.3) +  # Ribbon for Snails
+  geom_point(aes(x = log_island_area, y = mean_otu_d), shape = 2, color = "#E69F00") +  # Nematodes
+  # geom_ribbon(aes(x = log_island_area, ymin = mean_otu_d - sd_otu_d, ymax = mean_otu_d + sd_otu_d), 
+  #             fill = "#E69F00", alpha = 0.3) +  # Ribbon for Nematodes
+  scale_x_continuous(
+    trans = "log10",
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10", math_format(10^.x))
+  ) +
+  labs(
+    x = expression("Island area (km"^2*")"),
+    y = "Mean specialization (d')"
+  ) +
+  theme_minimal()
+
+
+
+ggarrange(
+  plot_age_modularity,
+  plot_area_modularity,
+  plot_age_nestedness,
+  plot_area_nestedness,
+  plot_age_H2,
+  plot_area_H2,
+  plot_age_mean_d,
+  plot_area_mean_d,
+  ncol = 2,
+  nrow = 4,
+  common.legend = TRUE,
+  labels = LETTERS[1:8]
+)
+
+
+ggsave(here::here("output/figures/network_characteristics.png"), height = 12, width = 8)
 
 ```
 
