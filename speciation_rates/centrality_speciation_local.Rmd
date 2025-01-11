@@ -132,7 +132,7 @@ CladsOutput$tree$tip.label <- gsub("-", ".",
 PCA centrality, lineage size, and island area:
 
 ```{r}
-centralities_df <- readRDS(here::here("../output/tables/local_centralities_df.rds"))# |> dplyr::select(species, PCA_centrality)
+centralities_df <- readRDS(here::here("../output/tables/naesiotus_centralities_local_df.rds"))# |> dplyr::select(species, PCA_centrality)
 metaweb <- readRDS(here::here("../output/temporal_output/bipartite_matrix.rds"))
 sp_island_id <- readRDS(here::here("../output/temporal_output/sp_island_id.rds"))
 species_names_checks.csv <- read.csv("../data/species_names_checks.csv")
