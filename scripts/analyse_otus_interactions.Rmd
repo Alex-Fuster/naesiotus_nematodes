@@ -26,7 +26,7 @@ library(ggpubr)
 
 ```{r}
 # Read the OTU table
-otu_table <- read.delim(here::here("data", "OTUs","feature_table.tsv"), skip = 1)
+otu_table <- read.delim(here::here("C:/Users/alexf/Desktop/PhD_Fuster-Calvo/naesiotus_nematodes/naesiotus_nematodes/data/OTUs/feature_table.tsv"), skip = 1)
 colnames(otu_table) <- gsub("\\.", "-", colnames(otu_table))
 colnames(otu_table)[1] <- "OTU_ID"
 # Correct sample name in OTU table
@@ -35,7 +35,7 @@ otu_table <- otu_table %>%
   dplyr::rename_with(~ gsub("U5-1P", "US-1P-b", .))
 
 # Read your metadata file
-metadata <- read.delim(here::here("data","OTUs", "metadata.tsv"), skip = 1)
+metadata <- read.delim(here::here("C:/Users/alexf/Desktop/PhD_Fuster-Calvo/naesiotus_nematodes/naesiotus_nematodes/data/OTUs/metadata.tsv"), skip = 1)
 # rename the sample ID column in either dataset to match
 colnames(metadata)[1] <- "Sample_ID"
 # Correct sample name in metadata
@@ -216,7 +216,7 @@ ggplot(cumulative_df, aes(x = sample_num, y = cumulative_unique_otus, linetype =
 ## Read OTUS tree
 
 ```{r}
-tree <- read_qza(here::here("data/OTUs/iq-rooted-clustered.qza"))
+tree <- read_qza(here::here("C:/Users/alexf/Desktop/PhD_Fuster-Calvo/naesiotus_nematodes/naesiotus_nematodes/data/OTUs/iq-rooted-clustered.qza"))
 # Extract the phylogenetic tree from the data
 phylo_tree <- tree$data  # This extracts the phylogenetic tree in "phylo" format
 plot(phylo_tree)
@@ -548,7 +548,7 @@ naesiotus_centralities_regional_df <- naesiotus_centralities_regional_df %>%
 naesiotus_centralities_regional_df
 
 # Save the final data frame
-saveRDS(naesiotus_centralities_regional_df, here::here("output/tables/naesiotus_centralities_regional_df.rds"))
+#saveRDS(naesiotus_centralities_regional_df, here::here("output/tables/naesiotus_centralities_regional_df.rds"))
 
 ```
 
@@ -681,7 +681,7 @@ for (island in valid_islands) {
 naesiotus_centralities_local_df <- bind_rows(island_centralities)
 
 # Save the results
-saveRDS(naesiotus_centralities_local_df, here::here("output/tables/naesiotus_centralities_local_df.rds"))
+#saveRDS(naesiotus_centralities_local_df, here::here("output/tables/naesiotus_centralities_local_df.rds"))
 
 # View the final dataframe
 head(naesiotus_centralities_local_df)
@@ -704,12 +704,23 @@ num_otus <- ncol(bipartite_matrix)
 # Create the bipartite graph
 g <- graph_from_biadjacency_matrix(bipartite_matrix, directed = FALSE)
 
-# Set types: FALSE for snail nodes (rows), TRUE for OTU nodes (columns)
-V(g)$type <- c(rep(FALSE, num_snails), rep(TRUE, num_otus))
+  # Set types: FALSE for snail nodes (rows), TRUE for OTU nodes (columns)
+  V(g)$type <- c(rep(FALSE, num_snails), rep(TRUE, num_otus))
+  
+  # Filter OTU nodes
+  otu_nodes <- V(g)[V(g)$type == TRUE]
 
-
-# Ensure OTU names match across centrality measures and specialization index
-common_otus <- intersect(names(degree_centrality), names(d_otus))
+# Compute centrality measures
+  degree_centrality <- igraph::degree(g, v = otu_nodes)
+  closeness_centrality <- igraph::closeness(g, v = otu_nodes, normalized = TRUE)
+  katz_centrality <- katzcent(g, alpha = 0.05, vids = otu_nodes)
+  
+  # Compute specialization index d' using dfun from bipartite package
+  dfun_results <- dfun(t(island_matrix))  # Transpose for OTU focus
+  d_otus <- dfun_results$d  # Extract raw specialization index (d) for OTUs
+  
+  # Ensure OTU names match across centrality measures and specialization index
+  common_otus <- intersect(names(degree_centrality), names(d_otus))
 
 # Filter centrality measures to include only OTUs with valid d values
 degree_centrality <- degree_centrality[common_otus]
@@ -744,12 +755,14 @@ otu_centralities_regional_df <- otu_centralities_regional_df %>%
   mutate(PCA_centrality = pca_centrality)
 
 # Save the results
-saveRDS(otu_centralities_regional_df, here::here("output/tables/otu_centralities_regional_df.rds"))
+#saveRDS(otu_centralities_regional_df, here::here("../output/tables/otu_centralities_regional_df.rds"))
 
 # View the final dataframe
 head(otu_centralities_regional_df)
 
 ```
+
+
 ```{r}
 # Perform PCA using prcomp
 pca_model <- prcomp(otu_centralities_regional_df[, c("degree_z", "closeness_z", "katz_z_z")], 
@@ -882,7 +895,7 @@ for (island in valid_islands) {
 otu_centralities_local_df <- bind_rows(island_otu_centralities)
 
 # Save the results
-saveRDS(otu_centralities_local_df, here::here("output/tables/otu_centralities_local_df.rds"))
+#saveRDS(otu_centralities_local_df, here::here("output/tables/otu_centralities_local_df.rds"))
 
 # View the final dataframe
 head(otu_centralities_local_df)
@@ -897,7 +910,7 @@ head(otu_centralities_local_df)
 ## island characteristics
 
 ```{r}
-df_island <- read_excel(path = here::here("data/19july24_datalab.xlsx"), sheet = "island_characteristics")
+df_island <- read_excel(path = here::here("../data/19july24_datalab.xlsx"), sheet = "island_characteristics")
 
 df_island$min_emergence <- as.numeric(df_island$min_emergence)
 df_island$max_emergence <- as.numeric(df_island$max_emergence)
@@ -1173,5 +1186,19 @@ ggarrange(
 
 ggsave(here::here("output/figures/network_characteristics.png"), height = 12, width = 8)
 
+```
+
+```{r}
+# Fit the model with sqrt_mean_age
+nestedness_model_sqrt <- lm(modularity ~ log_island_area, data = network_statistics)
+
+# Summarize the results
+summary(nestedness_model_sqrt)
+
+```
+
+```{r}
+nestedness_model_sqrt <- lm(mean_snail_d ~ log_island_area  , data = network_statistics)
+summary(nestedness_model_sqrt)
 ```
 
