@@ -1,0 +1,148 @@
+---
+title: "R Notebook"
+---
+
+
+
+```{r}
+library("here")
+library("BAMMtools")
+library("RPANDA")
+library("ggtree")
+library("MetBrewer")
+library("patchwork")
+library("doParallel")
+library("foreach")
+library("MCMCglmm")
+library(dplyr)
+library(coda)
+library(ggdist)
+library(tidyverse)
+
+here::i_am("centrality_speciation.Rmd")
+```
+
+
+
+## Load data
+
+```{r}
+species_names_checks <- read.csv("../data/species_names_checks.csv")
+```
+
+
+```{r}
+## Importing tree
+tree <- read.tree(here::here("clads/cleannames_tree_041024.txt"))
+
+## Rescaling branch lengths by a scale of 10 to reflect time
+tree$edge.length <- tree$edge.length * 10
+
+## Making sure the tree is still ultrametric
+is.ultrametric(tree)
+
+## Replacing "." in species names for CLaDS not to complain
+tree$tip.label <- gsub(".", "-", tree$tip.label, fixed = TRUE)
+
+## Writing tree to file
+#write.tree(tree, here::here("clads/naesiotus_rescaled.tre"))
+#write.tree(tree, here::here("bamm/naesiotus_rescaled.tre"))
+
+load(here::here("clads/naesiotus_clads_rates.RData"))
+
+bamm.data <- getEventData(tree, here::here("bamm/event_data.txt"), burnin = 0.1)
+```
+
+
+
+```{r}
+# Step 1: Ensure Tip Labels Are Correct
+# Correct species names in CladsOutput$tree using your species_names_checks.csv if necessary.
+#species_name_corrections <- read.csv("species_names_checks.csv", stringsAsFactors = FALSE)
+
+correct_species_names <- function(original_names, corrections_df) {
+  # Create a named vector for lookup
+  correction_map <- setNames(corrections_df$species_name, corrections_df$annotated_name)
+  
+  # Correct the names
+  corrected_names <- sapply(original_names, function(name) {
+    if (name %in% names(correction_map)) {
+      correction_map[name]  # Replace if in annotated_name
+    } else {
+      name  # Keep original if not found
+    }
+  }, USE.NAMES = FALSE)
+  
+  return(corrected_names)
+}
+
+# Apply the function to CladsOutput tip labels
+CladsOutput$tree$tip.label <- correct_species_names(CladsOutput$tree$tip.label, species_names_checks)
+
+
+
+
+
+# Step 2: Define Indices
+br.ind <- 4:(4 + CladsOutput$tree$Nnode - 1)  # Branch indices
+tip.ind <- (max(br.ind) + 1):(max(br.ind) + Ntip(CladsOutput$tree))  # Tip indices
+
+# Step 3: Extract Posterior Distributions for Tips
+post.dist.tips <- lapply(tip.ind, function(idx) {
+  sapply(CladsOutput$chains, `[[`, idx)  # Extract the posterior for each tip
+})
+
+# Step 4: Discard Burn-in
+post.dist.tips <- lapply(post.dist.tips, function(chain) {
+  chain[251:1000, ]  # Discard the first 250 iterations as burn-in
+})
+
+# Step 5: Match Tip Names to Rates
+tip_names <- CladsOutput$tree$tip.label
+posterior_samples <- do.call(cbind, post.dist.tips)
+colnames(posterior_samples) <- tip_names
+
+# Step 6: Sample Rates for Each Tip and Create a DataFrame
+set.seed(123)  # For reproducibility
+sampled.rates <- as.data.frame(t(apply(posterior_samples, 2, function(rate) {
+  sample(rate, 50, replace = TRUE)  # Sample 50 rates for each tip
+})))
+colnames(sampled.rates) <- paste0("species_speciation_rate_", 1:50)
+sampled.rates$Species <- rownames(sampled.rates)
+
+# Step 7: Reshape Data for Plotting
+library(tidyr)
+sampled.rates_long <- pivot_longer(
+  sampled.rates,
+  cols = starts_with("species_speciation_rate_"),
+  names_to = "Sample",
+  values_to = "Rate"
+)
+
+# Step 8: Plot Posterior Distributions
+library(ggplot2)
+ggplot(sampled.rates_long, aes(x = Rate)) +
+  geom_density(fill = "blue", alpha = 0.4) +
+  facet_wrap(~ Species, scales = "free_y", ncol = 4) +  # Facet by species
+  labs(
+    title = "Posterior Distributions of Tip-Specific Speciation Rates",
+    x = "Speciation Rate",
+    y = "Density"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    strip.text = element_text(size = 10),  # Adjust species label size
+    panel.spacing = unit(0.5, "lines")     # Spacing between panels
+  )
+
+```
+
+```{r}
+# Identify unmatched names
+unmatched <- setdiff(CladsOutput$tree$tip.label, species_names_checks$annotated_name)
+unmatched <- unmatched[unmatched != ""]  # Remove any already empty names
+print("Unmatched names:")
+print(unmatched)
+
+```
+

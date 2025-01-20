@@ -8,7 +8,7 @@ title: "Analysis Centrality ~ speciation"
 library("here")
 library("BAMMtools")
 library("RPANDA")
-#library("ggtree")
+library("ggtree")
 library("MetBrewer")
 library("patchwork")
 library("doParallel")
@@ -22,6 +22,8 @@ library(tidyverse)
 here::i_am("centrality_speciation.Rmd")
 ```
 
+
+## Load data
 
 ```{r}
 ## Importing tree
@@ -47,6 +49,12 @@ bamm.data <- getEventData(tree, here::here("bamm/event_data.txt"), burnin = 0.1)
 
 
 
+# Plot BAMM
+
+
+## Rate through time BAMM
+
+
 distribution of trait states in the tips and speciation rates. The colors of the symbols at the tips describe the trait state, while both the icon size and the plot to the right show the distribution of speciation rates estimated using CLaDS:
 
 ```{r}
@@ -60,6 +68,61 @@ tip.rates.bamm <- getTipRates(bamm.data, returnNetDiv = FALSE)
 
 
 
+## Posteriors BAMM
+
+```{r}
+# Extract the lambda matrix from BAMM output
+lambda_rates <- tip.rates.bamm$lambda  # Matrix of speciation rates
+
+# Identify tip species based on rownames (assuming tip species are present as rownames)
+tip_species <- rownames(lambda_rates)
+
+# Filter the posterior rates for the tips
+# The assumption is that all rows in the lambda matrix represent species, including tips.
+tip_rates <- lambda_rates[tip_species, ]
+
+# Prepare the data for plotting
+tip_rates_df <- as.data.frame(t(tip_rates))  # Transpose for long format
+tip_species_names <- rownames(tip_rates)  # Species names for plotting
+
+# Convert to long format for ggplot
+tip_rates_long <- data.frame(
+  Species = rep(tip_species_names, each = nrow(tip_rates_df)),
+  Rate = as.vector(as.matrix(tip_rates_df)),
+  Simulation = rep(1:nrow(tip_rates_df), times = length(tip_species_names))
+)
+
+# Generate individual density plots for each tip species
+plots <- lapply(unique(tip_rates_long$Species), function(species) {
+  ggplot(subset(tip_rates_long, Species == species), aes(x = Rate)) +
+    geom_density(fill = "gold4", alpha = 0.5) +
+    labs(
+      title = species,
+      x = "Speciation rate",
+      y = "Density"
+    ) +
+    theme_minimal()
+})
+
+
+# Number of plots per page
+plots_per_page <- 20
+
+# Split the plots into pages
+plot_pages <- split(plots, ceiling(seq_along(plots) / plots_per_page))
+
+# Save or display each page
+for (i in seq_along(plot_pages)) {
+  gridExtra::grid.arrange(grobs = plot_pages[[i]], ncol = 4)
+}
+
+```
+
+
+
+# Plot ClaDS
+
+
 distribution of trait states in the tips and speciation rates. The colors of the symbols at the tips describe the trait state, while both the icon size and the plot to the right show the distribution of speciation rates estimated using CLaDS:
 
 ```{r}
@@ -68,6 +131,7 @@ hist(CladsOutput$lambdatip_map)
 ```
 
 distribution of trait states in the tips and speciation rates. The colors of the symbols at the tips describe the trait state, while both the icon size and the plot to the right show the distribution of speciation rates estimated using CLaDS:
+
 
 ```{r}
 mean.tip.rates <- data.frame(
@@ -81,7 +145,7 @@ mean.tip.rates <- data.frame(
 
 
 
-# MCMCglmm
+## ClaDS rates
 
 
 ```{r}
@@ -96,38 +160,19 @@ tip.ind <- (max(br.ind)+1):(max(br.ind)+Ntip(CladsOutput$tree))
 dtt.ind <- (max(tip.ind)+2):length(CladsOutput$chains[[1]])
 
 
-# ## Checking parameter values
-# samp.ind <- sample(1:length(tip.ind), 1)
-# d_1 <- density(sapply(CladsOutput$chains,"[[", tip.ind[samp.ind])[251:1000,])
-# hist(sapply(CladsOutput$chains,"[[", tip.ind[samp.ind])[251:1000,], freq = FALSE, ylim = c(0, 1), breaks = 50)
-# lines(d_1)
-# abline(v = d_1$x[which.max(d_1$y)], col = 2, lwd = 3)
-# abline(v = CladsOutput$lambdatip_map[samp.ind], col = 3, lwd = 3)
-# legend("topright", legend = c("MAP", "lambda_tip"), lwd = 3, col = c(2, 3), cex = 2)
+## Checking parameter values
+samp.ind <- sample(1:length(tip.ind), 1)
+d_1 <- density(sapply(CladsOutput$chains,"[[", tip.ind[samp.ind])[251:1000,])
+hist(sapply(CladsOutput$chains,"[[", tip.ind[samp.ind])[251:1000,], freq = FALSE, ylim = c(0, 1), breaks = 50)
+lines(d_1)
+abline(v = d_1$x[which.max(d_1$y)], col = 2, lwd = 3)
+abline(v = CladsOutput$lambdatip_map[samp.ind], col = 3, lwd = 3)
+legend("topright", legend = c("MAP", "lambda_tip"), lwd = 3, col = c(2, 3), cex = 2)
 ```
 
 
 
-## compute dataset
-
-```{r}
-CladsOutput$tree$tip.label <- gsub("-", ".", 
-                                   gsub("_", " ", CladsOutput$tree$tip.label))
-```
-
-PCA centrality, lineage size, and island area:
-
-```{r}
-centralities_df_regional <- readRDS(here::here("../output/tables/naesiotus_centralities_regional_df.rds"))
-centralities_df_local <- readRDS(here::here("../output/tables/naesiotus_centralities_local_df.rds"))
-metaweb <- readRDS(here::here("../output/temporal_output/bipartite_matrix.rds"))
-sp_island_id <- readRDS(here::here("../output/temporal_output/sp_island_id.rds"))
-species_names_checks.csv <- read.csv("../data/species_names_checks.csv")
-
-```
-
-
-Speciation rate and island ages are sampled from estimated distributions:
+Speciation rate sampled from estimated distributions:
 
 ```{r}
 
@@ -145,6 +190,63 @@ names(sampled.rates) <- paste0("species_speciation_rate_", 1:50)
 
 
 
+
+```
+
+```{r}
+# Assuming CladsOutput$tree$tip.label has species names in the same order as sampled_rates rows
+#!!!!!
+species_order <- CladsOutput$tree$tip.label
+# Add species names to sampled_rates
+sampled.rates$species_name <- species_order
+```
+
+
+```{r}
+# Reshaping the data for ggplot
+sampled.rates$Species <- rownames(sampled.rates)  # Adding species names as a column
+sampled.rates_long <- tidyr::pivot_longer(
+  sampled.rates,
+  cols = starts_with("species_speciation_rate_"),
+  names_to = "Sample",
+  values_to = "Rate"
+)
+
+ggplot(sampled.rates_long, aes(x = Rate)) +
+  geom_density(fill = "blue", alpha = 0.4) +
+  facet_wrap(~ species_name, scales = "free_y", ncol = 4) +  # Facet by species
+  labs(
+    title = "Posterior Distributions of Tip-Specific Speciation Rates",
+    x = "Speciation Rate",
+    y = "Density"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    strip.text = element_text(size = 10),  # Adjust species label size
+    panel.spacing = unit(0.5, "lines")     # Spacing between panels
+  )
+
+```
+
+## compute dataset
+
+```{r}
+# CladsOutput$tree$tip.label <- gsub("-", ".", 
+#                                    gsub("_", " ", CladsOutput$tree$tip.label))
+```
+
+PCA centrality, lineage size, and island area:
+
+```{r}
+centralities_df_regional <- readRDS(here::here("../output/tables/naesiotus_centralities_regional_df.rds"))
+centralities_df_local <- readRDS(here::here("../output/tables/naesiotus_centralities_local_df.rds"))
+metaweb <- readRDS(here::here("../output/temporal_output/bipartite_matrix.rds"))
+sp_island_id <- readRDS(here::here("../output/temporal_output/sp_island_id.rds"))
+species_names_checks.csv <- read.csv("../data/species_names_checks.csv")
+```
+
+
+```{r}
 ############### island ages
 
 # Sample ages for each species on each island
@@ -184,8 +286,6 @@ sampled.ages <- sampled.ages |>
 sampled.ages
 
 ```
-
-
 
 
 Regional
@@ -241,7 +341,7 @@ sp_island_guild_size_local <- filtered_sp_island_id_local |>
 # Add PCA_centrality to sp_island_guild_size_regional
 sp_island_guild_size_local <- sp_island_guild_size_local |>
   dplyr::left_join(
-    centralities_df_local,
+    centralities_df_local%>% select(-island),
     by = "species_name"
   )
 
@@ -251,22 +351,18 @@ sp_island_guild_size_local <- sp_island_guild_size_local |>
 
 
 Add species names to dataset sampled_rates
+!!!!
 
 ```{r}
-# Assuming CladsOutput$tree$tip.label has species names in the same order as sampled_rates rows
-species_order <- CladsOutput$tree$tip.label
-# Add species names to sampled_rates
-sampled.rates$species_name <- species_order
-
 # REGIONAL
 
-# Filter sampled_rates to keep only species present in sp_island_guild_size_regional
-filtered_sampled_rates <- sampled.rates |>
-  dplyr::filter(species_name %in% sp_island_guild_size_regional$species_name)
-
-# Local
-filtered_sampled_rates_local <- sampled.rates |>
-  dplyr::filter(species_name %in% sp_island_guild_size_local$species_name)
+# # Filter sampled_rates to keep only species present in sp_island_guild_size_regional
+# filtered_sampled_rates <- sampled.rates |>
+#   dplyr::filter(species_name %in% sp_island_guild_size_regional$species_name)
+# 
+# # Local
+# filtered_sampled_rates_local <- sampled.rates |>
+#   dplyr::filter(species_name %in% sp_island_guild_size_local$species_name)
 
 ```
 
@@ -279,7 +375,7 @@ filtered_sampled_rates_local <- sampled.rates |>
 # Add sampled rates to sp_island_guild_size_regional
 sp_island_guild_size_regional <- sp_island_guild_size_regional |>
   dplyr::left_join(
-    filtered_sampled_rates,
+    sampled.rates,
     by = "species_name"
   )
 
@@ -291,7 +387,7 @@ sp_island_guild_size_regional
 # Add sampled rates to sp_island_guild_size_regional
 sp_island_guild_size_local <- sp_island_guild_size_local |>
   dplyr::left_join(
-    filtered_sampled_rates_local,
+    sampled.rates,
     by = "species_name"
   )
 
@@ -335,9 +431,10 @@ sp_island_guild_size_regional <- sp_island_guild_size_regional %>%
   mutate(island = ifelse(island == "Gardner", "Espanola", island))
 
 sp_island_guild_size_local <- sp_island_guild_size_local %>%
-  rename(island = island.x) |> 
   mutate(island = ifelse(island == "Gardner", "Espanola", island))
 ```
+
+
 
 
 
@@ -355,30 +452,30 @@ Remove species not in the tree
 ```{r}
 # regional
 
-sp_island_guild_size_regional_filtered <- sp_island_guild_size_regional |>
-    dplyr::filter(species_name %in% CladsOutput$tree$tip.label)
-
- Ainv <- inverseA(CladsOutput$tree)$Ainv
-
-sp_island_guild_size_regional_filtered <- sp_island_guild_size_regional_filtered |>
-    dplyr::filter(species_name %in% rownames(Ainv))
-
-
-# local 
-
-sp_island_guild_size_local_filtered <- sp_island_guild_size_local |>
-    dplyr::filter(species_name %in% CladsOutput$tree$tip.label)
-
-sp_island_guild_size_local_filtered <- sp_island_guild_size_local_filtered |>
-    dplyr::filter(species_name %in% rownames(Ainv))
-
-all(sp_island_guild_size_regional_filtered$species_name %in% rownames(Ainv))
+# sp_island_guild_size_regional_filtered <- sp_island_guild_size_regional |>
+#     dplyr::filter(species_name %in% CladsOutput$tree$tip.label)
+# 
+#  Ainv <- inverseA(CladsOutput$tree)$Ainv
+# 
+# sp_island_guild_size_regional_filtered <- sp_island_guild_size_regional_filtered |>
+#     dplyr::filter(species_name %in% rownames(Ainv))
+# 
+# 
+# # local 
+# 
+# sp_island_guild_size_local_filtered <- sp_island_guild_size_local |>
+#     dplyr::filter(species_name %in% CladsOutput$tree$tip.label)
+# 
+# sp_island_guild_size_local_filtered <- sp_island_guild_size_local_filtered |>
+#     dplyr::filter(species_name %in% rownames(Ainv))
+# 
+# all(sp_island_guild_size_regional_filtered$species_name %in% rownames(Ainv))
 ```
 
 Match levels in ginverse
 
 ```{r}
- Ainv <- inverseA(CladsOutput$tree)$Ainv
+# Ainv <- inverseA(CladsOutput$tree)$Ainv
 
 ```
 
@@ -390,59 +487,59 @@ Regional
 
 ```{r}
 
-colnames(Ainv)  # Should return NULL
-colnames(Ainv) <- rownames(Ainv)
-common_species <- intersect(sp_island_guild_size_regional_filtered$species_name, rownames(Ainv))
-Ainv_filtered <- Ainv[common_species, common_species]
-
-dim(Ainv_filtered)  # Should match the number of species in common_species
-length(common_species)  # Should be equal to the number of species in filtered Ainv
-
-ginverse <- list(species_name = Ainv_filtered)
-
-setdiff(sp_island_guild_size_regional_filtered$species_name, common_species)
-all(sp_island_guild_size_regional_filtered$species_name %in% rownames(Ainv_filtered))
+# colnames(Ainv)  # Should return NULL
+# colnames(Ainv) <- rownames(Ainv)
+# common_species <- intersect(sp_island_guild_size_regional_filtered$species_name, rownames(Ainv))
+# Ainv_filtered <- Ainv[common_species, common_species]
+# 
+# dim(Ainv_filtered)  # Should match the number of species in common_species
+# length(common_species)  # Should be equal to the number of species in filtered Ainv
+# 
+# ginverse <- list(species_name = Ainv_filtered)
+# 
+# setdiff(sp_island_guild_size_regional_filtered$species_name, common_species)
+# all(sp_island_guild_size_regional_filtered$species_name %in% rownames(Ainv_filtered))
 ```
 
 
 Local
 
 ```{r}
-common_species <- intersect(sp_island_guild_size_local_filtered$species_name, rownames(Ainv))
-colnames(Ainv) <- rownames(Ainv)
-Ainv_filtered <- Ainv[common_species, common_species]
-
-dim(Ainv_filtered)  # Should match the number of species in common_species
-length(common_species)  # Should be equal to the number of species in filtered Ainv
-
-ginverse <- list(species_name = Ainv_filtered)
-
-setdiff(sp_island_guild_size_local_filtered$species_name, common_species)
-all(sp_island_guild_size_local_filtered$species_name %in% rownames(Ainv_filtered))
+# common_species <- intersect(sp_island_guild_size_local_filtered$species_name, rownames(Ainv))
+# colnames(Ainv) <- rownames(Ainv)
+# Ainv_filtered <- Ainv[common_species, common_species]
+# 
+# dim(Ainv_filtered)  # Should match the number of species in common_species
+# length(common_species)  # Should be equal to the number of species in filtered Ainv
+# 
+# ginverse <- list(species_name = Ainv_filtered)
+# 
+# setdiff(sp_island_guild_size_local_filtered$species_name, common_species)
+# all(sp_island_guild_size_local_filtered$species_name %in% rownames(Ainv_filtered))
 ```
 
 Regional
 
 ```{r}
-sp_island_guild_size_regional_filtered$species_name <- factor(
-    sp_island_guild_size_regional_filtered$species_name,
-    levels = rownames(ginverse$species_name)
-)
-
-setdiff(levels(sp_island_guild_size_regional_filtered$species_name), rownames(ginverse$species_name))
-setdiff(rownames(ginverse$species_name), levels(sp_island_guild_size_regional_filtered$species_name))
-
-anyDuplicated(levels(sp_island_guild_size_regional_filtered$species_name))
-anyDuplicated(rownames(ginverse$species_name))
-
-all(sp_island_guild_size_regional_filtered$species_name %in% rownames(ginverse$species_name))
-
-required_columns <- c(
-    "PCA_centrality", paste0("species_speciation_rate_", 1), 
-    paste0("island_age_", 1), "guild_size", "island_area", "species_name"
-)
-missing_columns <- setdiff(required_columns, colnames(sp_island_guild_size_regional_filtered))
-missing_columns
+# sp_island_guild_size_regional_filtered$species_name <- factor(
+#     sp_island_guild_size_regional_filtered$species_name,
+#     levels = rownames(ginverse$species_name)
+# )
+# 
+# setdiff(levels(sp_island_guild_size_regional_filtered$species_name), rownames(ginverse$species_name))
+# setdiff(rownames(ginverse$species_name), levels(sp_island_guild_size_regional_filtered$species_name))
+# 
+# anyDuplicated(levels(sp_island_guild_size_regional_filtered$species_name))
+# anyDuplicated(rownames(ginverse$species_name))
+# 
+# all(sp_island_guild_size_regional_filtered$species_name %in% rownames(ginverse$species_name))
+# 
+# required_columns <- c(
+#     "PCA_centrality", paste0("species_speciation_rate_", 1), 
+#     paste0("island_age_", 1), "guild_size", "island_area", "species_name"
+# )
+# missing_columns <- setdiff(required_columns, colnames(sp_island_guild_size_regional_filtered))
+# missing_columns
 
 ```
 
@@ -450,33 +547,33 @@ missing_columns
 Local
 
 ```{r}
-sp_island_guild_size_local_filtered$species_name <- factor(
-    sp_island_guild_size_local_filtered$species_name,
-    levels = rownames(ginverse$species_name)
-)
-
-setdiff(levels(sp_island_guild_size_local_filtered$species_name), rownames(ginverse$species_name))
-setdiff(rownames(ginverse$species_name), levels(sp_island_guild_size_local_filtered$species_name))
-
-anyDuplicated(levels(sp_island_guild_size_local_filtered$species_name))
-anyDuplicated(rownames(ginverse$species_name))
-
-all(sp_island_guild_size_local_filtered$species_name %in% rownames(ginverse$species_name))
-
-required_columns <- c(
-    "PCA_centrality", paste0("species_speciation_rate_", 1), 
-    paste0("island_age_", 1), "guild_size", "island_area", "species_name"
-)
-missing_columns <- setdiff(required_columns, colnames(sp_island_guild_size_local_filtered))
-missing_columns
+# sp_island_guild_size_local_filtered$species_name <- factor(
+#     sp_island_guild_size_local_filtered$species_name,
+#     levels = rownames(ginverse$species_name)
+# )
+# 
+# setdiff(levels(sp_island_guild_size_local_filtered$species_name), rownames(ginverse$species_name))
+# setdiff(rownames(ginverse$species_name), levels(sp_island_guild_size_local_filtered$species_name))
+# 
+# anyDuplicated(levels(sp_island_guild_size_local_filtered$species_name))
+# anyDuplicated(rownames(ginverse$species_name))
+# 
+# all(sp_island_guild_size_local_filtered$species_name %in% rownames(ginverse$species_name))
+# 
+# required_columns <- c(
+#     "PCA_centrality", paste0("species_speciation_rate_", 1), 
+#     paste0("island_age_", 1), "guild_size", "island_area", "species_name"
+# )
+# missing_columns <- setdiff(required_columns, colnames(sp_island_guild_size_local_filtered))
+# missing_columns
 ```
 
 
 
 
 ```{r}
-sp_island_guild_size_regional_filtered <- as.data.frame(sp_island_guild_size_regional_filtered)
-sp_island_guild_size_local_filtered <- as.data.frame(sp_island_guild_size_local_filtered)
+sp_island_guild_size_regional <- as.data.frame(sp_island_guild_size_regional)
+sp_island_guild_size_local<- as.data.frame(sp_island_guild_size_local)
 ```
 
 
@@ -486,14 +583,14 @@ Standarize variables
 Z score guild_size and island_area
 
 ```{r}
-sp_island_guild_size_regional_filtered <- sp_island_guild_size_regional_filtered %>%
+sp_island_guild_size_regional <- sp_island_guild_size_regional %>%
     mutate(
         guild_size_z = scale(guild_size) %>% as.numeric(),
         island_area_z = scale(island_area) %>% as.numeric()
     )
 
 
-sp_island_guild_size_local_filtered <- sp_island_guild_size_local_filtered %>%
+sp_island_guild_size_local <- sp_island_guild_size_local %>%
     mutate(
         guild_size_z = scale(guild_size) %>% as.numeric(),
         island_area_z = scale(island_area) %>% as.numeric()
@@ -505,18 +602,18 @@ z score island ages and speciation rates (sets) REGIONAL
 
 ```{r}
 # Identify the columns to z-score
-age_columns <- grep("^island_age_", colnames(sp_island_guild_size_regional_filtered), value = TRUE)
-speciation_rate_columns <- grep("^species_speciation_rate_", colnames(sp_island_guild_size_regional_filtered), value = TRUE)
+age_columns <- grep("^island_age_", colnames(sp_island_guild_size_regional), value = TRUE)
+speciation_rate_columns <- grep("^species_speciation_rate_", colnames(sp_island_guild_size_regional), value = TRUE)
 
 # Z-score the columns and create new ones with a "_z" suffix
-sp_island_guild_size_regional_filtered <- sp_island_guild_size_regional_filtered %>%
+sp_island_guild_size_regional <- sp_island_guild_size_regional %>%
   mutate(across(
     all_of(c(age_columns, speciation_rate_columns)),
     ~ scale(.) %>% as.numeric(),
     .names = "{.col}_z"
   ))
 
-sp_island_guild_size_regional_filtered
+sp_island_guild_size_regional
 ```
 
 
@@ -524,11 +621,11 @@ Z score speciation rates and centrality by island - LOCAL
 
 ```{r}
 # Identify the columns to z-score
-age_columns <- grep("^island_age_", colnames(sp_island_guild_size_local_filtered), value = TRUE)
-speciation_rate_columns <- grep("^species_speciation_rate_", colnames(sp_island_guild_size_local_filtered), value = TRUE)
+age_columns <- grep("^island_age_", colnames(sp_island_guild_size_local), value = TRUE)
+speciation_rate_columns <- grep("^species_speciation_rate_", colnames(sp_island_guild_size_local), value = TRUE)
 
 # Z-score speciation rates by island
-sp_island_guild_size_local_filtered <- sp_island_guild_size_local_filtered %>%
+sp_island_guild_size_local <- sp_island_guild_size_local %>%
   group_by(island) %>%
   mutate(across(
     all_of(speciation_rate_columns),
@@ -538,7 +635,7 @@ sp_island_guild_size_local_filtered <- sp_island_guild_size_local_filtered %>%
   ungroup()  # Ungroup after z-scoring speciation rates
 
 # Z-score island ages across the entire dataset
-sp_island_guild_size_local_filtered <- sp_island_guild_size_local_filtered %>%
+sp_island_guild_size_local <- sp_island_guild_size_local %>%
   mutate(across(
     all_of(age_columns),
     ~ scale(.) %>% as.numeric(),
@@ -546,17 +643,221 @@ sp_island_guild_size_local_filtered <- sp_island_guild_size_local_filtered %>%
   ))
 
 
-sp_island_guild_size_local_filtered
+sp_island_guild_size_local
 ```
+
+
+### Add mean speciation rates and scale it
+
+
+```{r}
+
+mean.tip.rates <- mean.tip.rates |>
+  dplyr::left_join(
+    species_names_checks.csv |>
+      dplyr::select(annotated_name, species_name) |>
+      dplyr::rename(species = annotated_name),  # Rename for joining
+    by = "species"
+  )
+
+# regional
+
+sp_island_guild_size_regional_meanrates <- sp_island_guild_size_regional %>%
+  left_join(mean.tip.rates %>% select(species_name, lambda.clads), by = "species_name") %>%
+  relocate(lambda.clads, .after = species_name) 
+
+sp_island_guild_size_regional_meanrates <- sp_island_guild_size_regional_meanrates %>%
+    mutate(
+        lambda.clads_z = scale(lambda.clads) %>% as.numeric()
+    )
+
+
+
+# local
+
+sp_island_guild_size_local_meanrates <- sp_island_guild_size_local %>%
+  left_join(mean.tip.rates %>% select(species_name, lambda.clads), by = "species_name") %>%
+  relocate(lambda.clads, .after = species_name) 
+
+
+sp_island_guild_size_local_meanrates <- sp_island_guild_size_local_meanrates %>%
+    mutate(
+        lambda.clads_z = scale(lambda.clads) %>% as.numeric()
+    )
+
+
+```
+
+
+
+
+### Add lineage ages
+
+
+```{r}
+## Replacing "." in species names for CLaDS not to complain
+tree$tip.label <- gsub("-", ".", 
+                                   gsub("_", " ", CladsOutput$tree$tip.label))
+# Get the root age (maximum cumulative branch length to tips)
+root_age <- max(node.depth.edgelength(tree))
+
+# Calculate ages for each tip relative to the root
+lineage_ages <- sapply(tree$tip.label, function(tip) {
+  # Get the node number of the tip
+  tip_node <- which(tree$tip.label == tip)
+  
+  # Calculate the cumulative branch length from root to the tip
+  tip_age <- root_age - node.depth.edgelength(tree)[tip_node]
+  return(tip_age)
+})
+
+# Combine tip labels with their ages
+lineage_ages_df <- data.frame(
+  lineage = tree$tip.label,
+  age = lineage_ages*1e10
+)
+
+# View the lineage ages
+lineage_ages_df
+```
+
+Homogenize names ages
+
+```{r}
+
+
+lineage_ages_df$species_name <- lineage_ages_df$lineage  # Temporary assignment
+
+####################################
+
+# Step 3: Add lineage ages to the regional dataset
+sp_island_guild_size_regional_meanrates <- sp_island_guild_size_regional_meanrates %>%
+  left_join(
+    lineage_ages_df %>% select(species_name, age),
+    by = "species_name"
+  ) |> 
+      mutate(
+        age_z = scale(age) %>% as.numeric(),
+    )
+
+# Step 4: Add lineage ages to the local dataset
+sp_island_guild_size_local_meanrates <- sp_island_guild_size_local_meanrates %>%
+  left_join(
+    lineage_ages_df %>% select(species_name, age),
+    by = "species_name"
+  ) |> 
+      mutate(
+        age_z = scale(age) %>% as.numeric(),
+    )
+
+# Step 5: Verify if all species now have ages
+missing_ages_regional <- sp_island_guild_size_regional_meanrates %>% filter(is.na(age))
+missing_ages_local <- sp_island_guild_size_local_meanrates %>% filter(is.na(age))
+
+if (nrow(missing_ages_regional) > 0) {
+  print("These species in the regional dataset still have missing ages:")
+  print(missing_ages_regional$species_name)
+}
+
+if (nrow(missing_ages_local) > 0) {
+  print("These species in the local dataset still have missing ages:")
+  print(missing_ages_local$species_name)
+}
+
+
+```
+
+The species above are also those for which I have interaction data but not phylogenetic - most of them are extinct, or in some cases had conflictive positions in the phylogeny (sp_nov_CA and pinzonopsis).
+
+
+We will use minimum emergence for island age. It needs to be scaled:
+
+```{r}
+
+sp_island_guild_size_regional_meanrates <- sp_island_guild_size_regional_meanrates %>%
+      mutate(
+        min_emergence_z = scale(min_emergence) %>% as.numeric(),
+    )
+
+sp_island_guild_size_local_meanrates <- sp_island_guild_size_local_meanrates %>%
+      mutate(
+        min_emergence_z = scale(min_emergence) %>% as.numeric(),
+    )
+```
+
+
+## create phylogenetic distance matrix
+
+```{r}
+Ainv <- inverseA(CladsOutput$tree)$Ainv
+
+# Get current rownames of Ainv
+current_ainv_names <- rownames(Ainv)
+
+# Replace names only if they exist in the annotated_name column, otherwise keep original
+corrected_names <- current_ainv_names
+
+# Check which names need to be replaced
+matched_indices <- match(current_ainv_names, species_names_checks.csv$annotated_name)
+
+# Update only the matched names
+corrected_names[!is.na(matched_indices)] <- species_names_checks.csv$species_name[matched_indices[!is.na(matched_indices)]]
+
+# Apply corrected names to the Ainv matrix
+rownames(Ainv) <- corrected_names
+
+# Print the updated rownames for verification
+print(rownames(Ainv))
+
+colnames(Ainv) <- rownames(Ainv)
+
+## filter the matrices for the species present in the datasets
+
+# Filter Ainv for regional species
+regional_species <- sp_island_guild_size_regional_meanrates$species_name
+Ainv_regional <- Ainv[rownames(Ainv) %in% regional_species, colnames(Ainv) %in% regional_species]
+
+# Filter Ainv for local species
+local_species <- sp_island_guild_size_local_meanrates$species_name
+Ainv_local <- Ainv[rownames(Ainv) %in% local_species, colnames(Ainv) %in% local_species]
+
+```
+
 
 ------------------------------------------------------------------------------
 
 
-# Models
+Model 1: Does speciation rates influence centrality?
 
-## Full model with PCA centrality
+1.1
+PCA ~ sampled spec. rate
+1.2
+PCA ~ mean spec. rate
 
-### REGIONAL
+Model 2: Does speciation rates influence specialization?
+
+d ~ mean spec. rate
+
+Model 3: Does lineage age influence centrality?
+
+PCA ~ lineage age
+
+Model 4: Does lineage age influence specialization?
+
+d ~ lineage age
+
+
+
+
+* Min emergence for island age (it is usually used the min. emergence, not an estimate between min and max)
+------------------------------------------------------------------------------
+
+
+# Models regional
+
+## MODEL 1.1 - sampled speciation rates on centrality
+
+Version accounting for variability in speciation rates:
 
 ```{r}
 
@@ -568,21 +869,34 @@ my_priors <- list(
 # Initialize an empty list to store model fits
 full_model.fit <- vector(mode = "list", length = 50)
 
-# Loop through the 50 sets of speciation rates and island ages
+
 for (i in 1:50) {
   # Construct the formula
   formula_string <- paste0(
     "PCA_centrality ~ species_speciation_rate_", i, "_z + ", 
-    "island_age_", i, "_z + island_area_z + guild_size_z"
+    "min_emergence_z + island_area_z + guild_size_z"
   )
   
+  # Define the relevant columns to check for missing values
+  predictors <- c(
+    paste0("species_speciation_rate_", i, "_z"),
+    "min_emergence_z",
+    "island_area_z",
+    "guild_size_z",
+    "lambda.clads_z"
+  )
+  
+  # Filter out rows with NA values in the relevant columns
+  data_filtered <- sp_island_guild_size_regional_meanrates |>
+    dplyr::filter(across(all_of(predictors), ~ !is.na(.)))
+
   # Fit the model
   full_model.fit[[i]] <- MCMCglmm(
     as.formula(formula_string),  # Use as.formula() directly
     random = ~ species_name,  # Random effect for species_name
     family = "gaussian",  # Assuming a Gaussian response for PCA centrality
-    ginverse = ginverse,  # Use species_name in ginverse
-    data = as.data.frame(sp_island_guild_size_regional_filtered),  # Dataframe
+    ginverse = list(species_name = Ainv_regional),  # Use species_name in ginverse
+    data = as.data.frame(data_filtered),  # Dataframe
     prior = my_priors,  # Priors
     nitt = 1000000,  # Number of iterations
     burnin = 500000,  # Burn-in
@@ -592,8 +906,210 @@ for (i in 1:50) {
 
 
 
+saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/model1_sampled_spec_centrality_regional.rds"))
 
-saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/full_model.pca_regional.rds"))
+```
+
+
+## MODEL 1.2 - mean speciation rates on centrality
+
+```{r}
+
+my_priors <- list(
+  R = list(V = 1/2, nu = 0.002),
+  G = list(G1 = list(V = 1/2, nu = 0.002))
+)
+
+  # Construct the formula
+  formula_string <- paste0(
+    "PCA_centrality ~ lambda.clads_z + min_emergence_z + island_area_z + guild_size_z"
+  )
+  
+  # Define the relevant columns to check for missing values
+  predictors <- c(
+    paste0("lambda.clads_z"),
+    "min_emergence_z",
+    "island_area_z",
+    "guild_size_z"
+  )
+  
+  # Filter out rows with NA values in the relevant columns
+  data_filtered <- sp_island_guild_size_regional_meanrates |>
+    dplyr::filter(across(all_of(predictors), ~ !is.na(.)))
+
+  # Fit the model
+  full_model.fit <- MCMCglmm(
+    as.formula(formula_string),  # Use as.formula() directly
+    random = ~ species_name,  # Random effect for species_name
+    family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+    ginverse = list(species_name = Ainv_regional),  # Use species_name in ginverse
+    data = as.data.frame(data_filtered),  # Dataframe
+    prior = my_priors,  # Priors
+    nitt = 1000000,  # Number of iterations
+    burnin = 500000,  # Burn-in
+    thin = 100  # Thinning
+  )
+
+
+
+
+saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/model1.2_mean_spec_centrality_regional.rds"))
+
+```
+
+
+
+
+## MODEL 3 - lineage age on centrality
+
+```{r}
+
+my_priors <- list(
+  R = list(V = 1/2, nu = 0.002),
+  G = list(G1 = list(V = 1/2, nu = 0.002))
+)
+
+  # Construct the formula
+  formula_string <- paste0(
+    "PCA_centrality ~ age_z + min_emergence_z + island_area_z + guild_size_z"
+  )
+  
+  # Define the relevant columns to check for missing values
+  predictors <- c(
+    paste0("age_z"),
+    "min_emergence_z",
+    "island_area_z",
+    "guild_size_z"
+  )
+  
+  # Filter out rows with NA values in the relevant columns
+  data_filtered <- sp_island_guild_size_regional_meanrates |>
+    dplyr::filter(across(all_of(predictors), ~ !is.na(.)))
+
+  # Fit the model
+  full_model.fit <- MCMCglmm(
+    as.formula(formula_string),  # Use as.formula() directly
+    random = ~ species_name,  # Random effect for species_name
+    family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+    ginverse = list(species_name = Ainv_regional),  # Use species_name in ginverse
+    data = as.data.frame(data_filtered),  # Dataframe
+    prior = my_priors,  # Priors
+    nitt = 1000000,  # Number of iterations
+    burnin = 500000,  # Burn-in
+    thin = 100  # Thinning
+  )
+
+
+
+
+saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/model3_age_centrality_regional.rds"))
+
+```
+
+
+
+## MODEL 4 - lineage age on specialization
+
+```{r}
+
+my_priors <- list(
+  R = list(V = 1/2, nu = 0.002),
+  G = list(G1 = list(V = 1/2, nu = 0.002))
+)
+
+  # Construct the formula
+  formula_string <- paste0(
+    "d_z ~ age_z + min_emergence_z + island_area_z + guild_size_z"
+  )
+  
+  # Define the relevant columns to check for missing values
+  predictors <- c(
+    paste0("age_z"),
+    "min_emergence_z",
+    "island_area_z",
+    "guild_size_z"
+  )
+  
+  # Filter out rows with NA values in the relevant columns
+  data_filtered <- sp_island_guild_size_regional_meanrates |>
+    dplyr::filter(across(all_of(predictors), ~ !is.na(.)))
+
+  # Fit the model
+  full_model.fit <- MCMCglmm(
+    as.formula(formula_string),  # Use as.formula() directly
+    random = ~ species_name,  # Random effect for species_name
+    family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+    ginverse = list(species_name = Ainv_regional),  # Use species_name in ginverse
+    data = as.data.frame(data_filtered),  # Dataframe
+    prior = my_priors,  # Priors
+    nitt = 1000000,  # Number of iterations
+    burnin = 500000,  # Burn-in
+    thin = 100  # Thinning
+  )
+
+
+
+
+saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/model4_age_d_regional.rds"))
+
+```
+
+
+`
+
+
+
+
+# Models lOCAL
+
+```{r}
+
+my_priors <- list(
+  R = list(V = 1/2, nu = 0.002),
+  G = list(G1 = list(V = 1/2, nu = 0.002))
+)
+
+# Initialize an empty list to store model fits
+full_model.fit <- vector(mode = "list", length = 50)
+
+
+for (i in 1:50) {
+  # Construct the formula
+  formula_string <- paste0(
+    "PCA_centrality ~ species_speciation_rate_", i, "_z + ", 
+    "min_emergence_z + island_area_z + guild_size_z"
+  )
+  
+  # Define the relevant columns to check for missing values
+  predictors <- c(
+    paste0("species_speciation_rate_", i, "_z"),
+    "min_emergence_z",
+    "island_area_z",
+    "guild_size_z",
+    "lambda.clads_z"
+  )
+  
+  # Filter out rows with NA values in the relevant columns
+  data_filtered <- sp_island_guild_size_local_meanrates |>
+    dplyr::filter(across(all_of(predictors), ~ !is.na(.)))
+
+  # Fit the model
+  full_model.fit[[i]] <- MCMCglmm(
+    as.formula(formula_string),  # Use as.formula() directly
+    random = ~ species_name,  # Random effect for species_name
+    family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+    ginverse = list(species_name = Ainv_local),  # Use species_name in ginverse
+    data = as.data.frame(data_filtered),  # Dataframe
+    prior = my_priors,  # Priors
+    nitt = 1000000,  # Number of iterations
+    burnin = 500000,  # Burn-in
+    thin = 100  # Thinning
+  )
+}
+
+
+
+saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/model1_sampled_spec_centrality_local.rds"))
 
 ```
 
@@ -608,81 +1124,43 @@ my_priors <- list(
   G = list(G1 = list(V = 1/2, nu = 0.002))
 )
 
-# Initialize an empty list to store model fits
-full_model.fit <- vector(mode = "list", length = 50)
-
-# Loop through the 50 sets of speciation rates and island ages
-for (i in 1:50) {
   # Construct the formula
   formula_string <- paste0(
-    "PCA_centrality ~ species_speciation_rate_", i, "_z + ", 
-    "island_age_", i, "_z + island_area_z + guild_size_z"
+    "PCA_centrality ~ lambda.clads_z + min_emergence_z + island_area_z + guild_size_z"
   )
   
+  # Define the relevant columns to check for missing values
+  predictors <- c(
+    paste0("lambda.clads_z"),
+    "min_emergence_z",
+    "island_area_z",
+    "guild_size_z"
+  )
+  
+  # Filter out rows with NA values in the relevant columns
+  data_filtered <- sp_island_guild_size_local_meanrates |>
+    dplyr::filter(across(all_of(predictors), ~ !is.na(.)))
+
   # Fit the model
-  full_model.fit[[i]] <- MCMCglmm(
+  full_model.fit <- MCMCglmm(
     as.formula(formula_string),  # Use as.formula() directly
     random = ~ species_name,  # Random effect for species_name
     family = "gaussian",  # Assuming a Gaussian response for PCA centrality
-    ginverse = ginverse,  # Use species_name in ginverse
-    data = as.data.frame(sp_island_guild_size_local_filtered),  # Dataframe
+    ginverse = list(species_name = Ainv_local),  # Use species_name in ginverse
+    data = as.data.frame(data_filtered),  # Dataframe
     prior = my_priors,  # Priors
     nitt = 1000000,  # Number of iterations
     burnin = 500000,  # Burn-in
     thin = 100  # Thinning
   )
-}
 
 
 
 
-saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/full_model.pca_local.rds"))
-
-```
-
-
-
-## Full model with specialization
-
-
-```{r}
-
-my_priors <- list(
-  R = list(V = 1/2, nu = 0.002),
-  G = list(G1 = list(V = 1/2, nu = 0.002))
-)
-
-# Initialize an empty list to store model fits
-full_model.fit <- vector(mode = "list", length = 50)
-
-# Loop through the 50 sets of speciation rates and island ages
-for (i in 1:50) {
-  # Construct the formula
-  formula_string <- paste0(
-    "d_z ~ species_speciation_rate_", i, "_z + ", 
-    "island_age_", i, "_z + island_area_z + guild_size_z"
-  )
-  
-  # Fit the model
-  full_model.fit[[i]] <- MCMCglmm(
-    as.formula(formula_string),  # Use as.formula() directly
-    random = ~ species_name,  # Random effect for species_name
-    family = "gaussian",  # Assuming a Gaussian response for PCA centrality
-    ginverse = ginverse,  # Use species_name in ginverse
-    data = as.data.frame(sp_island_guild_size_local_filtered),  # Dataframe
-    prior = my_priors,  # Priors
-    nitt = 1000000,  # Number of iterations
-    burnin = 500000,  # Burn-in
-    thin = 100  # Thinning
-  )
-}
-
-
-
-
-saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/full_model.d_local.rds"))
+saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/model1.2_mean_spec_centrality_local.rds"))
 
 ```
+
 
 
 
@@ -694,7 +1172,24 @@ saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/ful
 # model.fit <- readRDS(here::here("../output/models/network_role_speciation/full_model.pca_local.rds"))
 # model.fit <- readRDS(here::here("../output/models/network_role_speciation/full_model.d_local.rds"))
 # model.fit <- readRDS(here::here("../output/models/network_role_speciation/model_ages_.pca_regional.rds"))
- model.fit <- readRDS(here::here("../output/models/network_role_speciation/model_ages_.pca_local.rds"))
+# model.fit <- readRDS(here::here("../output/models/network_role_speciation/model_ages_.pca_local.rds"))
+#model.fit <- readRDS(here::here("../output/models/network_role_speciation/full_model.pca_regional_meanclads.rds"))
+
+
+##########################
+
+# Model 1: sampled specieation rates on centrality
+
+#model.fit <- readRDS(here::here("../output/models/network_role_speciation/model1_sampled_spec_centrality_regional.rds"))
+#model.fit <- readRDS(here::here("../output/models/network_role_speciation/model1_sampled_spec_centrality_local.rds"))
+#model.fit <- readRDS(here::here("../output/models/network_role_speciation/model1.2_mean_spec_centrality_regional.rds"))
+#model.fit <- readRDS(here::here("../output/models/network_role_speciation/model1.2_mean_spec_centrality_local.rds"))
+#model.fit <- readRDS(here::here("../output/models/network_role_speciation/model2_mean_spec_d_regional.rds"))
+#model.fit <- readRDS(here::here("../output/models/network_role_speciation/model3_age_centrality_regional.rds"))
+model.fit <- readRDS(here::here("../output/models/network_role_speciation/model4_age_d_regional.rds"))
+
+
+
 
 ```
 
@@ -702,19 +1197,17 @@ saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/ful
 
 # Model results
 
+For sampled speciation
+
 ```{r}
 # Extract fixed effects (Sol) and variance components (VCV)
 fixed_effects <- lapply(model.fit, function(model) as.mcmc(model$Sol))
 variance_components <- lapply(model.fit, function(model) as.mcmc(model$VCV))
-```
 
-
-
-```{r}
 # Rename the columns to standard names
 fixed_effects_standardized <- lapply(seq_along(fixed_effects), function(i) {
   colnames(fixed_effects[[i]]) <- c("(Intercept)", "species_speciation_rate", 
-                                    "guild_size", "island_age", "island_area")
+                                    "island_age", "island_area","guild_size")
   fixed_effects[[i]]
 })
 
@@ -722,8 +1215,6 @@ fixed_effects_standardized <- lapply(seq_along(fixed_effects), function(i) {
 ## combine chains
 
 combined_fixed <- do.call(mcmc.list, fixed_effects_standardized)
-
-
 ```
 
 
@@ -787,207 +1278,107 @@ posterior_long <- do.call(rbind, lapply(seq_along(fixed_effects_standardized), f
     pivot_longer(cols = -Model, names_to = "Predictor", values_to = "Value")  # Exclude Model from pivoting
 }))
 
-# Plot the posterior distributions as density curves
+# Define new labels and desired order for predictors
+predictor_labels <- c(
+  "species_speciation_rate" = "Speciation rate",
+  "island_age" = "Island age",
+  "island_area" = "Island area",
+  "guild_size" = "N Island species",
+  "(Intercept)" = "(Intercept)"
+)
+
+# Set the factor levels to control order in the plot
+posterior_long$Predictor <- factor(posterior_long$Predictor, 
+                                   levels = c("(Intercept)",
+                                              "species_speciation_rate", 
+                                              "island_age", 
+                                              "island_area", 
+                                              "guild_size"
+                                              ))
+
+# Plot the posterior distributions with improved predictor labels and order
 ggplot(posterior_long, aes(x = Value, color = Model, group = Model)) +
   geom_density(size = 0.5, alpha = 0.8) +  # Add density curves
-  facet_wrap(~Predictor, scales = "fixed", ncol = 1) +  # Fixed scales for alignment
+  facet_wrap(~Predictor, scales = "fixed", ncol = 1, 
+             labeller = labeller(Predictor = predictor_labels)) +  # Apply new labels
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  # Vertical line at 0
   labs(
-    x = "Posterior Value",
-    y = "Density",
-    title = "Posterior Distributions Across Models"
+    x = "Standardized posterior coefficient",
+    y = "Density"
   ) +
   theme_minimal() +
   theme(
     legend.position = "none",  # Remove legend for clarity
-    panel.grid.major.y = element_blank()
+    panel.grid.major.y = element_blank(),
+    strip.text = element_text(size = 12),  # Increase facet label text size
+    axis.title.x = element_text(size = 14),  # Increase x-axis label size
+    axis.title.y = element_text(size = 14)   # Increase y-axis label size
   )
 
-#ggsave(here::here("../output/figures/posterior_pars/d_local.png"), height = 10, width = 5)
+
+
+#ggsave(here::here("../output/figures/posterior_pars/model2_pca_d_local.png"), height = 6, width = 4)
 ```
 
 ------------------------
 
 
-# Lineage ages
-
+For mean speciation
 
 ```{r}
-## Replacing "." in species names for CLaDS not to complain
-tree$tip.label <- gsub("-", ".", 
-                                   gsub("_", " ", CladsOutput$tree$tip.label))
-# Get the root age (maximum cumulative branch length to tips)
-root_age <- max(node.depth.edgelength(tree))
+fixed_effects <- as.mcmc(model.fit$Sol)
+variance_components <- as.mcmc(model.fit$VCV)
 
-# Calculate ages for each tip relative to the root
-lineage_ages <- sapply(tree$tip.label, function(tip) {
-  # Get the node number of the tip
-  tip_node <- which(tree$tip.label == tip)
-  
-  # Calculate the cumulative branch length from root to the tip
-  tip_age <- root_age - node.depth.edgelength(tree)[tip_node]
-  return(tip_age)
-})
+colnames(fixed_effects) <- c("(Intercept)", "species_speciation_rate", 
+                             "island_age", "island_area", "guild_size")
 
-# Combine tip labels with their ages
-lineage_ages_df <- data.frame(
-  lineage = tree$tip.label,
-  age = lineage_ages*1e10
+# Summarize fixed effects for the single model
+summary_fixed <- summary(fixed_effects)
+
+# Convert the fixed effects to a data frame for plotting
+posterior_long <- as.data.frame(as.matrix(fixed_effects)) %>%
+  pivot_longer(cols = everything(), names_to = "Predictor", values_to = "Value") %>%
+  mutate(Model = "Single Model")  # Add a column to distinguish the model
+
+# Define new labels and desired order for predictors
+predictor_labels <- c(
+  "species_speciation_rate" = "Mean speciation rate",
+  "island_age" = "Island age",
+  "island_area" = "Island area",
+  "guild_size" = "N Island species",
+  "(Intercept)" = "(Intercept)"
 )
 
-# View the lineage ages
-head(lineage_ages_df)
-```
+# Set the factor levels to control order in the plot
+posterior_long$Predictor <- factor(posterior_long$Predictor, 
+                                   levels = c("(Intercept)",
+                                              "species_speciation_rate", 
+                                              "island_age", 
+                                              "island_area", 
+                                              "guild_size"))
 
-Homogenize names ages
-
-```{r}
-
-# Step 2: Match lineage names to species in the datasets
-# Regional
-lineage_ages_df$species_name <- lineage_ages_df$lineage  # Temporary assignment
-
-filtered_lineage_ages_regional <- lineage_ages_df %>%
-  filter(species_name %in% sp_island_guild_size_regional_filtered$species_name)
-
-# Local
-filtered_lineage_ages_local <- lineage_ages_df %>%
-  filter(species_name %in% sp_island_guild_size_local_filtered$species_name)
-
-# Step 3: Add lineage ages to the regional dataset
-sp_island_guild_size_regional_filtered <- sp_island_guild_size_regional_filtered %>%
-  left_join(
-    filtered_lineage_ages_regional %>% select(species_name, age),
-    by = "species_name"
+ggplot(posterior_long, aes(x = Value)) +
+  geom_density(fill = "#b3b3b3", color = "#b3b3b3", alpha = 0.8, size = 0.8) +  # Add density curves with custom color
+  facet_wrap(~Predictor, scales = "fixed", ncol = 1, 
+             labeller = labeller(Predictor = predictor_labels)) +  # Apply new labels
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  # Vertical line at 0
+  labs(
+    x = "Standardized posterior coefficient",
+    y = "Density"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",  # Remove legend for clarity
+    panel.grid.major.y = element_blank(),
+    strip.text = element_text(size = 12),  # Increase facet label text size
+    axis.title.x = element_text(size = 14),  # Increase x-axis label size
+    axis.title.y = element_text(size = 14)   # Increase y-axis label size
   )
 
-# Step 4: Add lineage ages to the local dataset
-sp_island_guild_size_local_filtered <- sp_island_guild_size_local_filtered %>%
-  left_join(
-    filtered_lineage_ages_local %>% select(species_name, age),
-    by = "species_name"
-  )
 
-# Step 5: Verify if all species now have ages
-missing_ages_regional <- sp_island_guild_size_regional_filtered %>% filter(is.na(age))
-missing_ages_local <- sp_island_guild_size_local_filtered %>% filter(is.na(age))
-
-if (nrow(missing_ages_regional) > 0) {
-  print("These species in the regional dataset still have missing ages:")
-  print(missing_ages_regional$species_name)
-}
-
-if (nrow(missing_ages_local) > 0) {
-  print("These species in the local dataset still have missing ages:")
-  print(missing_ages_local$species_name)
-}
-
+#ggsave(here::here("../output/figures/posterior_pars/model2_pca_d_local.png"), height = 6, width = 4)
 
 ```
 
-```{r}
-sp_island_guild_size_local_filtered <- sp_island_guild_size_local_filtered %>%
-    mutate(
-        age_z = scale(age) %>% as.numeric(),
-    )
-
-sp_island_guild_size_regional_filtered <- sp_island_guild_size_regional_filtered %>%
-    mutate(
-        age_z = scale(age) %>% as.numeric(),
-    )
-```
-
-
-Run models
-
-### REGIONAL
-
-```{r}
-
-sp_island_guild_size_regional_filtered <- sp_island_guild_size_regional_filtered %>%
-  filter(!is.na(species_name))
-
-my_priors <- list(
-  R = list(V = 1/2, nu = 0.002),
-  G = list(G1 = list(V = 1/2, nu = 0.002))
-)
-
-# Initialize an empty list to store model fits
-full_model.fit <- vector(mode = "list", length = 50)
-
-# Loop through the 50 sets of speciation rates and island ages
-for (i in 1:50) {
-  # Construct the formula
-  formula_string <- paste0(
-    "PCA_centrality ~ age_z +", 
-    "island_age_", i, "_z + island_area_z + guild_size_z"
-  )
-  
-  # Fit the model
-  full_model.fit[[i]] <- MCMCglmm(
-    as.formula(formula_string),  # Use as.formula() directly
-    random = ~ species_name,  # Random effect for species_name
-    family = "gaussian",  # Assuming a Gaussian response for PCA centrality
-    ginverse = ginverse,  # Use species_name in ginverse
-    data = as.data.frame(sp_island_guild_size_regional_filtered),  # Dataframe
-    prior = my_priors,  # Priors
-    nitt = 1000000,  # Number of iterations
-    burnin = 500000,  # Burn-in
-    thin = 100  # Thinning
-  )
-}
-
-
-
-
-saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/model_ages_.pca_regional.rds"))
-
-```
-
-
-
-### LOCAL
-
-```{r}
-
-sp_island_guild_size_local_filtered <- sp_island_guild_size_local_filtered %>%
-  filter(!is.na(species_name))
-
-my_priors <- list(
-  R = list(V = 1/2, nu = 0.002),
-  G = list(G1 = list(V = 1/2, nu = 0.002))
-)
-
-# Initialize an empty list to store model fits
-full_model.fit <- vector(mode = "list", length = 50)
-
-# Loop through the 50 sets of speciation rates and island ages
-for (i in 1:50) {
-  # Construct the formula
-  formula_string <- paste0(
-     "PCA_centrality ~ age_z +", 
-    "island_age_", i, "_z + island_area_z + guild_size_z"
-  )
-  
-  # Fit the model
-  full_model.fit[[i]] <- MCMCglmm(
-    as.formula(formula_string),  # Use as.formula() directly
-    random = ~ species_name,  # Random effect for species_name
-    family = "gaussian",  # Assuming a Gaussian response for PCA centrality
-    ginverse = ginverse,  # Use species_name in ginverse
-    data = as.data.frame(sp_island_guild_size_local_filtered),  # Dataframe
-    prior = my_priors,  # Priors
-    nitt = 1000000,  # Number of iterations
-    burnin = 500000,  # Burn-in
-    thin = 100  # Thinning
-  )
-}
-
-
-
-
-saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/model_ages_.pca_local.rds"))
-
-```
 
 

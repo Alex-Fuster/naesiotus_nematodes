@@ -570,6 +570,8 @@ autoplot(pca_model, data = naesiotus_centralities_regional_df,
     y = paste0("PC2 (", round(explained_variance[2], 1), "%)")
   ) +
   theme_minimal()
+
+#ggsave(here::here("../output/figures/pca_plot_naesiotus.png"), height = 4, width = 4)
 ```
 
 
@@ -910,7 +912,7 @@ head(otu_centralities_local_df)
 ## island characteristics
 
 ```{r}
-df_island <- read_excel(path = here::here("../data/19july24_datalab.xlsx"), sheet = "island_characteristics")
+df_island <- read_excel(path = here::here("data/19july24_datalab.xlsx"), sheet = "island_characteristics")
 
 df_island$min_emergence <- as.numeric(df_island$min_emergence)
 df_island$max_emergence <- as.numeric(df_island$max_emergence)
@@ -1036,6 +1038,8 @@ network_statistics
 
 
 ```{r}
+
+library(scales)
 
 # Transform age and area in the data
 network_statistics <- network_statistics %>%
@@ -1184,7 +1188,7 @@ ggarrange(
 )
 
 
-ggsave(here::here("output/figures/network_characteristics.png"), height = 12, width = 8)
+#ggsave(here::here("output/figures/network_characteristics.png"), height = 12, width = 8)
 
 ```
 
@@ -1200,5 +1204,42 @@ summary(nestedness_model_sqrt)
 ```{r}
 nestedness_model_sqrt <- lm(mean_snail_d ~ log_island_area  , data = network_statistics)
 summary(nestedness_model_sqrt)
+```
+```{r}
+plot_area_modularity <- ggplot(network_statistics, aes(x = log_island_area, y = modularity)) +
+  geom_point(shape = 16, color = "black") +
+  geom_smooth(method = "lm", se = FALSE, color = "black", size = 0.8) +  # Add regression line
+  scale_x_continuous(
+    trans = "log10",
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10", math_format(10^.x))
+  ) +
+  labs(
+    x = expression("Island area (km"^2*")"),
+    y = "Modularity"
+  ) +
+  theme_classic()
+plot_area_modularity
+
+ggsave("test_modularity_area.png", height = 5, width = 5)
+
+```
+
+```{r}
+ggplot(network_statistics, aes(x = log_island_area, y = modularity)) +
+  geom_point(shape = 16, color = "black") +
+  geom_text(aes(label = island), hjust = -0.2, vjust = -0.5, size = 3) +  # Add island names
+  geom_smooth(method = "lm", se = FALSE, color = "black", size = 0.8) +  # Add regression line
+  scale_x_continuous(
+    trans = "log10",
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10", math_format(10^.x))
+  ) +
+  labs(
+    x = expression("Island area (km"^2*")"),
+    y = "Modularity"
+  ) +
+  theme_classic()
+
 ```
 
