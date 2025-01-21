@@ -957,7 +957,51 @@ saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/mod
 
 ```
 
+## MODEL 2 - mean speciation on specialization
 
+```{r}
+
+my_priors <- list(
+  R = list(V = 1/2, nu = 0.002),
+  G = list(G1 = list(V = 1/2, nu = 0.002))
+)
+
+  # Construct the formula
+  formula_string <- paste0(
+    "d_z ~ lambda.clads_z + min_emergence_z + island_area_z + guild_size_z"
+  )
+  
+  # Define the relevant columns to check for missing values
+  predictors <- c(
+    paste0("lambda.clads_z"),
+    "min_emergence_z",
+    "island_area_z",
+    "guild_size_z"
+  )
+  
+  # Filter out rows with NA values in the relevant columns
+  data_filtered <- sp_island_guild_size_regional_meanrates |>
+    dplyr::filter(across(all_of(predictors), ~ !is.na(.)))
+
+  # Fit the model
+  full_model.fit <- MCMCglmm(
+    as.formula(formula_string),  # Use as.formula() directly
+    random = ~ species_name,  # Random effect for species_name
+    family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+    ginverse = list(species_name = Ainv_regional),  # Use species_name in ginverse
+    data = as.data.frame(data_filtered),  # Dataframe
+    prior = my_priors,  # Priors
+    nitt = 1000000,  # Number of iterations
+    burnin = 500000,  # Burn-in
+    thin = 100  # Thinning
+  )
+
+
+
+
+saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/model2_meanrate_d_regional.rds"))
+
+```
 
 
 ## MODEL 3 - lineage age on centrality
@@ -1055,12 +1099,14 @@ saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/mod
 ```
 
 
-`
+
 
 
 
 
 # Models lOCAL
+
+## MODEL 1.1 - sampled speciation rates on centrality
 
 ```{r}
 
@@ -1115,7 +1161,8 @@ saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/mod
 
 
 
-### LOCAL
+## MODEL 1.2 - mean speciation rates on centrality
+
 
 ```{r}
 
@@ -1163,31 +1210,168 @@ saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/mod
 
 
 
+## MODEL 2 - mean speciation on specialization
+
+```{r}
+
+my_priors <- list(
+  R = list(V = 1/2, nu = 0.002),
+  G = list(G1 = list(V = 1/2, nu = 0.002))
+)
+
+  # Construct the formula
+  formula_string <- paste0(
+    "d_z ~ lambda.clads_z + min_emergence_z + island_area_z + guild_size_z"
+  )
+  
+  # Define the relevant columns to check for missing values
+  predictors <- c(
+    paste0("lambda.clads_z"),
+    "min_emergence_z",
+    "island_area_z",
+    "guild_size_z"
+  )
+  
+  # Filter out rows with NA values in the relevant columns
+  data_filtered <- sp_island_guild_size_local_meanrates |>
+    dplyr::filter(across(all_of(predictors), ~ !is.na(.)))
+
+  # Fit the model
+  full_model.fit <- MCMCglmm(
+    as.formula(formula_string),  # Use as.formula() directly
+    random = ~ species_name,  # Random effect for species_name
+    family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+    ginverse = list(species_name = Ainv_local),  # Use species_name in ginverse
+    data = as.data.frame(data_filtered),  # Dataframe
+    prior = my_priors,  # Priors
+    nitt = 1000000,  # Number of iterations
+    burnin = 500000,  # Burn-in
+    thin = 100  # Thinning
+  )
+
+
+
+
+saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/model2_meanrate_d_local.rds"))
+
+```
+
+
+
+
+## MODEL 3 - lineage age on centrality
+
+```{r}
+
+my_priors <- list(
+  R = list(V = 1/2, nu = 0.002),
+  G = list(G1 = list(V = 1/2, nu = 0.002))
+)
+
+  # Construct the formula
+  formula_string <- paste0(
+    "PCA_centrality ~ age_z + min_emergence_z + island_area_z + guild_size_z"
+  )
+  
+  # Define the relevant columns to check for missing values
+  predictors <- c(
+    paste0("age_z"),
+    "min_emergence_z",
+    "island_area_z",
+    "guild_size_z"
+  )
+  
+  # Filter out rows with NA values in the relevant columns
+  data_filtered <- sp_island_guild_size_local_meanrates |>
+    dplyr::filter(across(all_of(predictors), ~ !is.na(.)))
+
+  # Fit the model
+  full_model.fit <- MCMCglmm(
+    as.formula(formula_string),  # Use as.formula() directly
+    random = ~ species_name,  # Random effect for species_name
+    family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+    ginverse = list(species_name = Ainv_local),  # Use species_name in ginverse
+    data = as.data.frame(data_filtered),  # Dataframe
+    prior = my_priors,  # Priors
+    nitt = 1000000,  # Number of iterations
+    burnin = 500000,  # Burn-in
+    thin = 100  # Thinning
+  )
+
+
+
+
+saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/model3_age_centrality_local.rds"))
+
+```
+
+
+
+## MODEL 4 - lineage age on specialization
+
+```{r}
+
+my_priors <- list(
+  R = list(V = 1/2, nu = 0.002),
+  G = list(G1 = list(V = 1/2, nu = 0.002))
+)
+
+  # Construct the formula
+  formula_string <- paste0(
+    "d_z ~ age_z + min_emergence_z + island_area_z + guild_size_z"
+  )
+  
+  # Define the relevant columns to check for missing values
+  predictors <- c(
+    paste0("age_z"),
+    "min_emergence_z",
+    "island_area_z",
+    "guild_size_z"
+  )
+  
+  # Filter out rows with NA values in the relevant columns
+  data_filtered <- sp_island_guild_size_local_meanrates |>
+    dplyr::filter(across(all_of(predictors), ~ !is.na(.)))
+
+  # Fit the model
+  full_model.fit <- MCMCglmm(
+    as.formula(formula_string),  # Use as.formula() directly
+    random = ~ species_name,  # Random effect for species_name
+    family = "gaussian",  # Assuming a Gaussian response for PCA centrality
+    ginverse = list(species_name = Ainv_local),  # Use species_name in ginverse
+    data = as.data.frame(data_filtered),  # Dataframe
+    prior = my_priors,  # Priors
+    nitt = 1000000,  # Number of iterations
+    burnin = 500000,  # Burn-in
+    thin = 100  # Thinning
+  )
+
+
+
+
+saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/model4_age_d_local.rds"))
+
+```
+
 
 
 
 ```{r}
-#model.fit <- readRDS(here::here("../output/models/network_role_speciation/full_model.pca_regional.rds"))
-# model.fit <- readRDS(here::here("../output/models/network_role_speciation/full_model.d_regional.rds"))
-# model.fit <- readRDS(here::here("../output/models/network_role_speciation/full_model.pca_local.rds"))
-# model.fit <- readRDS(here::here("../output/models/network_role_speciation/full_model.d_local.rds"))
-# model.fit <- readRDS(here::here("../output/models/network_role_speciation/model_ages_.pca_regional.rds"))
-# model.fit <- readRDS(here::here("../output/models/network_role_speciation/model_ages_.pca_local.rds"))
-#model.fit <- readRDS(here::here("../output/models/network_role_speciation/full_model.pca_regional_meanclads.rds"))
-
-
-##########################
-
-# Model 1: sampled specieation rates on centrality
+# REGIONAL
 
 #model.fit <- readRDS(here::here("../output/models/network_role_speciation/model1_sampled_spec_centrality_regional.rds"))
-#model.fit <- readRDS(here::here("../output/models/network_role_speciation/model1_sampled_spec_centrality_local.rds"))
 #model.fit <- readRDS(here::here("../output/models/network_role_speciation/model1.2_mean_spec_centrality_regional.rds"))
-#model.fit <- readRDS(here::here("../output/models/network_role_speciation/model1.2_mean_spec_centrality_local.rds"))
-#model.fit <- readRDS(here::here("../output/models/network_role_speciation/model2_mean_spec_d_regional.rds"))
+#model.fit <- readRDS(here::here("../output/models/network_role_speciation/model2_meanrate_d_regional.rds"))
 #model.fit <- readRDS(here::here("../output/models/network_role_speciation/model3_age_centrality_regional.rds"))
-model.fit <- readRDS(here::here("../output/models/network_role_speciation/model4_age_d_regional.rds"))
+#model.fit <- readRDS(here::here("../output/models/network_role_speciation/model4_age_d_regional.rds"))
 
+# LOCAL
+
+#model.fit <- readRDS(here::here("../output/models/network_role_speciation/model1_sampled_spec_centrality_local.rds"))
+#model.fit <- readRDS(here::here("../output/models/network_role_speciation/model1.2_mean_spec_centrality_local.rds"))
+model.fit <- readRDS(here::here("../output/models/network_role_speciation/model2_meanrate_d_local.rds"))
+#model.fit <- readRDS(here::here("../output/models/network_role_speciation/model3_age_centrality_local.rds"))
+#model.fit <- readRDS(here::here("../output/models/network_role_speciation/model4_age_d_local.rds"))
 
 
 
@@ -1376,7 +1560,7 @@ ggplot(posterior_long, aes(x = Value)) +
   )
 
 
-#ggsave(here::here("../output/figures/posterior_pars/model2_pca_d_local.png"), height = 6, width = 4)
+ggsave(here::here("../output/figures/posterior_pars/model2_pca_d_local.png"), height = 6, width = 4)
 
 ```
 

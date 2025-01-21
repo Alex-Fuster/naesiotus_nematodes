@@ -1,0 +1,69 @@
+---
+title: "R Notebook"
+---
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+
+bright_snails_data <- read.csv(here::here("data/kraemer2019_brightness_scores.csv"))
+bright_background_data <- read.csv(here::here("data/kraemer2019_background_data.csv"))
+
+```
+
+
+```{r}
+
+# Step 1: Rename 'sp' to 'surface' in bright_background_data
+bright_background_data <- bright_background_data %>% 
+  rename(surface = sp)
+
+# Step 2: Standardize surface names in bright_background_data to match bright_snails_data
+surface_mapping <- c(
+  'rock' = 'Rock', 'urock' = 'Rock', 'rocksurface' = 'RockSurface',
+  'soil' = 'Soil', 'LeafLitter' = 'LeafLitter', 'leaflitter' = 'LeafLitter',
+  'leaf litter' = 'LeafLitter', 'BaseFern' = 'GreenLeaf', 'greenleaf' = 'GreenLeaf', 
+  'GreenLeaves' = 'GreenLeaf', 'grass' = 'GreenLeaf', 'moss' = 'GreenLeaf',
+  'trunk' = 'Trunk', 'trunk1' = 'Trunk', 'trunk2' = 'Trunk', 'trunk3' = 'Trunk',
+  'trunk4' = 'Trunk', 'trunk5' = 'Trunk', 'trunk6' = 'Trunk', 'trunk7' = 'Trunk',
+  'stick' = 'Stick', 'log' = 'Log', 'ulog' = 'Log', 'ulog2' = 'Log', 'ulog3' = 'Log',
+  'Uwood' = 'Uwood', 'twigs' = 'Twig', 'twig' = 'Twig', 'twig1' = 'Twig', 'twig2' = 'Twig',
+  'cactus' = 'Cactus', 'Ucactus' = 'Cactus', 'dryvegetation' = 'DryVegetation',
+  'DeadGrass' = 'DeadGrass', 'DeadFern' = 'DeadFerns',
+  'BaseFern' = 'BaseFern', 'TrunkLichen' = 'TrunkLichen',
+  'gravel' = 'Gravel', 'concrete' = 'Gravel'
+)
+
+bright_background_data <- bright_background_data %>%
+  mutate(surface_checked = recode(tolower(surface), !!!surface_mapping))
+
+# Step 3: Aggregate background brightness by location and surface
+df_averaged_bright_background <- bright_background_data %>%
+  group_by(location, surface_checked) %>%
+  summarise(mean_brightness_background = mean(brightness, na.rm = TRUE)) %>%
+  ungroup()
+
+# Step 4: Prepare snails dataset
+bright_snails_data <- bright_snails_data %>%
+  rename(surface = subtype)
+
+# Step 5: Merge snails data with background data to compute mismatch
+merged_data <- bright_snails_data %>%
+  left_join(df_averaged_bright_background, by = c('location', 'surface' = 'surface_checked'))
+
+# Step 6: Calculate mismatch
+merged_data <- merged_data %>%
+  mutate(mismatch = brightness - mean_brightness_background)
+
+# Step 7: Save the final dataset
+write.csv(merged_data %>% select(specID, location, surface, brightness, mean_brightness_background, mismatch), 'snails_mismatch_data.csv', row.names = FALSE)
+
+# Display the first few rows
+head(merged_data)
+
+```
+
+
