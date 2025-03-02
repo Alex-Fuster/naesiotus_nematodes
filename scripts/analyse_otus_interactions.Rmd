@@ -482,7 +482,7 @@ ggarrange(plotlist = plots, ncol = 2, nrow = ceiling(length(plots)/2),
 
 ```
 
-
+Floreana has included the islet Champion -> I think the clear module I see in Floreana correpsonds to this Champion module.
 
 # COMPUTE CENTRALITY SNAILS
 

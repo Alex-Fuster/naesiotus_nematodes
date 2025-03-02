@@ -289,6 +289,29 @@ df_veg
 
 ```
 
+## Background mismatch
+
+```{r}
+df_mismatch <- read_csv(here::here("data/processed/mismatch_df.csv"))
+df_mismatch <- df_mismatch %>% 
+  select(location, spp, mismatch) %>% 
+  dplyr::rename(id = location,
+         species = spp) %>%
+  left_join(species_names_df |> select(species, species_code), by = "species")
+
+df_mismatch
+
+
+```
+
+
+```{r}
+df_mismatch <- df_mismatch |> 
+  drop_na(species_code)
+```
+
+
+
 ## Summary of datasets
 
 We now have all the datasets that we need to build the model. 
@@ -333,6 +356,13 @@ df_load |> head() |> knitr::kable()
 ```
 
 
+#### mismatch data
+
+```{r}
+df_mismatch |> head() |> knitr::kable()
+```
+
+
 ## Re-do island codes with remaining islands
 
 ```{r}
@@ -363,6 +393,30 @@ sp_code_island_df$island_index_spp <- sp_code_island_df$new_island_index
 island_df <- island_df |>
   dplyr::arrange(new_island_index)
 
+```
+
+
+```{r}
+# write.csv(island_df, here::here("data/processed/df_for_models/island_df.csv"))
+# write.csv(sp_code_island_df, here::here("data/processed/df_for_models/sp_code_island_df.csv"))
+# write.csv(df_load, here::here("data/processed/df_for_models/df_load.csv"))
+# write.csv(faith_pd_table, here::here("data/processed/df_for_models/faith_pd_table.csv"))
+# write.csv(df_bright_noNA, here::here("data/processed/df_for_models/df_bright_noNA.csv"))
+# write.csv(df_veg, here::here("data/processed/df_for_models/df_veg.csv"))
+# write.csv(df_hab, here::here("data/processed/df_for_models/df_hab.csv"))
+# write.csv(df_mismatch, here::here("data/processed/df_for_models/df_mismatch.csv"))
+```
+
+
+```{r}
+island_df <- read.csv(here::here("data/processed/df_for_models/island_df.csv"))
+sp_code_island_df <- read.csv(here::here("data/processed/df_for_models/sp_code_island_df.csv"))
+df_load <- read.csv(here::here("data/processed/df_for_models/df_load.csv"))
+faith_pd_table <- read.csv(here::here("data/processed/df_for_models/faith_pd_table.csv"))
+df_bright_noNA <- read.csv(here::here("data/processed/df_for_models/df_bright_noNA.csv"))
+df_veg <- read.csv(here::here("data/processed/df_for_models/df_veg.csv"))
+df_hab <- read.csv(here::here("data/processed/df_for_models/df_hab.csv"))
+df_mismatch <- read.csv(here::here("data/processed/df_for_models/df_mismatch.csv"))
 ```
 
 
@@ -488,28 +542,45 @@ unconstr_brightload_samp$summary()
 
 ```
 
-## Plot posteriors
-
 ```{r}
 # Extract posterior samples
 posterior_samples <- unconstr_brightload_samp$draws()
 posterior_df <- as_draws_df(posterior_samples)
+```
 
+
+## Plot posteriors
+
+
+
+```{r}
+# Load required library
+library(ggridges)
+
+# Define a named vector to map parameter names to variable names (removing ?? notation)
+parameter_labels <- c(
+  "slope_bright_load" = "Brightness",
+  "slope_arbor_bright" = "Arboreous",
+  "slope_arid_bright" = "Arid",
+  "slope_area_bright" = "Island Area",
+  "slope_age_bright" = "Island Age",
+  
+  "slope_arbor_load" = "Arboreous",
+  "slope_arid_load" = "Arid",
+  "slope_area_load" = "Island Area",
+  "slope_age_load" = "Island Age"
+)
+
+# Convert posterior samples to long format
 posterior_long <- posterior_df %>%
   select(starts_with("slope_arbor"), starts_with("slope_arid"),
          starts_with("slope_age"), starts_with("slope_area"), 
-         slope_bright_load) %>%  # Only general effects, no interaction terms
+         slope_bright_load) %>%
   pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
   mutate(type = "Posterior")
 
-# mcmc_areas(
-#   posterior_df,
-#   pars = vars(starts_with("slope")),
-#   prob = 0.8  
-# )
-
-# Define the number of  samples to match the posterior size
-n_prior_samples <- nrow(general_slope_df)
+# Define number of samples to match the posterior size
+n_prior_samples <- nrow(posterior_long)
 
 # Generate prior samples for each parameter
 set.seed(123)  # For reproducibility
@@ -519,95 +590,155 @@ priors <- tibble(
   slope_age_bright = rnorm(n_prior_samples, 0, 0.5),
   slope_area_bright = rnorm(n_prior_samples, 0, 0.5),
   slope_bright_load = rnorm(n_prior_samples, 0, 0.5),
-  slope_arbor_load = rnorm(n_prior_samples, 0, 0.5),
+  slope_arbor_load= rnorm(n_prior_samples, 0, 0.5),
   slope_arid_load = rnorm(n_prior_samples, 0, 0.5),
   slope_age_load = rnorm(n_prior_samples, 0, 0.5),
   slope_area_load = rnorm(n_prior_samples, 0, 0.5)
 )
 
-# Reshape prior samples to long format
+# Convert prior samples to long format
 priors_long <- priors %>%
   pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
   mutate(type = "Prior")
 
-
 # Combine prior and posterior data
 combined_data <- bind_rows(priors_long, posterior_long)
 
+# Define the **custom order** for parameters
+custom_order <- c("Brightness", "Arboreous", "Arid", "Island Area", "Island Age")
 
-# Plot posteriors with priors overlaid
-ggplot(combined_data, aes(x = value, fill = type)) +
-  geom_density(alpha = 0.5) +
-  facet_wrap(~parameter, scales = "free", ncol = 2) +
-  scale_fill_manual(values = c("Prior" = "red", "Posterior" = "blue")) +
+
+
+
+
+
+
+# **Split dataset into two separate ones**
+# One for the effects on brightness
+brightness_data <- combined_data %>%
+  filter(parameter %in% c("slope_arbor_bright", "slope_arid_bright", 
+                          "slope_area_bright", "slope_age_bright")) %>%
+  mutate(parameter = factor(parameter, levels = names(parameter_labels), 
+                            labels = unname(parameter_labels))) %>%
+  mutate(parameter = factor(parameter, levels = rev(custom_order)))  # Set custom order
+
+# One for the effects on nematode load
+load_data <- combined_data %>%
+  filter(parameter %in% c("slope_bright_load", "slope_arbor_load", "slope_arid_load", 
+                          "slope_area_load", "slope_age_load")) %>%
+  mutate(parameter = factor(parameter, levels = names(parameter_labels), 
+                            labels = unname(parameter_labels))) %>%
+  mutate(parameter = factor(parameter, levels = rev(custom_order)))  # Set custom order
+
+# Ridge plot for **effects on Brightness**
+plot_brightness <- ggplot(brightness_data, aes(x = value, y = parameter, fill = type)) +
+  geom_density_ridges(
+    alpha = 0.5, scale = 1.2, rel_min_height = 0.01
+  ) +
+  scale_fill_manual(values = c("Posterior" = "lightcoral", "Prior" = "grey80")) +
   theme_minimal() +
   labs(
-    x = "Parameter values",
-    y = "Density"
+    title = "Effects on shell brightness",
+    x = "Coefficient Estimate (??)",
+    y = ""  # Simplified y-axis labels
   ) +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  
-  coord_cartesian(xlim = c(-2, 2))  +
-  theme(legend.position = "right")+
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
+  theme(
+    legend.position = "top",
+    strip.text = element_text(size = 12, face = "bold"),
+    axis.text.y = element_text(size = 12)
+  ) +
   my_theme
 
-#ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/priors_posteriors.png"), height = 10, width = 8)
+# Ridge plot for **effects on Load**
+plot_load <- ggplot(load_data, aes(x = value, y = parameter, fill = type)) +
+  geom_density_ridges(
+    alpha = 0.5, scale = 1.2, rel_min_height = 0.01
+  ) +
+  scale_fill_manual(values = c("Posterior" = "lightcoral", "Prior" = "grey80")) +
+  theme_minimal() +
+  labs(
+    title = "Effects on encapsulations count",
+    x = "Coefficient Estimate (??)",
+    y = ""  # Simplified y-axis labels
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
+  theme(
+    legend.position = "top",
+    strip.text = element_text(size = 12, face = "bold"),
+    axis.text.y = element_text(size = 12)
+  ) +
+  my_theme
+
+# Print both plots
+plot_brightness
+plot_load
+
+
+
+
+
 ```
 
 
+
+
+interaction model
+
 ```{r}
-# Extract posterior samples for interaction terms (island-specific slopes)
-posterior_samples <- unconstr_brightload_samp$draws()
-posterior_df <- as_draws_df(posterior_samples)
-
-# Extract interaction terms for island-specific slopes
-interaction_terms <- posterior_df %>%
-  select(starts_with("slope_bright_load_island")) %>%  # Select interaction terms only
-  pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
-  mutate(type = "Posterior")
-
-# Generate prior samples for island-specific slopes
-n_prior_samples <- nrow(posterior_df)  # Use the same number of samples as in the posterior
-
-# Assuming the prior for island-specific interaction slopes follows N(0, 0.5)
-priors_island_interaction <- tibble(
-  "slope_bright_load_island[1]" = rnorm(n_prior_samples, 0, 0.5),
-  "slope_bright_load_island[2]" = rnorm(n_prior_samples, 0, 0.5),
-  "slope_bright_load_island[3]" = rnorm(n_prior_samples, 0, 0.5),
-  "slope_bright_load_island[4]" = rnorm(n_prior_samples, 0, 0.5),
-  "slope_bright_load_island[5]" = rnorm(n_prior_samples, 0, 0.5),
-  "slope_bright_load_island[6]" = rnorm(n_prior_samples, 0, 0.5),
-  "slope_bright_load_island[7]" = rnorm(n_prior_samples, 0, 0.5),
-  "slope_bright_load_island[8]" = rnorm(n_prior_samples, 0, 0.5),
-  "slope_bright_load_island[9]" = rnorm(n_prior_samples, 0, 0.5),
-  "slope_bright_load_island[10]" = rnorm(n_prior_samples, 0, 0.5),
-  "slope_bright_load_island[11]" = rnorm(n_prior_samples, 0, 0.5),
-  "slope_bright_load_island[12]" = rnorm(n_prior_samples, 0, 0.5),
-  "slope_bright_load_island[13]" = rnorm(n_prior_samples, 0, 0.5)  # Add more slopes if needed
-)
-
-# Reshape prior samples for island-specific slopes into long format
-priors_island_interaction_long <- priors_island_interaction %>%
-  pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
-  mutate(type = "Prior")
-
-# Combine prior and posterior data for island-specific interaction slopes
-combined_data_interaction <- bind_rows(priors_island_interaction_long, interaction_terms)
-
-# Plot posteriors with priors overlaid for island-specific interaction terms
-ggplot(combined_data_interaction, aes(x = value, fill = type)) +
-  geom_density(alpha = 0.5) +
-  facet_wrap(~parameter, scales = "free", ncol = 2) +
-  scale_fill_manual(values = c("Prior" = "red", "Posterior" = "blue")) +
-  theme_minimal() +
-  labs(
-    x = "Parameter values",
-    y = "Density",
-    title = "Posterior Distributions for Island-Specific Brightness-Load Slopes"
-  ) +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  
-  coord_cartesian(xlim = c(-2, 2)) +
-  theme(legend.position = "right") +
-  my_theme
+# # Extract posterior samples for interaction terms (island-specific slopes)
+# posterior_samples <- unconstr_brightload_samp$draws()
+# posterior_df <- as_draws_df(posterior_samples)
+# 
+# # Extract interaction terms for island-specific slopes
+# interaction_terms <- posterior_df %>%
+#   select(starts_with("slope_bright_load_island")) %>%  # Select interaction terms only
+#   pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
+#   mutate(type = "Posterior")
+# 
+# # Generate prior samples for island-specific slopes
+# n_prior_samples <- nrow(posterior_df)  # Use the same number of samples as in the posterior
+# 
+# # Assuming the prior for island-specific interaction slopes follows N(0, 0.5)
+# priors_island_interaction <- tibble(
+#   "slope_bright_load_island[1]" = rnorm(n_prior_samples, 0, 0.5),
+#   "slope_bright_load_island[2]" = rnorm(n_prior_samples, 0, 0.5),
+#   "slope_bright_load_island[3]" = rnorm(n_prior_samples, 0, 0.5),
+#   "slope_bright_load_island[4]" = rnorm(n_prior_samples, 0, 0.5),
+#   "slope_bright_load_island[5]" = rnorm(n_prior_samples, 0, 0.5),
+#   "slope_bright_load_island[6]" = rnorm(n_prior_samples, 0, 0.5),
+#   "slope_bright_load_island[7]" = rnorm(n_prior_samples, 0, 0.5),
+#   "slope_bright_load_island[8]" = rnorm(n_prior_samples, 0, 0.5),
+#   "slope_bright_load_island[9]" = rnorm(n_prior_samples, 0, 0.5),
+#   "slope_bright_load_island[10]" = rnorm(n_prior_samples, 0, 0.5),
+#   "slope_bright_load_island[11]" = rnorm(n_prior_samples, 0, 0.5),
+#   "slope_bright_load_island[12]" = rnorm(n_prior_samples, 0, 0.5),
+#   "slope_bright_load_island[13]" = rnorm(n_prior_samples, 0, 0.5)  # Add more slopes if needed
+# )
+# 
+# # Reshape prior samples for island-specific slopes into long format
+# priors_island_interaction_long <- priors_island_interaction %>%
+#   pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
+#   mutate(type = "Prior")
+# 
+# # Combine prior and posterior data for island-specific interaction slopes
+# combined_data_interaction <- bind_rows(priors_island_interaction_long, interaction_terms)
+# 
+# # Plot posteriors with priors overlaid for island-specific interaction terms
+# ggplot(combined_data_interaction, aes(x = value, fill = type)) +
+#   geom_density(alpha = 0.5) +
+#   facet_wrap(~parameter, scales = "free", ncol = 2) +
+#   scale_fill_manual(values = c("Prior" = "red", "Posterior" = "blue")) +
+#   theme_minimal() +
+#   labs(
+#     x = "Parameter values",
+#     y = "Density",
+#     title = "Posterior Distributions for Island-Specific Brightness-Load Slopes"
+#   ) +
+#   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  
+#   coord_cartesian(xlim = c(-2, 2)) +
+#   theme(legend.position = "right") +
+#   my_theme
 
 ```
 
@@ -616,22 +747,69 @@ ggplot(combined_data_interaction, aes(x = value, fill = type)) +
 
 
 ```{r}
-neff_ratio(unconstr_brightload_samp) |> mcmc_neff_hist()
+posterior_summary <- summarise_draws(unconstr_brightload_samp)
+
+# Extract R-hat values
+rhat_values <- posterior_summary$rhat
+
+ggsave(here::here("output/figures/model_checks/load_model_rhat.png"),
+       mcmc_rhat_hist(rhat_values),
+       height = 5,
+       width = 5)
+
+
+```
+
+
+
+
+```{r}
+library(bayesplot)
+
+# Use a grayscale color scheme for all bayesplot functions
+color_scheme_set("gray")
+
+```
+
+
+
+```{r}
+ggsave(here::here("output/figures/model_checks/load_model_rhat.png"),
+       mcmc_rhat_hist(rhat_values) +
+         scale_fill_manual(values = c("gray30", "gray60", "gray90")),
+       height = 5, width = 5)
+
+```
+
+```{r}
+ggsave(here::here("output/figures/model_checks/load_model_nef.png"),
+       neff_ratio(unconstr_brightload_samp) |> 
+         mcmc_neff_hist() + 
+         scale_fill_manual(values = c("gray30", "gray60", "gray90")),
+       height = 5, width = 5)
+
 ```
 
 
 ```{r}
-mcmc_acf(posterior_df)
+ggsave(here::here("output/figures/model_checks/load_model_autocorrelation_plots.png"),
+       mcmc_acf(selected_params) +
+         scale_color_manual(values = c("gray30", "gray60", "gray90")))
+
 ```
 
-```{r}
-library(patchwork)
 
-wrap_plots(
-  mcmc_hist(posterior_df, facet_args = list(nrow = ncol(posterior_df))),
-  mcmc_trace(posterior_df, facet_args = list(nrow = ncol(posterior_df))),
-  widths = c(1, 1.5)
-)
+```{r}
+ggsave(here::here("output/figures/model_checks/load_model_hist_trace_plots.png"),
+       wrap_plots(
+         mcmc_hist(selected_params, facet_args = list(nrow = 3)) + 
+           scale_fill_manual(values = c("gray30", "gray60", "gray90")),
+         mcmc_trace(selected_params, facet_args = list(nrow = 3)) +
+           scale_color_manual(values = c("gray30", "gray60", "gray90")),
+         widths = c(1, 1.5)
+       ),
+       height = 7, width = 12)
+
 ```
 
 
@@ -960,8 +1138,13 @@ unconstr_brightdiv_samp <- div_nbinom_unconstr$sample(
     sp_index_div = faith_pd_table$species_code,  # Use species_code from df_load
     island_index_div = faith_pd_table$new_island_index  # Use island_code from df_load
   ),
-  chains = 10, parallel_chains = 10, refresh = 0,
-  iter_sampling = 500,
+  chains = 6, #10, 
+  parallel_chains = 6, #10, 
+  refresh = 0, 
+  iter_warmup = 3000, #2000,  #  Increase warmup iterations
+  iter_sampling = 6000, #4000,  #  Increase total samples
+  adapt_delta = 0.999, #0.99,  #  Reduce divergent transitions
+  max_treedepth = 18, #15,  #  Allow longer trajectories
   output_dir = here::here("output/models/missing_data_div_nbinom_unconstr_2_trueage_islandindex_v2/model_output")
 )
 
@@ -983,32 +1166,60 @@ unconstr_brightdiv_samp$summary()
 
 ```
 
-## Plot posteriors
+
+
+
 
 ```{r}
 # Extract posterior samples
 posterior_samples <- unconstr_brightdiv_samp$draws()
 posterior_df <- as_draws_df(posterior_samples)
+```
 
-posterior_long <- posterior_df %>%
+
+
+## Plot posteriors
+
+
+
+```{r}
+# Load required library
+library(ggridges)
+
+# Convert posterior samples into a dataframe
+posterior_samples_div <- as_draws_df(unconstr_brightdiv_samp)
+
+# Define parameter names for the diversity model
+parameter_labels_diversity <- c(
+  "slope_bright_div" = "Brightness",
+  "slope_arbor_bright" = "Arboreous",
+  "slope_arid_bright" = "Arid",
+  "slope_area_bright" = "Island Area",
+  "slope_age_bright" = "Island Age",
+  
+  "slope_arbor_div" = "Arboreous",
+  "slope_arid_div" = "Arid",
+  "slope_area_div" = "Island Area",
+  "slope_age_div" = "Island Age"
+)
+
+# Define custom order
+custom_order <- c("Brightness", "Arboreous", "Arid", "Island Area", "Island Age")
+
+# Convert posterior samples to long format
+posterior_div_long <- posterior_samples_div %>%
   select(starts_with("slope_arbor"), starts_with("slope_arid"),
          starts_with("slope_age"), starts_with("slope_area"), 
-         slope_bright_div) %>%  # Only general effects, no interaction terms
+         slope_bright_div) %>%
   pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
   mutate(type = "Posterior")
 
-# mcmc_areas(
-#   posterior_df,
-#   pars = vars(starts_with("slope")),
-#   prob = 0.8  
-# )
-
-# Define the number of  samples to match the posterior size
-n_prior_samples <- 1000
+# Define number of samples to match the posterior size
+n_prior_samples <- nrow(posterior_div_long)
 
 # Generate prior samples for each parameter
 set.seed(123)  # For reproducibility
-priors <- tibble(
+priors_div <- tibble(
   slope_arbor_bright = rnorm(n_prior_samples, 0, 0.5),
   slope_arid_bright = rnorm(n_prior_samples, 0, 0.5),
   slope_age_bright = rnorm(n_prior_samples, 0, 0.5),
@@ -1020,32 +1231,79 @@ priors <- tibble(
   slope_area_div = rnorm(n_prior_samples, 0, 0.5)
 )
 
-# Reshape prior samples to long format
-priors_long <- priors %>%
+# Convert prior samples to long format
+priors_div_long <- priors_div %>%
   pivot_longer(everything(), names_to = "parameter", values_to = "value") %>%
   mutate(type = "Prior")
 
-
 # Combine prior and posterior data
-combined_data <- bind_rows(priors_long, posterior_long)
+combined_data_div <- bind_rows(priors_div_long, posterior_div_long)
 
+# **Split dataset into two separate ones**
+# One for the effects on brightness
+brightness_data_div <- combined_data_div %>%
+  filter(parameter %in% c("slope_arbor_bright", "slope_arid_bright", 
+                          "slope_area_bright", "slope_age_bright")) %>%
+  mutate(parameter = factor(parameter, levels = names(parameter_labels_diversity), 
+                            labels = unname(parameter_labels_diversity))) %>%
+  mutate(parameter = factor(parameter, levels = rev(custom_order)))  # Set custom order
 
-# Plot posteriors with priors overlaid
-ggplot(combined_data, aes(x = value, fill = type)) +
-  geom_density(alpha = 0.5) +
-  facet_wrap(~parameter, scales = "free", ncol = 2) +
-  scale_fill_manual(values = c("Prior" = "red", "Posterior" = "blue")) +
+# One for the effects on nematode diversity
+diversity_data <- combined_data_div %>%
+  filter(parameter %in% c("slope_bright_div", "slope_arbor_div", "slope_arid_div", 
+                          "slope_area_div", "slope_age_div")) %>%
+  mutate(parameter = factor(parameter, levels = names(parameter_labels_diversity), 
+                            labels = unname(parameter_labels_diversity))) %>%
+  mutate(parameter = factor(parameter, levels = rev(custom_order)))  # Set custom order
+
+# Ridge plot for **effects on Brightness**
+plot_brightness_div <- ggplot(brightness_data_div, aes(x = value, y = parameter, fill = type)) +
+  geom_density_ridges(
+    alpha = 0.5, scale = 1.2, rel_min_height = 0.01
+  ) +
+  scale_fill_manual(values = c("Posterior" = "lightcoral", "Prior" = "grey80")) +
   theme_minimal() +
   labs(
-    x = "Parameter values",
-    y = "Density"
+    title = "Posterior Distributions for Effects on Brightness",
+    x = "Coefficient Estimate (??)",
+    y = ""  # Simplified y-axis labels
   ) +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +  
-  coord_cartesian(xlim = c(-2, 2))  +
-  theme(legend.position = "right")+
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
+  theme(
+    legend.position = "top",
+    strip.text = element_text(size = 12, face = "bold"),
+    axis.text.y = element_text(size = 12)
+  ) +
   my_theme
 
-#ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/priors_posteriors.png"), height = 10, width = 8)
+# Ridge plot for **effects on Diversity**
+plot_diversity <- ggplot(diversity_data, aes(x = value, y = parameter, fill = type)) +
+  geom_density_ridges(
+    alpha = 0.5, scale = 1.2, rel_min_height = 0.01
+  ) +
+  scale_fill_manual(values = c("Posterior" = "lightcoral", "Prior" = "grey80")) +
+  theme_minimal() +
+  labs(
+    title = "Effects on nematode diversity",
+    x = "Coefficient Estimate (??)",
+    y = ""  # Simplified y-axis labels
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
+  theme(
+    legend.position = "top",
+    strip.text = element_text(size = 12, face = "bold"),
+    axis.text.y = element_text(size = 12)
+  ) +
+  my_theme
+
+# Print both plots
+plot_brightness_div
+plot_diversity
+
+
+
+
+
 ```
 
 
@@ -1053,24 +1311,80 @@ ggplot(combined_data, aes(x = value, fill = type)) +
 ## Model diagnostics
 
 
+
 ```{r}
-neff_ratio(unconstr_brightdiv_samp) |> mcmc_neff_hist()
+posterior_summary <- summarise_draws(unconstr_brightdiv_samp)
+
+# Extract R-hat values
+rhat_values <- posterior_summary$rhat
+
+ggsave(here::here("output/figures/model_checks/div_model_rhat.png"),
+       mcmc_rhat_hist(rhat_values),
+       height = 5,
+       width = 5)
+
+
+```
+
+
+
+
+```{r}
+library(bayesplot)
+
+# Use a grayscale color scheme for all bayesplot functions
+color_scheme_set("gray")
+
+```
+
+
+
+```{r}
+ggsave(here::here("output/figures/model_checks/div_model_rhat.png"),
+       mcmc_rhat_hist(rhat_values) +
+         scale_fill_manual(values = c("gray30", "gray60", "gray90")),
+       height = 5, width = 5)
+
+```
+
+```{r}
+ggsave(here::here("output/figures/model_checks/div_model_nef.png"),
+       neff_ratio(unconstr_brightdiv_samp) |> 
+         mcmc_neff_hist() + 
+         scale_fill_manual(values = c("gray30", "gray60", "gray90")),
+       height = 5, width = 5)
+
 ```
 
 
 ```{r}
-mcmc_acf(posterior_df)
-```
+ggsave(here::here("output/figures/model_checks/div_model_autocorrelation_plots.png"),
+       mcmc_acf(selected_params) +
+         scale_color_manual(values = c("gray30", "gray60", "gray90")))
 
+```
 ```{r}
-library(patchwork)
+ggsave(here::here("output/figures/model_checks/div_model_hist_trace_plots.png"),
+       wrap_plots(
+         mcmc_hist(selected_params, facet_args = list(nrow = 3)) + 
+           scale_fill_manual(values = c("gray30", "gray60", "gray90")),
+         mcmc_trace(selected_params, facet_args = list(nrow = 3)) +
+           scale_color_manual(values = c("gray30", "gray60", "gray90")),
+         widths = c(1, 1.5)
+       ),
+       height = 7, width = 12)
 
-wrap_plots(
-  mcmc_hist(posterior_df, facet_args = list(nrow = ncol(posterior_df))),
-  mcmc_trace(posterior_df, facet_args = list(nrow = ncol(posterior_df))),
-  widths = c(1, 1.5)
-)
 ```
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1277,6 +1591,135 @@ The observed discrepancies and large errors point to potential areas for improve
 Including additional ecological predictors.
 Incorporating interactions among predictors.
 Considering species-specific effects.
+
+
+
+# FINAL MAIN FIGURE
+
+```{r}
+ggarrange(
+  plot_load,
+  plot_diversity,
+  
+ncol = 2,
+nrow = 1,
+
+common.legend = TRUE,
+labels = letters[1:2]
+)
+
+ggsave(here::here("output/figures/posterior_pars/figure_posteriors_load_diversity.png"),
+       height = 7,
+       width = 10)
+```
+```{r}
+plot_brightness
+
+ggsave(here::here("output/figures/posterior_pars/figure_posteriors_brightness.png"),
+       height = 7,
+       width = 5)
+```
+
+-----------------------------------------------------------------
+
+# Model with mismatch instead of brightness
+
+
+## load analysis
+
+### Fit Model
+
+We will simply change the name of the dataset and variables (brightness for mismatch):
+
+```{r}
+# df_bright_noNA <- df_mismatch
+# df_bright_noNA <- df_bright_noNA[!is.na(df_bright_noNA$mismatch), ]
+
+```
+
+
+
+```{r}
+#| class-output: stan
+load_nbinom_unconstr <- cmdstan_model(here::here("stan/load_nbinom_unconstr_2_trueage_islandindex_mismatch.stan"),
+                                          pedantic = TRUE)
+```
+
+```{r}
+# df_bright_noNA$mismatch_scaled <- scale(df_bright_noNA$mismatch)  # Normalize to mean 0, SD 1
+```
+
+
+```{r}
+df_mismatch_clean <- df_mismatch %>%
+  filter(!is.na(mismatch))
+```
+
+
+
+
+```{r}
+init_fun <- function() {
+  list(
+    mu_mismatch = 0,
+    sigma_mismatch = 1,
+    alpha_mismatch = 0.5,  # Avoid extreme skewness issues
+    mu_load = 0,
+    phi_load = 1
+  )
+}
+
+
+# Use island-level data in Stan
+unconstr_mismatchload_samp <- load_nbinom_unconstr$sample(
+  data = list(
+  N_spp = nrow(sp_code_island_df),  # Number of species
+  N_island = nrow(island_df),  # Number of unique islands
+  sp_id = sp_code_island_df$species_code,
+  island_area = island_df$island_area,  # Island-level area
+  min_emergence = island_df$min_emergence,  # Island-level minimum emergence
+  max_emergence = island_df$max_emergence,  # Island-level maximum emergence
+  island_index_spp = sp_code_island_df$new_island_index,  # Updated island index for species
+  
+  # Habitat data
+  N_habitat = nrow(df_hab),
+  habitat_arboreal = df_hab$arboreal,
+  total_hab = df_hab$total_hab,
+  sp_index_hab = df_hab$species_code,
+  
+  # Vegetation zone data
+  N_veg = nrow(df_veg),
+  veg_arid = df_veg$arid,
+  total_veg = df_veg$total_veg,
+  sp_index_veg = df_veg$species_code,
+  
+  # Mismatch data (Replacing brightness)
+  N_mismatch = nrow(df_mismatch_clean), 
+  mismatch_obs = df_mismatch_clean$mismatch,
+  sp_index_mismatch = df_mismatch_clean$species_code,
+  
+  # Nematode load data
+  N_load = nrow(df_load),
+  nematode_count = df_load$nematode_count,
+  sp_index_load = df_load$species_code,
+  island_index_load = df_load$new_island_index
+),
+  chains = 10, parallel_chains = 10, refresh = 0,
+  iter_sampling = 500,
+  output_dir = here::here("output/models/missing_data_load_mismatch_nbinom_unconstr_2_trueage_islandindex/model_output"),
+init = init_fun
+)
+
+
+```
+
+
+```{r}
+# read in the model from above
+unconstr_brightload_samp <- as_cmdstan_fit(dir(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/model_output"), full.names = TRUE))
+```
+
+
 
 
 

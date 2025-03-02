@@ -1,0 +1,289 @@
+---
+title: "Bayesian Hierarchical Model for Nematode Load in Snails"
+author: "Alexandre Fuster-Calvo"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+# LOAD
+
+## **Mathematical Formulation of the Model**
+
+We model the effect of **brightness, habitat, vegetation, island age, and area** on **nematode load** using a **Bayesian hierarchical model**. The model consists of three major components:
+
+1. **Brightness Model**: Predicts species-level brightness based on habitat and island characteristics.
+2. **Nematode Load Model**: Predicts nematode count based on brightness and environmental predictors.
+3. **Latent Island Age Estimation**: A missing data imputation technique using a **uniform prior** between the minimum and maximum emergence times.
+
+### **1. Brightness Model (Species-Level)**
+\[
+\log(Brightness)_{s} \sim \mathcal{N}(\mu_{brightness} + \beta_{arbor} P_{arboreal,s} + \beta_{arid} P_{arid,s} + \beta_{age} Age_{i} + \beta_{area} \log(Area_{i}) + \epsilon_{s}, \sigma_{brightness})
+\]
+where:
+- \( s \) = species index, \( i \) = island index.
+- \( \mu_{brightness} \) = overall mean log-brightness.
+- \( P_{arboreal,s} \), \( P_{arid,s} \) = probability of species \( s \) being in arboreal/arid habitats.
+- \( Age_{i} \) = estimated true age of island \( i \).
+- \( \log(Area_{i}) \) = log-transformed island area.
+- \( \epsilon_{s} \sim \mathcal{N}(0, \sigma_{\text{species}}) \) is the species-specific random effect.
+
+### **2. Nematode Load Model (Species-Level)**
+\[
+\log(\lambda_s) = \mu_{load} + \beta_{bright} \log(Brightness_s) + \beta_{arbor} P_{arboreal,s} + \beta_{arid} P_{arid,s} + \beta_{age} Age_{i} + \beta_{area} \log(Area_{i}) + \epsilon_s
+\]
+\[
+Nematode\_Count \sim \text{Negative Binomial}(\lambda_s, \phi)
+\]
+where:
+- \( \lambda_s \) = predicted log mean nematode load for species \( s \).
+- \( \mu_{load} \) = overall mean nematode load.
+- \( \beta_{bright} \) = effect of brightness on nematode load.
+- \( \beta_{arbor}, \beta_{arid}, \beta_{age}, \beta_{area} \) = regression coefficients.
+- \( \epsilon_s \sim \mathcal{N}(0, \sigma_{\text{species}}) \) is the species-level random effect.
+- \( \phi \) = dispersion parameter for overdispersed count data.
+
+### **3. Latent Island Age Model (Handling Missing Data)**
+\[
+Age_{i} \sim \text{Uniform}(MinEmergence_{i}, MaxEmergence_{i})
+\]
+where:
+- \( Age_{i} \) is the **true age** of each island, inferred from **minimum and maximum emergence estimates**.
+
+### **4. Habitat and Vegetation Models**
+\[
+P_{arboreal,s} = \text{logit}^{-1}(\mu_{arboreal} + \epsilon_{s})
+\]
+\[
+P_{arid,s} = \text{logit}^{-1}(\mu_{arid} + \epsilon_{s})
+\]
+- Modeled as **binomial probabilities** using **logistic regression**.
+
+---
+
+## **Handling Missing Data**
+The model accounts for missing island age by treating it as a **latent variable**, sampled from a **uniform distribution** between its **minimum and maximum emergence estimates**. This allows us to propagate uncertainty in island age into our predictions, rather than relying on a single imputed value.
+
+Additionally:
+- **Missing brightness data** is handled through hierarchical modeling. The species-level brightness (\( Brightness_s \)) is inferred using species and island random effects.
+- **Microhabitat and vegetation zone** probabilities are modeled using **logistic regression**, allowing partial pooling across species.
+
+---
+
+## **Hierarchical Structure**
+This is a **multi-level Bayesian hierarchical model**:
+1. **Island-Level Variables**: 
+   - **Island age** (\( Age_i \)) and **island area** (\( Area_i \)) affect **species brightness** and **nematode load**.
+   - These variables vary across islands but influence all species on the island.
+   
+2. **Species-Level Variables**: 
+   - **Brightness, habitat preference, and vegetation type** are modeled with **species-specific effects**.
+   - Each species has a unique **random effect** for brightness and nematode load.
+
+3. **Observation-Level Variables**:
+   - **Nematode count** is recorded at the **individual level**.
+   - Predictions for nematode count are based on **species-level** and **island-level** characteristics.
+
+This **hierarchical structure** allows the model to borrow strength from higher levels, leading to **better parameter estimation** even with **limited data for some species or islands**.
+
+---
+
+
+# Diversity
+
+
+## **Mathematical Formulation of the Model**
+
+This model investigates the effects of **brightness, habitat, vegetation, island age, and area** on **nematode diversity**, using **Faith’s Phylogenetic Diversity (Faith PD) as the response variable**. The model is **hierarchical and Bayesian**, incorporating both **species- and island-level effects**.
+
+The model consists of three major components:
+
+1. **Brightness Model**: Predicts species-level brightness based on habitat and island characteristics.
+2. **Nematode Diversity Model**: Predicts nematode diversity based on brightness and environmental predictors.
+3. **Latent Island Age Estimation**: A missing data imputation technique using a **uniform prior** between the minimum and maximum emergence times.
+
+### **1. Brightness Model (Species-Level)**
+\[
+\log(Brightness)_{s} \sim \mathcal{N}(\mu_{brightness} + \beta_{arbor} P_{arboreal,s} + \beta_{arid} P_{arid,s} + \beta_{age} Age_{i} + \beta_{area} \log(Area_{i}) + \epsilon_{s}, \sigma_{brightness})
+\]
+where:
+- \( s \) = species index, \( i \) = island index.
+- \( \mu_{brightness} \) = overall mean log-brightness.
+- \( P_{arboreal,s} \), \( P_{arid,s} \) = probability of species \( s \) being in arboreal/arid habitats.
+- \( Age_{i} \) = estimated true age of island \( i \).
+- \( \log(Area_{i}) \) = log-transformed island area.
+- \( \epsilon_{s} \sim \mathcal{N}(0, \sigma_{\text{species}}) \) is the species-specific random effect.
+
+### **2. Nematode Diversity Model (Species-Level)**
+\[
+\log(FaithPD_s) \sim \mathcal{N}(\mu_{div} + \beta_{bright} \log(Brightness_s) + \beta_{arbor} P_{arboreal,s} + \beta_{arid} P_{arid,s} + \beta_{age} Age_{i} + \beta_{area} \log(Area_{i}) + \epsilon_s, \sigma_{div})
+\]
+where:
+- \( FaithPD_s \) = Faith’s Phylogenetic Diversity for species \( s \).
+- \( \mu_{div} \) = overall mean diversity.
+- \( \beta_{bright} \) = effect of brightness on nematode diversity.
+- \( \beta_{arbor}, \beta_{arid}, \beta_{age}, \beta_{area} \) = regression coefficients.
+- \( \epsilon_s \sim \mathcal{N}(0, \sigma_{\text{species}}) \) is the species-level random effect.
+- \( \sigma_{div} \) = standard deviation for Faith PD.
+
+### **3. Latent Island Age Model (Handling Missing Data)**
+\[
+Age_{i} \sim \text{Uniform}(MinEmergence_{i}, MaxEmergence_{i})
+\]
+where:
+- \( Age_{i} \) is the **true age** of each island, inferred from **minimum and maximum emergence estimates**.
+
+### **4. Habitat and Vegetation Models**
+\[
+P_{arboreal,s} = \text{logit}^{-1}(\mu_{arboreal} + \epsilon_{s})
+\]
+\[
+P_{arid,s} = \text{logit}^{-1}(\mu_{arid} + \epsilon_{s})
+\]
+- Modeled as **binomial probabilities** using **logistic regression**.
+
+---
+
+## **Handling Missing Data**
+This model incorporates missing data handling in two ways:
+
+1. **Latent Island Age Estimation**: Since the true age of islands is unknown, it is **modeled as a latent variable** with a **uniform prior** between the minimum and maximum estimated emergence times. This allows for uncertainty in island age to be propagated into other model components.
+
+2. **Partial Pooling for Missing Diversity Data**:
+   - If some species have **missing Faith PD values**, their estimates are **partially pooled** through the species-level random effects.
+   - This prevents overfitting by **borrowing strength** from other species with similar characteristics.
+
+---
+
+## **Hierarchical Structure**
+This is a **multi-level Bayesian hierarchical model**:
+
+1. **Island-Level Variables**: 
+   - **Island age** (\( Age_i \)) and **island area** (\( Area_i \)) affect **species brightness** and **nematode diversity**.
+   - These variables vary across islands but influence all species on the island.
+   
+2. **Species-Level Variables**: 
+   - **Brightness, habitat preference, and vegetation type** are modeled with **species-specific effects**.
+   - Each species has a unique **random effect** for brightness and nematode diversity.
+
+3. **Observation-Level Variables**:
+   - **Nematode diversity (Faith PD)** is recorded at the **species level**.
+   - Predictions for Faith PD are based on **species-level** and **island-level** characteristics.
+
+This **hierarchical structure** allows the model to borrow strength from higher levels, leading to **better parameter estimation** even with **limited data for some species or islands**.
+
+---
+
+## **Differences Between This Model and the Nematode Load Model**
+The previous model focused on **nematode count (load)**, while this model predicts **nematode diversity (Faith PD)**. The key differences are:
+
+1. **Response Variable**:
+   - **Previous Model**: Negative binomial regression for nematode count.
+   - **Current Model**: Log-normal regression for nematode diversity.
+
+2. **Distribution of the Response Variable**:
+   - **Nematode Load**: Overdispersed **count data**, modeled with a **negative binomial**.
+   - **Nematode Diversity**: **Continuous, right-skewed data**, modeled using a **log-normal distribution**.
+
+3. **Predictive Relationships**:
+   - **In the Nematode Load Model**, **brightness** affected **nematode count**.
+   - **In this model**, brightness affects **nematode diversity**, under the assumption that higher brightness influences the taxonomic or phylogenetic richness of nematodes.
+
+4. **Interpretation of Results**:
+   - In the **load model**, high nematode load might indicate **high infection intensity**.
+   - In the **diversity model**, high Faith PD suggests **greater phylogenetic richness**.
+
+5. **Impact of Hierarchical Effects**:
+   - The **random effects for species and islands** function similarly in both models, but their impact might be different:
+     - In the **load model**, random effects may reflect **species-specific susceptibility**.
+     - In the **diversity model**, they reflect **species- and island-level differences in phylogenetic diversity**.
+
+---
+
+## **Conclusion**
+This model extends our previous analysis by focusing on **nematode diversity** instead of **nematode load**, capturing a **different ecological aspect**. By maintaining a **hierarchical Bayesian framework**, it accounts for both **species- and island-level variation**, while also **handling missing data and uncertainty in island age**.
+
+---
+
+
+
+## **Data Structure and Rationale for Model Selection**
+Our dataset comprises observations at both **individual** and **species levels**, incorporating multiple ecological and morphological traits. Individual-level traits include **brightness, habitat use, vegetation association, and nematode load**, while species-level traits encompass **nematode phylogenetic diversity and island-level characteristics** such as **island area and emergence age**. Given this **nested structure**, a **hierarchical Bayesian framework** was employed to account for the interdependence of observations within species and islands.
+
+A hierarchical approach was particularly suitable because:
+1. **It properly partitions variance** across multiple levels, allowing for the estimation of **species-specific and island-specific effects** while sharing information across groups.
+2. **It naturally handles missing data**, leveraging **partial pooling**, where estimates for sparsely observed species or islands benefit from shared information at higher levels, reducing bias and increasing precision.
+3. **It enables the propagation of uncertainty** from one model component to another, particularly when estimating island ages from a range of possible values or using modeled brightness in subsequent models.
+4. **It allows for the integration of multiple response variables**, such as nematode load (count data) and nematode phylogenetic diversity (continuous data), each modeled with the appropriate statistical distribution.
+
+The main objectives of our analysis were to determine how **brightness, habitat use, and island characteristics** influence both **nematode load** and **nematode diversity**, while also assessing **potential indirect effects** by modeling brightness as an intermediate variable.
+
+## **Hierarchical Bayesian Model Structure**
+We developed a **multi-level Bayesian model** where **species traits, island characteristics, and individual observations** were interconnected across multiple components. The model consists of the following key submodels:
+
+1. **Brightness Model**: Predicts species-level brightness based on microhabitat preference, vegetation type, island area, and estimated island age.
+2. **Nematode Load Model**: Predicts **individual nematode load** as a function of species-level brightness (from the first model), microhabitat preference, vegetation type, island area, and island age.
+3. **Nematode Diversity Model**: Predicts **species-level nematode phylogenetic diversity (Faith’s PD)** using **modeled brightness** and other ecological variables.
+
+Each submodel communicates with the others through **latent variables**, ensuring that uncertainty in estimated parameters is propagated throughout the model structure.
+
+### **Brightness Model**
+Brightness (\( B_s \)) was modeled at the **species level** using a **log-normal distribution**, given that brightness measurements are **continuous and right-skewed**. The mean brightness was predicted based on island characteristics and species habitat preferences:
+
+\[
+\log(Brightness_s) \sim \mathcal{N}(\mu_{brightness} + \beta_{arbor} P_{arboreal,s} + \beta_{arid} P_{arid,s} + \beta_{age} Age_i + \beta_{area} \log(Area_i) + \epsilon_s, \sigma_{brightness})
+\]
+
+where:
+- \( \mu_{brightness} \) is the overall mean log-brightness.
+- \( P_{arboreal,s} \) and \( P_{arid,s} \) are the **probabilities of the species being arboreal or associated with arid vegetation**, modeled via a **logistic regression**.
+- \( Age_i \) is the **true age of the island**, treated as a latent variable (see below).
+- \( \log(Area_i) \) is the **log-transformed island area**.
+- \( \epsilon_s \sim \mathcal{N}(0, \sigma_{\text{species}}) \) represents **species-level random effects**.
+
+### **Nematode Load Model**
+Nematode load was modeled as **count data** with potential overdispersion, necessitating the use of a **negative binomial distribution** rather than a Poisson model. The log mean nematode load (\( \lambda_s \)) was modeled as:
+
+\[
+\log(\lambda_s) = \mu_{load} + \beta_{bright} \log(Brightness_s) + \beta_{arbor} P_{arboreal,s} + \beta_{arid} P_{arid,s} + \beta_{age} Age_i + \beta_{area} \log(Area_i) + \epsilon_s
+\]
+
+\[
+Nematode\_Count \sim \text{Negative Binomial}(\lambda_s, \phi)
+\]
+
+where:
+- \( \mu_{load} \) is the overall mean **nematode load**.
+- \( \beta_{bright} \) quantifies the **effect of brightness on nematode load**.
+- \( \phi \) is the **overdispersion parameter**, allowing variance to exceed the mean.
+
+By using **modeled brightness** from the first submodel, we ensure that estimates of nematode load incorporate uncertainty in brightness predictions.
+
+### **Nematode Diversity Model**
+Faith’s Phylogenetic Diversity (Faith PD) was modeled as **continuous right-skewed data**, using a **log-normal likelihood function**:
+
+\[
+\log(FaithPD_s) \sim \mathcal{N}(\mu_{div} + \beta_{bright} \log(Brightness_s) + \beta_{arbor} P_{arboreal,s} + \beta_{arid} P_{arid,s} + \beta_{age} Age_i + \beta_{area} \log(Area_i) + \epsilon_s, \sigma_{div})
+\]
+
+where:
+- \( \mu_{div} \) is the overall mean log-diversity.
+- \( \sigma_{div} \) represents the standard deviation of the Faith PD observations.
+
+As in the **load model**, we use the **modeled brightness estimates** from the **brightness model**, ensuring consistency in parameter estimation across models.
+
+## **Priors and Regularization**
+All model parameters were assigned **weakly informative priors**, ensuring proper regularization while allowing flexibility:
+- **Intercepts and regression coefficients**: \( \mathcal{N}(0,1) \) or \( \mathcal{N}(0, 0.5) \).
+- **Variance parameters**: **Exponential priors** \( \mathcal{E}(0.5) \), enforcing sparsity in random effects.
+- **Island age**: Uniform prior between **minimum and maximum estimated emergence times**.
+
+## **Inference and Sampling**
+The model was implemented in **Stan**, using **Hamiltonian Monte Carlo (HMC)** for efficient sampling. We ran **10 parallel chains** with **500 iterations per chain**, ensuring convergence by monitoring **R-hat values (<1.1)** and **effective sample sizes**.
+
+---
+
+## **Conclusion**
+Our hierarchical Bayesian framework provides a **structured, biologically-informed approach** to studying the relationships between **brightness, habitat use, island characteristics, and nematode interactions**. By leveraging **multi-level dependencies** and incorporating **modeled variables**, we obtain **more robust estimates** while accounting for **missing data and latent effects**. This approach allows for a **more comprehensive understanding** of the ecological dynamics affecting nematode load and diversity.
+
+---

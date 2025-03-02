@@ -1,0 +1,48 @@
+"","species_name","species_code","island","island_code","min_emergence","max_emergence","trustable_emergence","island_area","trustable_area","new_island_index","island_index_spp"
+"1","hirsutus",14,"Santa_Cruz",13,1.1,2.3,"yes",987.09,"yes",11,11
+"2","ochsneri",21,"Santa_Cruz",13,1.1,2.3,"yes",987.09,"yes",11,11
+"3","eos",12,"Santa_Cruz",13,1.1,2.3,"yes",987.09,"yes",11,11
+"4","tanneri",42,"Santa_Cruz",13,1.1,2.3,"yes",987.09,"yes",11,11
+"5","reibischi",30,"Santa_Cruz",13,1.1,2.3,"yes",987.09,"yes",11,11
+"6","wolfi",47,"Santa_Cruz",13,1.1,2.3,"yes",987.09,"yes",11,11
+"7","akamatus",1,"Santa_Cruz",13,1.1,2.3,"yes",987.09,"yes",11,11
+"8","amastroides",3,"San_Cristobal",12,2.4,4,"yes",559.98,"yes",10,10
+"9","basiplicatus",5,"San_Cristobal",12,2.4,4,"yes",559.98,"yes",10,10
+"10","eschariferus",13,"San_Cristobal",12,2.4,4,"yes",559.98,"yes",10,10
+"11","darwini",11,"Santiago",15,0.8,1.4,"yes",577.1,"yes",13,13
+"12","sculpturatus",33,"Santiago",15,0.8,1.4,"yes",577.1,"yes",13,13
+"13","jacobinus",16,"Santiago",15,0.8,1.4,"yes",577.1,"yes",13,13
+"14","perspectivus",25,"San_Cristobal",12,2.4,4,"yes",559.98,"yes",10,10
+"15","nuciformis",18,"San_Cristobal",12,2.4,4,"yes",559.98,"yes",10,10
+"16","bauri",6,"San_Cristobal",12,2.4,4,"yes",559.98,"yes",10,10
+"17","chemnitzioides",10,"San_Cristobal",12,2.4,4,"yes",559.98,"yes",10,10
+"18","sp. nov. Darwin 1",36,"Isabela",7,0.5,0.8,"yes",4726.57,"yes",6,6
+"19","sp. nov. Volcan Wolf 3",39,"Isabela",7,0.5,0.8,"yes",4726.57,"yes",6,6
+"20","pallidus",23,"Isabela",7,0.5,0.8,"yes",4726.57,"yes",6,6
+"21","perrus 1",24,"Fernandina",3,0.032,0.06,"yes",649.11,"yes",3,3
+"22","unifasciatus",44,"Floreana",4,1.5,2.3,"yes",178.03,"yes",4,4
+"23","planospira",28,"Floreana",4,1.5,2.3,"yes",178.03,"yes",4,4
+"24","rabidensis",29,"Rabida",11,1.3,1.6,"yes",5.13,"yes",9,9
+"25","nux",20,"Floreana",4,1.5,2.3,"yes",178.03,"yes",4,4
+"26","ventrosus",46,"Santa_Fe",14,2.9,3,"yes",25.15,"yes",12,12
+"27","approximatus",4,"Espanola",2,3,3.5,"yes",64.11,"yes",2,2
+"28","sp_nov_CA",40,"Isabela",7,0.5,0.8,"yes",4726.57,"yes",6,6
+"29","pinzonensis",26,"Pinzon",10,1.3,1.7,"yes",18.07,"yes",8,8
+"30","ustulatus",45,"Floreana",4,1.5,2.3,"yes",178.03,"yes",4,4
+"31","cavagnaroi",9,"Santa_Cruz",13,1.1,2.3,"yes",987.09,"yes",11,11
+"32","olla",22,"Santa_Cruz",13,1.1,2.3,"yes",987.09,"yes",11,11
+"33","lycodus",17,"Santa_Cruz",13,1.1,2.3,"yes",987.09,"yes",11,11
+"34","snodgrassi",35,"Espanola",2,3,3.5,"yes",64.11,"yes",2,2
+"35","pinzonopsis",27,"Pinzon",10,1.3,1.7,"yes",18.07,"yes",8,8
+"36","sp. nov. pinzon 1",38,"Pinzon",10,1.3,1.7,"yes",18.07,"yes",8,8
+"37","simrothi",34,"Isabela",7,0.5,0.8,"yes",4726.57,"yes",6,6
+"38","tortuganus",43,"Isabela",7,0.5,0.8,"yes",4726.57,"yes",6,6
+"39","albemarlensis",2,"Isabela",7,0.5,0.8,"yes",4726.57,"yes",6,6
+"40","invalidus",15,"Floreana",4,1.5,2.3,"yes",178.03,"yes",4,4
+"41","rugiferus",31,"Santiago",15,0.8,1.4,"yes",577.1,"yes",13,13
+"42","calvus",7,"Floreana",4,1.5,2.3,"yes",178.03,"yes",4,4
+"43","nucula",19,"San_Cristobal",12,2.4,4,"yes",559.98,"yes",10,10
+"44","canaliferus",8,"San_Cristobal",12,2.4,4,"yes",559.98,"yes",10,10
+"45","sp. nov. Pinta 2",37,"Pinta",9,0.7,0.8,"yes",60.33,"yes",7,7
+"46","sp_nov_CH",41,"Champion",1,1.9,2.40914285714286,"NA",0.233,"yes",1,1
+"47","rugulosus",32,"Gardner",5,0.8,1.4,"no",2.565,"no",5,5
