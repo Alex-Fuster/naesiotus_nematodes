@@ -4,10 +4,10 @@ AK,akamatus
 albemarlensis,albemarlensis
 albermarlensis,albemarlensis
 AL,albemarlensis
-cf. albemarlensis,sp_nov_CA
-cf._albemarlensis,sp_nov_CA
-cf_albemarlensis',sp_nov_CA
-cf_albemarlensis,sp_nov_CA
+cf. albemarlensis,sp_nov_CerroAzul
+cf._albemarlensis,sp_nov_CerroAzul
+cf_albemarlensis',sp_nov_CerroAzul
+cf_albemarlensis,sp_nov_CerroAzul
 amastroides,amastroides
 AM,amastroides
 cf. amastroides',amastroides
@@ -103,34 +103,34 @@ simrothi_1,simrothi
 simrothi 2,
 snodgrassi,snodgrassi
 SN,snodgrassi
-spp1,sp. nov. Darwin 1
-X1,sp. nov. Darwin 1
+spp1,sp. nov. Darwin
+X1,sp. nov. Darwin
 spp11,pinzonopsis
 X11,pinzonopsis
-spp12,sp. nov. pinzon 1
-X12,sp. nov. pinzon 1
-sp-_nov-_pinzon_1,sp. nov. pinzon 1
-spp13,sp. nov. Pinta 2
-X13,sp. nov. Pinta 2
-sp._nov._Pinta_2',sp. nov. Pinta 2
-sp._nov._Pinta_2,sp. nov. Pinta 2
-sp_nov_Pinta_2,sp. nov. Pinta 2
-spp14,sp_nov_CH
-X14,sp_nov_CH
+spp12,sp. nov. Pinzon
+X12,sp. nov. Pinzon
+sp-_nov-_pinzon_1,sp. nov. Pinzon
+spp13,sp. nov. Pinta
+X13,sp. nov. Pinta
+sp._nov._Pinta_2',sp. nov. Pinta
+sp._nov._Pinta_2,sp. nov. Pinta
+sp_nov_Pinta_2,sp. nov. Pinta
+spp14,sp_nov_Champion
+X14,sp_nov_Champion
 spp15,rugulosus
 X15,rugulosus
-spp2,sp. nov. Volcan Wolf 3
-X2,sp. nov. Volcan Wolf 3
+spp2,sp. nov. Wolf
+X2,sp. nov. Wolf
 spp3,pallidus
 X3,pallidus
-spp4,perrus 1
-X4,perrus 1
+spp4,perrus
+X4,perrus
 spp6,ventrosus
 X6,ventrosus
 spp7,approximatus
 X7,approximatus
-spp8,sp_nov_CA
-X8,sp_nov_CA
+spp8,sp_nov_CerroAzul
+X8,sp_nov_CerroAzul
 spp9,pinzonensis
 X9,pinzonensis
 tanneri,tanneri
@@ -170,13 +170,13 @@ eschariferus ventrosus,
 indefatigabilis,
 nilsodhneri,
 pallidus,pallidus
-perrus 1,perrus 1
-perrus_1,perrus 1
+perrus 1,perrus
+perrus_1,perrus
 perrus 2,
 pinzonensis,pinzonensis
 pinzonopsis,pinzonopsis
 rugatinus,
-sp nov Pinzon,sp. nov. pinzon 1
+sp nov Pinzon,sp. nov. Pinzon
 unknownblack,
 Brantsnail Clade,
 Brown guys,
@@ -201,23 +201,23 @@ hemaerodes,
 olla jacobinus*,olla
 perspectivus/canaliferus??,
 sp. nov. Alcedo 1,
-sp. nov. Darwin 1,sp. nov. Darwin 1
-sp._nov_Darwin_1,sp. nov. Darwin 1
-sp_nov_Darwin_1,sp. nov. Darwin 1
-sp-_nov-_Darwin_1,sp. nov. Darwin 1
+sp. nov. Darwin 1,sp. nov. Darwin
+sp._nov_Darwin_1,sp. nov. Darwin
+sp_nov_Darwin_1,sp. nov. Darwin
+sp-_nov-_Darwin_1,sp. nov. Darwin
 sp. nov. Darwin 2,
 sp. nov. Pinta 1,
-sp. nov. Pinta 2,sp. nov. Pinta 2
-sp-_nov-_Pinta_2,sp. nov. Pinta 2
+sp. nov. Pinta 2,sp. nov. Pinta
+sp-_nov-_Pinta_2,sp. nov. Pinta
 sp. nov. Volcan Wolf 1,
 sp. nov. Volcan Wolf 2,
-sp. nov. Volcan Wolf 3,sp. nov. Volcan Wolf 3
-sp-_nov-_Volcan_Wolf_3,sp. nov. Volcan Wolf 3
-sp. nov. pinzon 1,sp. nov. pinzon 1
+sp. nov. Volcan Wolf 3,sp. nov. Wolf
+sp-_nov-_Volcan_Wolf_3,sp. nov. Wolf
+sp. nov. pinzon 1,sp. nov. Pinzon
 sulcatus (yellow nux),
 testing Pinta divergence,
 ventrosus,ventrosus
 cf_reibischi,reibischi
 cf._reibischi,reibischi
-sp_nov_CA,sp_nov_CA
+sp_nov_CA,sp_nov_CerroAzul
 rugulosus,rugulosus

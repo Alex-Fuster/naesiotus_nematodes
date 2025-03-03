@@ -1,32 +1,32 @@
 "","species","faith_pd","species_code","species_name","island","island_code","new_island_index"
-"1","albemarlensis",3.23773536229533,2,"albemarlensis","Isabela",7,6
-"2","amastroides",4.91523363169085,3,"amastroides","San_Cristobal",12,10
-"3","basiplicatus",4.07853760240391,5,"basiplicatus","San_Cristobal",12,10
-"4","bauri",6.4714302584182,6,"bauri","San_Cristobal",12,10
-"5","cavagnaroi",3.83900949886788,9,"cavagnaroi","Santa_Cruz",13,11
-"6","darwini",6.02353235129772,11,"darwini","Santiago",15,13
-"7","eos",3.15353287280118,12,"eos","Santa_Cruz",13,11
-"8","eschariferus",5.74981711718647,13,"eschariferus","San_Cristobal",12,10
-"9","hirsutus",4.40683714405168,14,"hirsutus","Santa_Cruz",13,11
-"10","jacobinus",1.41689712616881,16,"jacobinus","Santiago",15,13
-"11","lycodus",2.06333463697229,17,"lycodus","Santa_Cruz",13,11
-"12","nuciformis",3.426363989018,18,"nuciformis","San_Cristobal",12,10
-"13","nucula",1.90864406607579,19,"nucula","San_Cristobal",12,10
-"14","nux",2.32355328861399,20,"nux","Floreana",4,4
-"15","olla",4.21491879010841,22,"olla","Santa_Cruz",13,11
-"16","ochsneri",2.68482453486558,21,"ochsneri","Santa_Cruz",13,11
-"17","perspectivus",2.63484119612258,25,"perspectivus","San_Cristobal",12,10
-"18","rugulosus",5.13164229394624,32,"rugulosus","Gardner",5,5
-"19","unifasciatus",8.47050714150805,44,"unifasciatus","Floreana",4,4
-"20","sp. nov. Volcan Wolf 3",7.10808079176604,39,"sp. nov. Volcan Wolf 3","Isabela",7,6
-"21","simrothi",1.21163128217904,34,"simrothi","Isabela",7,6
-"22","tanneri",5.38480983005593,42,"tanneri","Santa_Cruz",13,11
-"23","tortuganus",5.45392683053137,43,"tortuganus","Isabela",7,6
-"24","ustulatus",4.28034629586887,45,"ustulatus","Floreana",4,4
-"25","wolfi",0.731578268925659,47,"wolfi","Santa_Cruz",13,11
-"26","pinzonopsis",5.32300518976081,27,"pinzonopsis","Pinzon",10,8
-"27","sp. nov. Pinta 2",5.68471778510207,37,"sp. nov. Pinta 2","Pinta",9,7
-"28","perrus 1",2.16102476289961,24,"perrus 1","Fernandina",3,3
-"29","approximatus",6.07426195667813,4,"approximatus","Espanola",2,2
-"30","sp_nov_CA",3.84374608832877,40,"sp_nov_CA","Isabela",7,6
-"31","pinzonensis",5.33044517321036,26,"pinzonensis","Pinzon",10,8
+"1","albemarlensis",3.23773536229533,2,"albemarlensis","Isabela",6,5
+"2","amastroides",4.91523363169085,3,"amastroides","San_Cristobal",11,9
+"3","basiplicatus",4.07853760240391,5,"basiplicatus","San_Cristobal",11,9
+"4","bauri",6.4714302584182,6,"bauri","San_Cristobal",11,9
+"5","cavagnaroi",3.83900949886788,9,"cavagnaroi","Santa_Cruz",12,10
+"6","darwini",6.02353235129772,11,"darwini","Santiago",14,12
+"7","eos",3.15353287280118,12,"eos","Santa_Cruz",12,10
+"8","eschariferus",5.74981711718647,13,"eschariferus","San_Cristobal",11,9
+"9","hirsutus",4.40683714405168,14,"hirsutus","Santa_Cruz",12,10
+"10","jacobinus",1.41689712616881,16,"jacobinus","Santiago",14,12
+"11","lycodus",2.06333463697229,17,"lycodus","Santa_Cruz",12,10
+"12","nuciformis",3.426363989018,18,"nuciformis","San_Cristobal",11,9
+"13","nucula",1.90864406607579,19,"nucula","San_Cristobal",11,9
+"14","nux",2.32355328861399,20,"nux","Floreana",3,3
+"15","olla",4.21491879010841,22,"olla","Santa_Cruz",12,10
+"16","ochsneri",2.68482453486558,21,"ochsneri","Santa_Cruz",12,10
+"17","perspectivus",2.63484119612258,25,"perspectivus","San_Cristobal",11,9
+"18","rugulosus",5.13164229394624,32,"rugulosus","Gardner",4,4
+"19","unifasciatus",8.47050714150805,44,"unifasciatus","Floreana",3,3
+"20","sp. nov. Volcan Wolf 3",7.10808079176604,39,"sp. nov. Wolf","Isabela",6,5
+"21","simrothi",1.21163128217904,34,"simrothi","Isabela",6,5
+"22","tanneri",5.38480983005593,42,"tanneri","Santa_Cruz",12,10
+"23","tortuganus",5.45392683053137,43,"tortuganus","Isabela",6,5
+"24","ustulatus",4.28034629586887,45,"ustulatus","Floreana",3,3
+"25","wolfi",0.731578268925659,47,"wolfi","Santa_Cruz",12,10
+"26","pinzonopsis",5.32300518976081,27,"pinzonopsis","Pinzon",9,7
+"27","sp. nov. Pinta 2",5.68471778510207,37,"sp. nov. Pinta","Pinta",8,6
+"28","perrus 1",2.16102476289961,24,"perrus","Fernandina",2,2
+"29","approximatus",6.07426195667813,4,"approximatus","Espanola",1,1
+"30","sp_nov_CA",3.84374608832877,40,"sp_nov_CerroAzul","Isabela",6,5
+"31","pinzonensis",5.33044517321036,26,"pinzonensis","Pinzon",9,7

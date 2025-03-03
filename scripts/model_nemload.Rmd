@@ -17,6 +17,7 @@ library(posterior)
 library(ggpubr)
 library(phytools)
 library(ape)
+library(patchwork)
 
 ```
 
@@ -74,6 +75,7 @@ mean_diff <- df_island %>%
 df_island <- df_island %>%
   mutate(max_emergence = ifelse(is.na(max_emergence), min_emergence + mean_diff, max_emergence))
 
+
 # Rename the column "mean_emergence" to "island_age" in df_island
 # add an ID column
 df_island <- df_island %>% dplyr::rename(island_area = area) |> 
@@ -101,6 +103,11 @@ df_load_raw$nematode_count <- as.numeric(df_load_raw$nematode_count)
 df_load_rename <- df_load_raw %>% 
   select(id, spp, nematode_count, island) %>% 
   dplyr::rename(species = spp)
+
+# Champion as Floreana
+
+df_load_rename <- df_load_rename %>%
+  mutate(island = ifelse(island == "Champion", "Floreana", island))
 
 # correct species names
 df_load <- df_load_rename %>%
@@ -631,11 +638,10 @@ load_data <- combined_data %>%
   mutate(parameter = factor(parameter, levels = rev(custom_order)))  # Set custom order
 
 # Ridge plot for **effects on Brightness**
-plot_brightness <- ggplot(brightness_data, aes(x = value, y = parameter, fill = type)) +
-  geom_density_ridges(
-    alpha = 0.5, scale = 1.2, rel_min_height = 0.01
-  ) +
-  scale_fill_manual(values = c("Posterior" = "lightcoral", "Prior" = "grey80")) +
+plot_brightness <- ggplot(brightness_data, aes(x = value, y = parameter, fill = type, alpha = type)) +
+  geom_density_ridges(scale = 1.2, rel_min_height = 0.01) +
+  scale_fill_manual(values = c("Posterior" = "red4", "Prior" = "grey80")) +
+  scale_alpha_manual(values = c("Posterior" = 1, "Prior" = 0.5)) +  # Less transparency for Prior
   theme_minimal() +
   labs(
     title = "Effects on shell brightness",
@@ -651,11 +657,10 @@ plot_brightness <- ggplot(brightness_data, aes(x = value, y = parameter, fill = 
   my_theme
 
 # Ridge plot for **effects on Load**
-plot_load <- ggplot(load_data, aes(x = value, y = parameter, fill = type)) +
-  geom_density_ridges(
-    alpha = 0.5, scale = 1.2, rel_min_height = 0.01
-  ) +
-  scale_fill_manual(values = c("Posterior" = "lightcoral", "Prior" = "grey80")) +
+plot_load <- ggplot(load_data, aes(x = value, y = parameter, fill = type, alpha = type)) +
+  geom_density_ridges(scale = 1.2, rel_min_height = 0.01) +
+  scale_fill_manual(values = c("Posterior" = "red4", "Prior" = "grey80")) +
+  scale_alpha_manual(values = c("Posterior" = 1, "Prior" = 0.5)) +  # Less transparency for Prior
   theme_minimal() +
   labs(
     title = "Effects on encapsulations count",
@@ -673,6 +678,7 @@ plot_load <- ggplot(load_data, aes(x = value, y = parameter, fill = type)) +
 # Print both plots
 plot_brightness
 plot_load
+
 
 
 
@@ -792,6 +798,11 @@ ggsave(here::here("output/figures/model_checks/load_model_nef.png"),
 
 
 ```{r}
+# Select only the parameters related to slopes
+selected_params <- posterior_df %>%
+  select(starts_with("slope"))
+
+
 ggsave(here::here("output/figures/model_checks/load_model_autocorrelation_plots.png"),
        mcmc_acf(selected_params) +
          scale_color_manual(values = c("gray30", "gray60", "gray90")))
@@ -842,9 +853,16 @@ hab_rvars <- hab_rvars %>%
 hab_rvars <- hab_rvars %>%
   mutate(species_name = forcats::fct_reorder(species_name, -.value))
 
+
+##############
+
+# Compute the mean of .value (rvar) before ordering
+hab_rvars <- hab_rvars %>%
+  mutate(mean_value = mean(.value)) %>%  # Extract mean from rvar
+  mutate(species_name = fct_reorder(species_name, mean_value, .desc = TRUE))
+
 # Create the plot
-p_pred_hab <- hab_rvars |> 
-  ggplot(aes(x = species_name, ydist = .value)) + 
+p_pred_hab <- ggplot(hab_rvars, aes(x = species_name, ydist = .value)) + 
   stat_pointinterval() + 
   ylab("Arboreal probability")
 
@@ -852,15 +870,17 @@ p_pred_hab <- hab_rvars |>
 p_pred_hab <- p_pred_hab + 
   geom_point(aes(x = species_name, y = arboreal_prop), inherit.aes = FALSE, 
              data = df_hab, 
-             colour = "red",
+             colour = "red3",
              size = 2, alpha = .5) +
   theme_minimal() +
   my_theme +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Rotate for readability
   xlab(NULL)
 
 # Show the plot
 p_pred_hab
+
+
 
 #ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/p_pred_hab.png"), height = 6, width = 9)
 
@@ -889,21 +909,29 @@ veg_rvars <- veg_rvars %>%
 veg_rvars <- veg_rvars %>%
   mutate(species_name = forcats::fct_reorder(species_name, -.value))
 
-# Create the plot
-p_pred_veg <- veg_rvars |> 
-  ggplot(aes(x = species_name, ydist = .value)) + 
-  stat_pointinterval() + 
-  ylab("Arid vegetation probability")
 
-# Add raw data points (as proportion of individuals in arid vegetation)
+
+##############
+
+# Compute the mean of .value (rvar) before ordering
+veg_rvars <- veg_rvars %>%
+  mutate(mean_value = mean(.value)) %>%  # Extract mean from rvar
+  mutate(species_name = fct_reorder(species_name, mean_value, .desc = TRUE))
+
+# Create the plot
+p_pred_veg <- ggplot(veg_rvars, aes(x = species_name, ydist = .value)) + 
+  stat_pointinterval() + 
+  ylab("Arid probability")
+
+# Add raw data points (as proportion of arboreal individuals)
 p_pred_veg <- p_pred_veg + 
   geom_point(aes(x = species_name, y = arid_prop), inherit.aes = FALSE, 
              data = df_veg, 
-             colour = "red",
+             colour = "red3",
              size = 2, alpha = .5) +
   theme_minimal() +
   my_theme +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Rotate for readability
   xlab(NULL)
 
 # Show the plot
@@ -941,12 +969,13 @@ bright_rvars <- bright_rvars %>%
 bright_rvars <- bright_rvars |> 
   ggplot(aes(x = species_name, ydist = brightness)) + 
   stat_pointinterval() + 
-  scale_y_log10()
+  scale_y_log10()+ 
+  ylab("Shell brightness (nm)")
 
 p_pred_bright <- bright_rvars + 
   geom_point(aes(x = species_name, y = brightness), inherit.aes = FALSE, 
              data = df_bright_noNA, 
-             colour = "red",
+             colour = "red3",
              size = .5, alpha = .5,
              position = position_jitter(width = .3)) +
   theme_minimal() +
@@ -994,21 +1023,22 @@ p_pred_load <- load_rvars |>
   theme_minimal() +
   my_theme +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  xlab(NULL)
+  xlab(NULL)+ 
+  ylab("Encapsulations count")
 
 # Overlay observed nematode loads on the plot (as jittered red points)
 p_pred_load <- p_pred_load + 
   geom_point(aes(x = species_name, y = nematode_count), inherit.aes = FALSE, 
              data = df_load, 
-             colour = "red",
+             colour = "red3",
              size = .5, alpha = .3,
              position = position_jitter(width = .3)) +
   # Add mean observed load (red square) for each species
-  geom_point(aes(x = species_name, y = mean_nematode_count), inherit.aes = FALSE, 
-             data = df_load_mean, 
-             colour = "blue",
-             shape = 15,  # Red square
-             size = 2, alpha = 1) +
+  # geom_point(aes(x = species_name, y = mean_nematode_count), inherit.aes = FALSE, 
+  #            data = df_load_mean, 
+  #            colour = "#999900",
+  #            shape = 15,  # Red square
+  #            size = 2, alpha = 1) +
   theme_minimal() +
   my_theme +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
@@ -1025,77 +1055,30 @@ p_pred_load
 
 
 ```{r}
-# Extract predicted total slope for brightness on load for each island from the model output
-slope_rvars <- unconstr_brightload_samp |> 
-  tidybayes::gather_rvars(total_slope_bright_load_island[island_index]) |> 
-  mutate(predicted_slope = .value,
-         island_index = as.character(island_index))  # Convert island_index to character for plotting
+plots_load_model_predictions <- ggarrange(
+  p_pred_hab,
+  p_pred_veg,
+  p_pred_bright,
+  p_pred_load,
+  
+  ncol = 1,
+  nrow = 4,
+  
+  labels = letters[1:4],
+  font.label = list(size = 18)
+)
 
-# Plot the predicted slopes using the `ydist` aesthetic for rvar objects
-p_slope_prediction <- ggplot(slope_rvars, aes(x = island_index, ydist = predicted_slope)) +
-  stat_pointinterval(size = 0.8) +  # Plot the predicted slopes with intervals
-  theme_minimal() +
-  my_theme +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(
-    x = "Island",
-    y = "Predicted Slope of Brightness on Nematode Load",
-    title = "Predicted Total Slope of Brightness on Load for Each Island"
-  )
+plots_load_model_predictions
 
-# Print the plot
-p_slope_prediction
-
-
+ggsave(here::here("output/figures/model_checks/load_model_predictions.png"),
+          height = 15,
+          width = 10)
 
 ```
 
 ############################
 
-predictd % 0
 
-
-```{r}
-# Extract the draws for 'log_avg_predicted_load'
-predicted_load_draws <- unconstr_brightload_samp$draws(variables = "log_avg_predicted_load")
-
-# Convert to a data frame
-predicted_load_data <- as.data.frame(predicted_load_draws)
-
-# Check the unique draw IDs
-unique_draw_ids <- unique(predicted_load_tidy$draw_id)
-length(unique_draw_ids)  # This should give you an idea of the structure
-
-
-# Extract the species number from the draw_id
-predicted_load_tidy <- predicted_load_tidy %>%
-  mutate(species_code = as.numeric(sub("\\..*", "", draw_id)))  # Extract species from draw_id
-
-
-# Calculate the mean predicted load for each species
-predicted_load_summary <- predicted_load_tidy %>%
-  group_by(species_code) %>%
-  summarize(mean_log_avg_predicted_load = mean(log_avg_predicted_load))
-
-# Transform back to raw scale
-predicted_load_summary <- predicted_load_summary %>%
-  mutate(mean_avg_predicted_load = exp(mean_log_avg_predicted_load))
-
-# Merge with species metadata
-df_pred <- sp_code_island_df %>%
-  left_join(predicted_load_summary, by = "species_code")
-
-# Plot the overall distribution of predicted nematode load for all species
-ggplot(df_pred, aes(x = mean_avg_predicted_load)) +
-  geom_density(fill = "blue", alpha = 0.5) +
-  labs(title = "Distribution of Predicted Nematode Load (All Species)",
-       x = "Predicted Load", y = "Density") +
-  theme_classic()
-
-
-
-
-```
 
 
 # diversity analysis
@@ -1257,14 +1240,13 @@ diversity_data <- combined_data_div %>%
   mutate(parameter = factor(parameter, levels = rev(custom_order)))  # Set custom order
 
 # Ridge plot for **effects on Brightness**
-plot_brightness_div <- ggplot(brightness_data_div, aes(x = value, y = parameter, fill = type)) +
-  geom_density_ridges(
-    alpha = 0.5, scale = 1.2, rel_min_height = 0.01
-  ) +
-  scale_fill_manual(values = c("Posterior" = "lightcoral", "Prior" = "grey80")) +
+plot_brightness_div <- ggplot(brightness_data_div, aes(x = value, y = parameter, fill = type, alpha = type)) +
+  geom_density_ridges(scale = 1.2, rel_min_height = 0.01) +
+  scale_fill_manual(values = c("Posterior" = "red4", "Prior" = "grey80")) +
+  scale_alpha_manual(values = c("Posterior" = 1, "Prior" = 0.5)) +  # Less transparency for Prior
   theme_minimal() +
   labs(
-    title = "Posterior Distributions for Effects on Brightness",
+    title = "Effects on shell brightness",
     x = "Coefficient Estimate (??)",
     y = ""  # Simplified y-axis labels
   ) +
@@ -1276,15 +1258,14 @@ plot_brightness_div <- ggplot(brightness_data_div, aes(x = value, y = parameter,
   ) +
   my_theme
 
-# Ridge plot for **effects on Diversity**
-plot_diversity <- ggplot(diversity_data, aes(x = value, y = parameter, fill = type)) +
-  geom_density_ridges(
-    alpha = 0.5, scale = 1.2, rel_min_height = 0.01
-  ) +
-  scale_fill_manual(values = c("Posterior" = "lightcoral", "Prior" = "grey80")) +
+# Ridge plot for **effects on Load**
+plot_div <- ggplot(diversity_data, aes(x = value, y = parameter, fill = type, alpha = type)) +
+  geom_density_ridges(scale = 1.2, rel_min_height = 0.01) +
+  scale_fill_manual(values = c("Posterior" = "red4", "Prior" = "grey80")) +
+  scale_alpha_manual(values = c("Posterior" = 1, "Prior" = 0.5)) +  # Less transparency for Prior
   theme_minimal() +
   labs(
-    title = "Effects on nematode diversity",
+    title = "Effects on encapsulations count",
     x = "Coefficient Estimate (??)",
     y = ""  # Simplified y-axis labels
   ) +
@@ -1298,7 +1279,7 @@ plot_diversity <- ggplot(diversity_data, aes(x = value, y = parameter, fill = ty
 
 # Print both plots
 plot_brightness_div
-plot_diversity
+plot_div
 
 
 
@@ -1379,15 +1360,6 @@ ggsave(here::here("output/figures/model_checks/div_model_hist_trace_plots.png"),
 
 
 
-
-
-
-
-
-
-
-
-
 ## Model predictions
 
 ```{r}
@@ -1416,9 +1388,16 @@ hab_rvars <- hab_rvars %>%
 hab_rvars <- hab_rvars %>%
   mutate(species_name = forcats::fct_reorder(species_name, -.value))
 
+
+##############
+
+# Compute the mean of .value (rvar) before ordering
+hab_rvars <- hab_rvars %>%
+  mutate(mean_value = mean(.value)) %>%  # Extract mean from rvar
+  mutate(species_name = fct_reorder(species_name, mean_value, .desc = TRUE))
+
 # Create the plot
-p_pred_hab <- hab_rvars |> 
-  ggplot(aes(x = species_name, ydist = .value)) + 
+p_pred_hab <- ggplot(hab_rvars, aes(x = species_name, ydist = .value)) + 
   stat_pointinterval() + 
   ylab("Arboreal probability")
 
@@ -1426,17 +1405,19 @@ p_pred_hab <- hab_rvars |>
 p_pred_hab <- p_pred_hab + 
   geom_point(aes(x = species_name, y = arboreal_prop), inherit.aes = FALSE, 
              data = df_hab, 
-             colour = "red",
+             colour = "red3",
              size = 2, alpha = .5) +
   theme_minimal() +
   my_theme +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Rotate for readability
   xlab(NULL)
 
 # Show the plot
 p_pred_hab
 
-#ggsave(here::here("output/models/missing_data_div_nbinom_unconstr_2_trueage_islandindex/p_pred_hab.png"), height = 6, width = 9)
+
+
+#ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/p_pred_hab.png"), height = 6, width = 9)
 
 
 ```
@@ -1463,27 +1444,35 @@ veg_rvars <- veg_rvars %>%
 veg_rvars <- veg_rvars %>%
   mutate(species_name = forcats::fct_reorder(species_name, -.value))
 
-# Create the plot
-p_pred_veg <- veg_rvars |> 
-  ggplot(aes(x = species_name, ydist = .value)) + 
-  stat_pointinterval() + 
-  ylab("Arid vegetation probability")
 
-# Add raw data points (as proportion of individuals in arid vegetation)
+
+##############
+
+# Compute the mean of .value (rvar) before ordering
+veg_rvars <- veg_rvars %>%
+  mutate(mean_value = mean(.value)) %>%  # Extract mean from rvar
+  mutate(species_name = fct_reorder(species_name, mean_value, .desc = TRUE))
+
+# Create the plot
+p_pred_veg <- ggplot(veg_rvars, aes(x = species_name, ydist = .value)) + 
+  stat_pointinterval() + 
+  ylab("Arid probability")
+
+# Add raw data points (as proportion of arboreal individuals)
 p_pred_veg <- p_pred_veg + 
   geom_point(aes(x = species_name, y = arid_prop), inherit.aes = FALSE, 
              data = df_veg, 
-             colour = "red",
+             colour = "red3",
              size = 2, alpha = .5) +
   theme_minimal() +
   my_theme +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Rotate for readability
   xlab(NULL)
 
 # Show the plot
 p_pred_veg
 
-#ggsave(here::here("output/models/missing_data_div_nbinom_unconstr_2_trueage_islandindex/p_pred_veg.png"), height = 6, width = 9)
+#ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/p_pred_veg.png"), height = 6, width = 9)
 
 ```
 
@@ -1515,12 +1504,13 @@ bright_rvars <- bright_rvars %>%
 bright_rvars <- bright_rvars |> 
   ggplot(aes(x = species_name, ydist = brightness)) + 
   stat_pointinterval() + 
-  scale_y_log10()
+  scale_y_log10()+ 
+  ylab("Shell brightness (nm)")
 
 p_pred_bright <- bright_rvars + 
   geom_point(aes(x = species_name, y = brightness), inherit.aes = FALSE, 
              data = df_bright_noNA, 
-             colour = "red",
+             colour = "red3",
              size = .5, alpha = .5,
              position = position_jitter(width = .3)) +
   theme_minimal() +
@@ -1530,67 +1520,89 @@ p_pred_bright <- bright_rvars +
 
 p_pred_bright
 
-#ggsave(here::here("output/models/missing_data_div_nbinom_unconstr_2_trueage_islandindex/p_pred_bright.png"), height = 6, width = 9)
+#ggsave(here::here("output/models/missing_data_load_nbinom_unconstr_2_trueage_islandindex/p_pred_bright.png"), height = 6, width = 9)
 ```
 
 
 
 
 ```{r}
-# Gather predicted Faith PD values for each observation (N_div)
+# Gather predicted Faith's PD from model output
 div_rvars <- unconstr_brightdiv_samp |>
-  tidybayes::gather_rvars(predicted_faith_pd[n])
-
-# Combine with observed data
-div_rvars <- div_rvars |>
+  tidybayes::gather_rvars(predicted_faith_pd[n]) |> 
   mutate(
-    species_code = faith_pd_table$species_code[n],
-    observed_faith_pd = faith_pd_table$faith_pd[n]
+    species_code = faith_pd_table$species_code[n]
   )
 
+# Replace species codes with species names in div_rvars
+div_rvars <- div_rvars %>%
+  mutate(species_name = species_code_to_name[as.character(species_code)])
 
-# Separate `.value` into mean and error columns
-div_rvars_clean <- div_rvars %>%
-  mutate(.value = as.character(.value)) %>%  # Ensure `.value` is treated as a character
-  separate(.value, into = c("mean_predicted", "error_predicted"), sep = " ± ", convert = TRUE)
+# Replace species codes with species names in faith_pd_table
+faith_pd_table <- faith_pd_table %>%
+  mutate(species_name = species_code_to_name[as.character(species_code)])
 
-# Add credible intervals using the mean ± 1.96 * SD (approximation for 95% CI)
-div_rvars_clean <- div_rvars_clean %>%
-  mutate(
-    lower_ci = mean_predicted - 1.96 * error_predicted,
-    upper_ci = mean_predicted + 1.96 * error_predicted
-  )
+# Compute the mean observed Faith's PD for each species
+df_div_mean <- faith_pd_table %>%
+  group_by(species_name) %>%
+  summarize(mean_faith_pd = mean(faith_pd, na.rm = TRUE))
 
-# Plot observed vs predicted Faith PD with credible intervals
-ggplot(div_rvars_clean, aes(x = observed_faith_pd, y = mean_predicted)) +
-  geom_point(alpha = 0.7) +  # Observed vs predicted points
-  geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci), width = 0.2, alpha = 0.5) +  # Add CI bars
-  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +  # Diagonal line
+# Reorder species names in div_rvars based on predicted diversity values
+div_rvars <- div_rvars %>%
+  mutate(species_name = forcats::fct_reorder(species_name, -.value))
+
+# Plot predicted Faith's PD
+p_pred_div <- div_rvars |> 
+  ggplot(aes(x = species_name, ydist = .value)) + 
+  stat_pointinterval() + 
   theme_minimal() +
-  labs(
-    x = "Observed Faith PD",
-    y = "Predicted Faith PD (Posterior Mean ± 95% CI)"
-  )
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab(NULL)+ 
+  ylab("Faith's Phylogenetic Diversity")
 
+# Overlay observed Faith's PD on the plot (as jittered red points)
+p_pred_div <- p_pred_div + 
+  geom_point(aes(x = species_name, y = faith_pd), inherit.aes = FALSE, 
+             data = faith_pd_table, 
+             colour = "red3",
+             size = 2.3, alpha = .6,
+            # position = position_jitter(width = .3)
+            ) +
+  theme_minimal() +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab(NULL)
 
-#ggsave(here::here("output/models/missing_data_div_nbinom_unconstr_2_trueage_islandindex_interaction_v2/p_pred_div.png"), height = 6, width = 9)
+# Print the plot
+p_pred_div
+
 
 ```
 
-Strong Fit on Means:
 
-Despite uncertainty, the model captures the expected patterns in Faith PD, supporting the relevance of predictors like habitat, brightness, and island characteristics.
+```{r}
+plots_div_model_predictions <- ggarrange(
+  p_pred_hab,
+  p_pred_veg,
+  p_pred_bright,
+  p_pred_div,
+  
+  ncol = 1,
+  nrow = 4,
+  
+  labels = letters[1:4],
+  font.label = list(size = 18)
+)
 
-Insights Into Broad Patterns:
+plots_div_model_predictions
 
-The plot reinforces that the model is more reliable for understanding broad-scale trends than for precise predictions of Faith PD for individual species.
+ggsave(here::here("output/figures/model_checks/div_model_predictions.png"),
+          height = 15,
+          width = 10)
 
-Improvement:
+```
 
-The observed discrepancies and large errors point to potential areas for improvement, such as:
-Including additional ecological predictors.
-Incorporating interactions among predictors.
-Considering species-specific effects.
 
 
 
@@ -1599,7 +1611,7 @@ Considering species-specific effects.
 ```{r}
 ggarrange(
   plot_load,
-  plot_diversity,
+  plot_div,
   
 ncol = 2,
 nrow = 1,
