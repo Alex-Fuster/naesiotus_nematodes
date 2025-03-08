@@ -56,6 +56,8 @@ species_names_df <- species_names_df_raw %>%
   rename(species = annotated_name)  %>% 
   filter(species_name != "")
 
+tree$tip.label <- gsub("'", "", tree$tip.label)
+
 tree_data <- fortify(tree)
 ggtree(tree) +
   geom_tiplab() +  # Add tip labels for species
@@ -69,7 +71,6 @@ Eliminate accents
 
 ```{r}
 
-tree$tip.label <- gsub("'", "", tree$tip.label)
 tree$tip.label[grepl("sp._nov._Volcán_Wolf_1", tree$tip.label)] <- "sp. nov. Volcan Wolf 1"
 tree$tip.label[grepl("sp._nov._Volcán_Wolf_2", tree$tip.label)] <- "sp. nov. Volcan Wolf 2"
 tree$tip.label[grepl("sp._nov._Volcán_Wolf_3", tree$tip.label)] <- "sp. nov. Volcan Wolf 3"
@@ -147,14 +148,14 @@ tree$tip.label[perspectivus_tips[1]] <- "perspectivusdelete"
 # Drop the tips with "delete" in their names
 tree <- drop.tip(tree, c("amastroidesdelete", "perspectivusdelete"))
 
-# Replace underscores with hyphens (or other suitable character)
-tree$tip.label <- gsub("_", "-", tree$tip.label)
-
-# Replace periods with empty space or other suitable character
-tree$tip.label <- gsub("\\.", "", tree$tip.label)
-
-# Replace hyphens with an empty string or another suitable character
-tree$tip.label <- gsub("-", "", tree$tip.label)
+# Apply modifications to `tip_data$label`
+tip_data <- tip_data %>%
+  mutate(
+    label = gsub("_", "-", label),    # Replace underscores with hyphens (if needed)
+    label = gsub("\\.", "", label),   # Remove periods
+    label = gsub("-", "", label),     # Remove hyphens after previous step (to fully remove)
+    label = gsub(" ", "", label)      # Remove spaces
+  )
 
 
 set.seed(42)
@@ -181,8 +182,8 @@ df_corrected <- df_load_raw %>%
   left_join(species_names_df, by = c("spp" = "species")) %>%
   # Replace spp with the corrected species_name from species_names_df
   mutate(corrected_species = species_name) %>%
-  # Select relevant columns and remove duplicates
-  select(corrected_species, island) %>%
+  # dplyr::select relevant columns and remove duplicates
+  dplyr::select(corrected_species, island) %>%
   distinct()
 
 # Rename columns for clarity
@@ -375,9 +376,9 @@ missing_species <- data.frame(
   species = c("sculpturatus2", "alethorhytidus", "chatoblack", "cfwolfi", "wolfi2", 
               "wolfi3", "littleBlackGarrapatero", "sculpturatus3", "cfhirsutus", 
               "SC20070101", "spnovDarwin2", "perrus 1", "spnovAlcedo1", 
-              "hemaerodes", "sp nov Volcan Wolf 1", "sp nov Volcan Wolf 2", 
-              "sp nov Volcan Wolf 3", "elaeodes", "simrothi2", "Brantsnail", 
-              "spnovPinta1", "sp nov Pinta 2", "jacobi", "sp nov pinzon 1", 
+              "hemaerodes", "spnovVolcanWolf1", "spnovVolcanWolf2", 
+              "spnovVolcanWolf3", "elaeodes", "simrothi2", "Brantsnail", 
+              "spnovPinta1", "sp nov Pinta 2", "jacobi", "spnovpinzon1", 
               "perspectivus1", "canaliferus2", "cfbasiplicatus", "achatellinus", 
               "SF15020104", "SF15020103", "SF15020101", "caryonis", "cfinvalidus", 
               "cfnux", "invalidus2", "sulcatus", "Brownguys"),
@@ -428,7 +429,7 @@ Mode <- function(x, na.rm = FALSE) {
 
 
 tree_islands <- tree_data %>%
-  select(label, island, is_red) %>%
+  dplyr::select(label, island, is_red) %>%
   right_join(as_tibble(tree), by = c("label" = "label")) %>%
   mutate(island = if_else(is.na(island), "Not Assigned", as.character(island)))
 
@@ -499,7 +500,7 @@ species_names_df <- species_names_df_raw %>%
   mutate(species_code = as.numeric(factor(species_name)))
 
 species_code_df <- species_names_df |> 
-  select(species_name, species_code) |> 
+  dplyr::select(species_name, species_code) |> 
   distinct() |> 
   arrange(species_code)
 
@@ -525,7 +526,7 @@ faith_pd_table
 ```{r}
 # correct species names
 faith_pd_table <- faith_pd_table %>%
-  left_join(species_names_df |> select(species, species_code,species_name),
+  left_join(species_names_df |> dplyr::select(species, species_code,species_name),
             by = "species") 
 ```
 
@@ -578,14 +579,14 @@ df_load_raw$nematode_count[which(df_load_raw$nematode_count == ">100")] <- "100"
 df_load_raw$nematode_count <- as.numeric(df_load_raw$nematode_count)
 
 df_load_rename <- df_load_raw %>% 
-  select(id, spp, nematode_count, island) %>% 
+  dplyr::select(id, spp, nematode_count, island) %>% 
   dplyr::rename(species = spp)
 
 # correct species names
 df_load <- df_load_rename %>%
-  left_join(species_names_df |> select(species, species_code,species_name),
+  left_join(species_names_df |> dplyr::select(species, species_code,species_name),
             by = "species") |> 
-  left_join(df_island |> select(island, island_code),
+  left_join(df_island |> dplyr::select(island, island_code),
             by = "island")
 
 
@@ -603,14 +604,33 @@ mean_load_per_species <- df_load %>%
 
 ```
 
-Match species names with tree tips
+Match species names with tree tips.
+
+```{r}
+mean_load_per_species <- mean_load_per_species %>%
+  mutate(
+    species_name = gsub("_", "-", species_name), # Replace underscores with hyphens
+    species_name = gsub("\\.", "", species_name), # Remove periods
+    species_name = gsub("-", "", species_name),    # Remove hyphens
+     species_name = gsub(" ", "", species_name)  # Remove spaces
+  )
+
+faith_pd_table <- faith_pd_table %>%
+  mutate(
+    species = gsub("_", "-", species), # Replace underscores with hyphens
+    species = gsub("\\.", "", species), # Remove periods
+    species = gsub("-", "", species),    # Remove hyphens
+     species = gsub(" ", "", species)  # Remove spaces
+  )
+```
+
+
 
 ```{r}
 # Standardize species names and integrate mean load with island information
-tree_data <- data.frame(label = tree$tip.label) %>%
-  left_join(species_names_df, by = c("label" = "species")) %>%
-  left_join(mean_load_per_species, by = c("species_name" = "species_name")) %>%
-  left_join(faith_pd_table |> select(species_name, faith_pd), by = c("species_name" = "species_name")) |> 
+tree_data <- tree_data %>%
+  left_join(mean_load_per_species |> dplyr::select(-island), by = c("label" = "species_name")) %>%
+  left_join(faith_pd_table |> dplyr::select(species_name, faith_pd), by = c("label" = "species_name")) |> 
   mutate(
     mean_load = ifelse(is.na(mean_load), 0, mean_load),  # Replace NA loads with 0
     island = factor(island, levels = names(island_colors))  # Standardize island levels
@@ -618,13 +638,13 @@ tree_data <- data.frame(label = tree$tip.label) %>%
 ```
 
 ```{r}
-
-
 # Extract tree plot data and join with tree_data
 tree_plot_data <- ggtree(tree)$data  # Extract plotting data from ggtree
 tree_data <- tree_data %>%
-  left_join(tree_plot_data %>% select(label, y), by = "label")  # Add y positions to tree_data
+  left_join(tree_plot_data %>% dplyr::select(label, y), by = "label")  # Add y positions to tree_data
 
+
+tip_data <- left_join(tip_data, tree_data %>% dplyr::select(label, y), by = "label")
 ```
 
 ```{r}
@@ -633,41 +653,83 @@ load_colors <- scales::col_numeric(palette = viridis::viridis(100), domain = NUL
 
 
 # Generate ggtree plot data
-p <- ggtree(tree)
+ p <- ggtree(tree)
 
-# Extract the plotting data (with y values)
-tree_plot_data <- p$data
+# # Extract the plotting data (with y values)
+ tree_plot_data <- p$data
+ 
+ tree_plot_data <- tree_plot_data %>%
+  mutate(
+    label = gsub("_", "-", label), # Replace underscores with hyphens
+    label = gsub("\\.", "", label), # Remove periods
+    label = gsub("-", "", label),    # Remove hyphens
+     label = gsub(" ", "", label)  # Remove spaces
+  )
 
 
-# Merge mean load and island information
-tree_plot_data <- tree_plot_data %>%
-  left_join(tree_data %>% select(label, mean_load, island, faith_pd), by = "label") %>%
-  mutate(mean_load = ifelse(is.na(mean_load), 0, mean_load))  # Replace NA loads with 0
+# # Merge mean load and island information
+#  tree_plot_data <- tree_plot_data %>%
+#    left_join(tree_data %>% dplyr::select(label, mean_load, island, faith_pd), by = "label") %>%
+#    mutate(mean_load = ifelse(is.na(mean_load), 0, mean_load))  # Replace NA loads with 0
+ 
+  tree_plot_data <- tree_plot_data %>%
+  left_join(mean_load_per_species, by = c("label" = "species_name")) %>%
+  left_join(faith_pd_table |> dplyr::select(species_name, faith_pd), by = c("label" = "species_name")) |> 
+  mutate(
+    mean_load = ifelse(is.na(mean_load), 0, mean_load),  # Replace NA loads with 0
+    island = factor(island, levels = names(island_colors))  # Standardize island levels
+  )
 
+  
 
-p <- ggtree(tree) %<+% tree_plot_data +
+plot_tree_load_fpd <- ggtree(tree) %<+% tree_plot_data +
   geom_tree(aes(color = island), size = 0.8) +  # Color branches by island
-  geom_tiplab(aes(label = label), hjust = -0.2, size = 2.5) +  # Add tip labels
+  
+  # Explicitly use tree_plot_data for tip labels
+  geom_tiplab(data = tree_plot_data, aes(label = label), 
+              color = "black",  # Force labels to be black
+              align = TRUE,  # Align all labels
+              offset = 0.01,  # Add space between branches and labels
+              size = 2.5, show.legend = FALSE) +  # Label size
+  
   geom_tippoint(aes(color = island), size = 3) +  # Add colored tip points
   scale_color_manual(values = island_colors, name = "Island") +  # Custom color scale
   theme_tree2() +
   xlim(NA, max(node.depth.edgelength(tree)) * 1.6) +  # Extend space for mean load bars
-  theme(legend.position = "right")
+  theme(legend.position = "right")+
 
-p +
-  new_scale_color() +  # Allow a separate color scale for mean load
+
+  
+  new_scale_color() +  # Allow a separate color scale for Faith PD
   geom_segment(
-    data = tree_plot_data %>% filter(faith_pd > 0),  # Only species with non-zero mean load
-    aes(x = max(node.depth.edgelength(tree)) * 1.5,  # Start of the bar
-        xend = max(node.depth.edgelength(tree)) * 1.55,  # End of the bar
-        y = y, yend = y, color = faith_pd),  # Map mean load to color gradient
+    data = tree_plot_data %>% filter(faith_pd > 0),  # Only species with non-zero Faith PD
+    aes(x = max(node.depth.edgelength(tree)) * 1.41,  # Start of the bar
+        xend = max(node.depth.edgelength(tree)) * 1.46,  # End of the bar
+        y = y, yend = y, color = faith_pd),  # Map Faith PD to color gradient
     linewidth = 3  # Adjust bar thickness
   ) +
   scale_color_gradientn(
     colors = viridis::turbo(100),  # Use a gradient color palette
     name = "Faith PD"  # Legend title
   ) +
-  theme(legend.position = "right")  # Adjust legend position
+  theme(legend.position = "right")+
+
+
+
+  new_scale_color() +  # Allow a separate color scale for Mean Load
+  geom_segment(
+    data = tree_plot_data %>% filter(mean_load > 0),  # Only non-zero values
+    aes(x = max(node.depth.edgelength(tree)) * 1.35,  # Start of the bar
+        xend = max(node.depth.edgelength(tree)) * 1.40,  # End of the bar
+        y = y, yend = y, color = mean_load),  # Map Faith PD to color gradient
+    linewidth = 3  # Adjust bar thickness
+  ) +
+  scale_color_gradientn(
+    colors = viridis::turbo(100),  # Use a different gradient for Mean Load
+    name = "Mean Load"
+  ) +
+#  scale_size_continuous(range = c(1, 5), name = "Mean Load") +  # Adjust size range
+  theme(legend.position = "right")
 
 #ggsave(here::here("output/figures/phylo/phylo_faith_pd.png"), height = 10, width = 8)
 ```
@@ -676,6 +738,115 @@ p +
 
 ########################################################
 ########################################################
+
+
+# Make co-phylo figure
+
+
+## OTUS tree
+
+```{r}
+plot(phylo_tree)
+```
+
+```{r}
+# saveRDS(phylo_tree_otus, here::here("output/temporal_output/phylo_tree_otus.rds"))
+# saveRDS(tree, here::here("output/temporal_output/tree.rds"))
+# saveRDS(tree_plot_data, here::here("output/temporal_output/tree_plot_data.rds"))
+```
+
+
+```{r}
+library(phytools)
+library(ape)
+
+# Ensure trees are in the correct format
+phylo_tree_otus <- ape::ladderize(phylo_tree_otus)
+# ???? Ensure the tree is ladderized for better visualization
+tree <- ape::ladderize(tree)
+
+corrected_tree_labels <- tree_plot_data$label  # Use formatted
+
+
+
+# ???? Step 2: Prune the tree to include only tips in `corrected_tree_labels`
+tips_to_remove <- setdiff(tree$tip.label, corrected_tree_labels)
+
+# Print removed tips
+if (length(tips_to_remove) > 0) {
+  cat("Removing tips not present in corrected_tree_labels:\n")
+  print(tips_to_remove)
+} else {
+  cat("No tips were removed. All tree tips match corrected_tree_labels.\n")
+}
+
+# Prune the tree
+tree <- drop.tip(tree, tips_to_remove)
+
+# ???? Step 3: Ensure tree tip labels match corrected names
+if (!all(tree$tip.label %in% corrected_tree_labels)) {
+  stop("Some tree tips still do not match corrected_tree_labels! Check for inconsistencies.")
+}
+
+# ???? Step 4: Create an association matrix using the filtered tree labels
+bipartite_matrix_filtered <- bipartite_matrix_filtered[rownames(bipartite_matrix_filtered) %in% tree$tip.label, , drop = FALSE]
+
+# Check if any snails were removed from bipartite matrix
+removed_snails <- setdiff(rownames(bipartite_matrix_filtered), tree$tip.label)
+
+if (length(removed_snails) > 0) {
+  cat("Removed snail species from bipartite matrix (not in tree):\n")
+  print(removed_snails)
+}
+
+# Create the association matrix
+association <- which(bipartite_matrix_filtered > 0, arr.ind = TRUE)
+association_df <- data.frame(
+  snails = rownames(bipartite_matrix_filtered)[association[, 1]],  # Snail species
+  otus = colnames(bipartite_matrix_filtered)[association[, 2]]     # Nematode OTUs
+)
+
+# ???? Step 5: Verify if all snails in `association_df` exist in `tree$tip.label`
+snail_mismatches <- setdiff(association_df$snails, tree$tip.label)
+otu_mismatches <- setdiff(association_df$otus, phylo_tree_otus$tip.label)
+
+# Print any mismatches
+if (length(snail_mismatches) > 0) {
+  cat("Mismatched snails (not found in tree):\n")
+  print(snail_mismatches)
+}
+if (length(otu_mismatches) > 0) {
+  cat("Mismatched OTUs (not found in phylo_tree_otus):\n")
+  print(otu_mismatches)
+}
+
+# Stop execution if mismatches exist
+if (length(snail_mismatches) > 0 || length(otu_mismatches) > 0) {
+  stop("There are unmatched labels! Fix these before proceeding with cophyloplot.")
+}
+
+# ???? Step 6: Generate the Cophylogenetic Plot
+par(mar = c(0, 0, 0, 0))  # Remove margins for better visualization
+cophyloplot(
+  tree, phylo_tree_otus, 
+  assoc = association_df, 
+  length.line = 0.5,  # Adjusts connection line lengths
+  space = 20,  # Space between trees
+  gap = 2,  # Adjusts line placement
+  rotate = TRUE,  # Rotate one tree if needed
+  col = "red",  # Color of connecting lines
+  link.type="curved",
+  link.lty="solid",fsize=c(0.8,0.8)
+)
+
+
+```
+
+
+
+
+
+
 ########################################################
 ########################################################
 
@@ -706,12 +877,12 @@ df_load_raw$nematode_count[which(df_load_raw$nematode_count == ">100")] <- "100"
 df_load_raw$nematode_count <- as.numeric(df_load_raw$nematode_count)
 
 df_load_rename <- df_load_raw %>% 
-  select(id, spp, nematode_count, island) %>% 
+  dplyr::select(id, spp, nematode_count, island) %>% 
   rename(species = spp)
 
 # correct species names
 df_load <- df_load_rename %>%
-  left_join(species_names_df |> select(species, species_name),
+  left_join(species_names_df |> dplyr::select(species, species_name),
             by = "species") 
 df_load
 ```
@@ -793,7 +964,7 @@ contMap(pruned_tree,
 ```{r}
 # Step 1: Create a mapping of species to islands
 species_island_map <- df_load %>%
-  select(species_name, island) %>%
+  dplyr::select(species_name, island) %>%
   distinct() %>%
   group_by(species_name) %>%
   summarize(island = paste(unique(island), collapse = ", "))  # Handle cases where species occur on multiple islands
@@ -834,7 +1005,7 @@ diversity_per_snailspp <- read.csv(here::here("output/tables/diversity_per_snail
 
 # correct species names
 diversity_per_snailspp <- diversity_per_snailspp %>%
-  left_join(species_names_df |> select(species, species_name),
+  left_join(species_names_df |> dplyr::select(species, species_name),
             by = "species") 
 ```
 

@@ -1,0 +1,1141 @@
+---
+title: "R Notebook"
+---
+
+
+```{r}
+# # Ensure trees are in the correct format
+# phylo_tree_otus <- ape::ladderize(phylo_tree_otus)
+# # 🔄 Ensure the tree is ladderized for better visualization
+# tree <- ape::ladderize(tree)
+# 
+# corrected_tree_labels <- tree_plot_data$label  # Use formatted
+# 
+# 
+# 
+# # 🔄 Step 2: Prune the tree to include only tips in `corrected_tree_labels`
+# tips_to_remove <- setdiff(tree$tip.label, corrected_tree_labels)
+# 
+# # Print removed tips
+# if (length(tips_to_remove) > 0) {
+#   cat("Removing tips not present in corrected_tree_labels:\n")
+#   print(tips_to_remove)
+# } else {
+#   cat("No tips were removed. All tree tips match corrected_tree_labels.\n")
+# }
+# 
+# # Prune the tree
+# tree <- drop.tip(tree, tips_to_remove)
+```
+
+
+Correct names in bipartite interaction matrix
+
+
+```{r}
+# Create a named vector mapping species codes to species names
+species_mapping <- species_names_df %>%
+  dplyr::select(species, species_name) %>%
+  distinct() %>%
+  deframe()  # Convert to a named vector for direct mapping
+
+# Replace rownames in bipartite_matrix using species_mapping
+rownames(bipartite_matrix) <- species_mapping[rownames(bipartite_matrix)]
+
+# Check for any NA values in row names (i.e., species not found in mapping)
+if (any(is.na(rownames(bipartite_matrix)))) {
+  cat("Warning: Some species codes were not found in species_names_df:\n")
+  print(rownames(bipartite_matrix)[is.na(rownames(bipartite_matrix))])
+}
+
+# Modify row names of bipartite_matrix
+rownames(bipartite_matrix) <- rownames(bipartite_matrix) %>%
+  gsub("\\.", "", .) %>%  # Remove periods
+  gsub("_", "", .) %>% 
+  gsub(" ", "", .)        # Remove spaces
+
+# Verify the updated row names
+print(rownames(bipartite_matrix))
+
+```
+
+
+
+```{r}
+
+# Get the list of species in the tree plot
+species_in_tree <- unique(na.omit(tree_plot_data$label))
+
+# Find species in bipartite_matrix that are NOT in tree_plot_data$label
+species_to_remove <- setdiff(rownames(bipartite_matrix), species_in_tree)
+
+# Print the removed species
+if (length(species_to_remove) > 0) {
+  cat("Removing species not present in tree_plot_data:\n")
+  print(species_to_remove)
+} else {
+  cat("No species were removed. All species in bipartite_matrix are present in tree_plot_data.\n")
+}
+
+# Filter bipartite_matrix to keep only species in tree_plot_data$label
+bipartite_matrix_filtered <- bipartite_matrix[rownames(bipartite_matrix) %in% species_in_tree, , drop = FALSE]
+
+species_in_tree <- species_in_tree[species_in_tree %in% rownames(bipartite_matrix_filtered), drop = FALSE]
+
+rownames(bipartite_matrix_filtered) %in% species_in_tree
+species_in_tree %in% rownames(bipartite_matrix_filtered)
+
+
+```
+
+```{r}
+# Prune the tree to keep only the species in species_in_tree
+
+
+tree$tip.label <- tree$tip.label %>%
+  gsub("\\.", "", .) %>%  # Remove periods
+  gsub("_", "", .) %>% 
+  gsub(" ", "", .)        # Remove spaces
+
+
+pruned_tree <- keep.tip(tree, species_in_tree)
+set.seed(42)
+plot(pruned_tree) 
+```
+
+
+
+
+```{r}
+# 🔄 Step 1: Identify OTUs with at least one interaction
+otus_with_interactions <- colnames(bipartite_matrix_filtered)[colSums(bipartite_matrix_filtered) > 0]
+
+# 🔄 Step 2: Filter the bipartite matrix to keep only interacting OTUs
+bipartite_matrix_filtered <- bipartite_matrix_filtered[, otus_with_interactions, drop = FALSE]
+
+# 🔄 Step 3: Remove OTUs from `phylo_tree_otus` that are no longer in the bipartite matrix
+otus_to_remove <- setdiff(phylo_tree_otus$tip.label, otus_with_interactions)
+phylo_tree_otus <- drop.tip(phylo_tree_otus, otus_to_remove)
+
+# # Check if any snails were removed from bipartite matrix
+# removed_snails <- setdiff(rownames(bipartite_matrix_filtered), tree$tip.label)
+# 
+# if (length(removed_snails) > 0) {
+#   cat("Removed snail species from bipartite matrix (not in tree):\n")
+#   print(removed_snails)
+# }
+
+# Create the association matrix
+association <- which(bipartite_matrix_filtered > 0, arr.ind = TRUE)
+association_df <- data.frame(
+  snails = rownames(bipartite_matrix_filtered)[association[, 1]],  # Snail species
+  otus = colnames(bipartite_matrix_filtered)[association[, 2]]     # Nematode OTUs
+)
+
+# 🔍 Step 5: Verify if all snails in `association_df` exist in `tree$tip.label`
+snail_mismatches <- setdiff(association_df$snails, pruned_tree$tip.label)
+otu_mismatches <- setdiff(association_df$otus, phylo_tree_otus$tip.label)
+
+# Print any mismatches
+if (length(snail_mismatches) > 0) {
+  cat("Mismatched snails (not found in tree):\n")
+  print(snail_mismatches)
+}
+if (length(otu_mismatches) > 0) {
+  cat("Mismatched OTUs (not found in phylo_tree_otus):\n")
+  print(otu_mismatches)
+}
+
+# Stop execution if mismatches exist
+if (length(snail_mismatches) > 0 || length(otu_mismatches) > 0) {
+  stop("There are unmatched labels! Fix these before proceeding with cophyloplot.")
+}
+
+# 🔄 Step 9: Filter invalid links (ensure both species are in trees)
+# association_df <- association_df %>%
+#   filter(snails %in% tree$tip.label & otus %in% phylo_tree_otus$tip.label)
+
+# 🔄 Step 10: Check for removed links
+removed_links <- setdiff(paste(association[, 1], association[, 2]), 
+                         paste(match(association_df$snails, rownames(bipartite_matrix_filtered)), 
+                               match(association_df$otus, colnames(bipartite_matrix_filtered))))
+
+if (length(removed_links) > 0) {
+  cat("Removed invalid links that pointed to nowhere:\n")
+  print(removed_links)
+} else {
+  cat("No invalid links were found.\n")
+}
+
+
+
+# 🔄 **Step 1: Define Correct Island Colors**
+island_colors <- c(
+  "Santa_Cruz" = "#66c2a5",
+  "San_Cristobal" = "#fc8d62",
+  "Santiago" = "#8da0cb",
+  "Isabela" = "#e78ac3",
+  "Fernandina" = "#a6d854",
+  "Floreana" = "#ffd92f",
+  "Rabida" = "#e5c494",
+  "Santa_Fe" = "#b3b3b3",
+  "Espanola" = "#d73027",
+  "Pinzon" = "#4575b4",
+  "Pinta" = "#74add1",
+  "Champion" = "#f46d43",
+  "Gardner" = "#3288bd",
+  "Not Assigned" = "grey45"
+)
+
+prunned_tree_plot_data <- ggtree(pruned_tree)$data
+
+
+
+# NEED TO LOAD merged_data_persnail
+
+#merged_data_persnail <- readRDS(here::here("output/temporal_output/merged_data_persnail.rds"))
+
+# Ensure species_names_df has unique mappings
+species_mapping <- species_names_df %>%
+  dplyr::select(species, species_name) %>%
+  distinct()
+
+# Replace naesiotus_sp values in merged_data_persnail with full species names
+merged_data_persnail_corrected <- merged_data_persnail %>%
+  left_join(species_mapping, by = c("naesiotus_sp" = "species")) %>%
+  mutate(naesiotus_sp = species_name) %>%  # Replace old codes with full names
+  dplyr::select(-species_name)  # Remove redundant column if needed
+
+
+# Apply transformations to clean species names in merged_data_persnail_corrected
+merged_data_persnail_corrected$naesiotus_sp <- merged_data_persnail_corrected$naesiotus_sp %>%
+  gsub("\\.", "", .) %>%  # Remove periods
+  gsub("_", "", .) %>% 
+  gsub(" ", "", .)        # Remove spaces
+
+
+## add island information to tree data from merged_data_persnail_corrected
+
+prunned_tree_plot_data <- prunned_tree_plot_data %>%
+  left_join(merged_data_persnail_corrected %>% dplyr::select(naesiotus_sp, island),
+            by = c("label" = "naesiotus_sp"))
+
+# 🔄 **Step 2: Merge Island Data into Association DataFrame**
+association_df <- association_df %>%
+  left_join(prunned_tree_plot_data %>% dplyr::select(label, island), by = c("snails" = "label"))
+
+# 🔄 **Step 3: Assign Colors to Links Based on Snails' Island**
+association_df$color <- island_colors[as.character(association_df$island)]
+
+# 🔥 **Step 4: Generate the Cophyloplot with Colored Links**
+cophyloplot(
+  pruned_tree, phylo_tree,  
+  assoc = association_df, 
+  length.line = 0,  
+  space = 50,  
+  gap = 0,  
+  rotate = FALSE,  
+  col = association_df$color,  # Apply island-based colors
+  link.type = "curved",
+  link.lty = "solid",
+  show.tip.label = FALSE,
+  fsize = c(0.9, 0.9)  
+)
+
+```
+
+
+```{r}
+# 🔥 Step 1: Define output file path
+output_file <- "cophyloplot.png"
+
+# 🔥 Step 2: Open PNG device
+png(filename = output_file, width = 5000, height = 7000, res = 600)  # High resolution
+
+# 🔥 Step 3: Generate the Cophyloplot
+cophyloplot(
+  pruned_tree, phylo_tree,  
+  assoc = association_df, 
+  length.line = 0,  
+  space = 50,  
+  gap = 0,  
+  rotate = FALSE,  
+  col = association_df$color,  # Apply island-based colors
+  link.type = "curved",
+  link.lty = "solid",
+  show.tip.label = FALSE,
+  fsize = c(0.9, 0.9)  
+)
+
+# 🔥 Step 4: Close the device and save the file
+dev.off()
+
+
+```
+
+# local networks
+
+
+```{r}
+merged_data_persnail <- readRDS(here::here("output/temporal_output/merged_data_persnail.rds"))
+islands <- readRDS(here::here("output/temporal_output/islands.rds"))
+
+
+# 🔄 Step 1: Perform the join to get full species names
+aggregated_otu_data <- aggregated_otu_data %>%
+  left_join(species_names_df %>% dplyr::select(species, species_name), 
+            by = c("naesiotus_sp" = "species"))
+            
+# Apply modifications to `tip_data$label`
+aggregated_otu_data <- aggregated_otu_data %>%
+  mutate(
+    species_name = gsub("_", "-", species_name),    # Replace underscores with hyphens (if needed)
+    species_name = gsub("\\.", "", species_name),   # Remove periods
+    species_name = gsub("-", "", species_name),     # Remove hyphens after previous step (to fully remove)
+    species_name = gsub(" ", "", species_name)      # Remove spaces
+  )
+
+
+otu_metadata <- otu_metadata %>%
+  left_join(species_names_df %>% dplyr::select(species, species_name), 
+            by = c("naesiotus_sp" = "species"))
+            
+# Apply modifications to `tip_data$label`
+otu_metadata <- otu_metadata %>%
+  mutate(
+    species_name = gsub("_", "-", species_name),    # Replace underscores with hyphens (if needed)
+    species_name = gsub("\\.", "", species_name),   # Remove periods
+    species_name = gsub("-", "", species_name),     # Remove hyphens after previous step (to fully remove)
+    species_name = gsub(" ", "", species_name)      # Remove spaces
+  )
+
+```
+
+```{r}
+# Step 1: Merge the two datasets by 'naesiotus_sp'
+merged_data <- aggregated_otu_data %>%
+  left_join(otu_metadata %>% dplyr::select(naesiotus_sp, island), by = "naesiotus_sp")
+
+# Step 1.1: Aggregate the OTU data per snail species
+merged_data_persnail <- merged_data %>%
+  rename(species_name = naesiotus_sp) |> 
+  group_by(species_name, island) %>%  # Group by both snail species and island
+  summarise(across(starts_with("OTU"), sum, na.rm = TRUE)) %>%  # Sum the OTU columns
+  ungroup()
+
+
+# Step 2: Function to create a bipartite network for each island
+create_bipartite_network <- function(island_name, data) {
+  # Filter for the specific island
+  island_data <- data %>% filter(island == !!island_name)
+  
+  # Reshape the data to long format to create the edges between snails and OTUs
+  edges <- island_data %>%
+    pivot_longer(cols = starts_with("OTU"), names_to = "OTU", values_to = "count") %>%
+    filter(count > 0) %>%
+    dplyr::select(species_name, OTU) %>%
+    mutate(island = island_name)  # Assign island to edges
+  
+  # Create a bipartite graph
+  g <- graph_from_data_frame(edges, directed = FALSE)
+  
+  # Get the number of species (snails) and OTUs
+  num_species <- length(unique(edges$species_name))
+  num_otus <- length(unique(edges$OTU))
+  
+  # Assign bipartite types (TRUE for species, FALSE for OTUs)
+  V(g)$type <- c(rep(TRUE, num_species), rep(FALSE, num_otus))
+  
+  V(g)$island <- island_name # Add island as a node trait
+  
+  # Assign island attribute to edges
+  E(g)$island <- edges$island
+
+  return(g)
+}
+
+# Step 3: Function to plot the network with island-colored links
+# Step 3: Function to plot the network with island-colored links
+plot_custom_bipartite_network <- function(g, island_name) {
+  ggraph(g, layout = "bipartite") +
+    
+    # Color edges based on island
+    geom_edge_link(aes(color = island), edge_alpha = 0.8, edge_width = 0.6) +
+    scale_edge_color_manual(values = island_colors, name = "Island") +  # Use island colors
+    
+    # Customize nodes: All in grey30
+    geom_node_point(aes(shape = factor(V(g)$type)), 
+                    size = 5, stroke = 1, alpha = 0.7, fill = "grey30", color = "grey30") +
+    
+    # Show shape legend only
+    scale_shape_manual(values = c(16, 17), labels = c("Nematode OTUs", "Naesiotus sp")) +
+    
+    labs(shape = "Guild") +  # Only show shape legend
+    
+    ggtitle(island_name) +  # Add the island name as a title
+    
+    theme_void() +  # Clean background with no axes or gridlines
+    theme(legend.position = "right",  # Adjust legend position
+          plot.title = element_text(hjust = 0.5))  # Center the title
+}
+
+
+# Step 4: Create and plot bipartite networks for all islands
+islands <- unique(merged_data_persnail$island)
+plots <- list()
+
+#saveRDS(islands,here::here("output/temporal_output/islands.rds"))
+
+for (island in islands) {
+  g <- create_bipartite_network(island, merged_data_persnail)
+  p <- plot_custom_bipartite_network(g, island)
+  plots[[island]] <- p
+}
+
+# Step 5: Arrange the plots in a grid using ggarrange
+ggarrange(plotlist = plots, ncol = 2, nrow = ceiling(length(plots)/2),
+          common.legend = TRUE, legend = "top")
+
+
+ggsave(here::here("output/figures/islandnetworks_bipartiteplot2.png"), height = 12, width = 8)
+
+```
+
+
+
+
+```{r}
+tree_plot_data <- readRDS(here::here("output/temporal_output/tree_plot_data.rds"))
+```
+
+```{r}
+merged_data_persnail <- merged_data_persnail %>%
+  mutate(naesiotus_sp_corrected = species_names_df$species_name[
+    match(naesiotus_sp, species_names_df$species)
+  ])
+
+merged_data_persnail <- merged_data_persnail %>%
+  mutate(
+    naesiotus_sp = gsub("_", "-", naesiotus_sp),    # Replace underscores with hyphens (if needed)
+   naesiotus_sp = gsub("\\.", "", naesiotus_sp),   # Remove periods
+    naesiotus_sp = gsub("-", "", naesiotus_sp),     # Remove hyphens after previous step (to fully remove)
+    naesiotus_sp = gsub(" ", "", naesiotus_sp)      # Remove spaces
+  )
+
+# Step 2: Identify missing species
+missing_species <- setdiff(merged_data_persnail$naesiotus_sp_corrected,tree$tip.label)
+
+# Step 3: Print the missing species
+if (length(missing_species) > 0) {
+  cat("Snail species in the network but not in the tree")
+  print(missing_species)
+} else {
+  cat("All species in tree_plot_data are present in merged_data_persnail.\n")
+}
+```
+
+Mark species:
+
+extinct: "cavagnaroi" (SC)  "eschariferus" (SL) "lycodus" (SC)     "olla" (SC)        "planospira" (FL)  
+not placed yet in the tree: "pinzonopsis" 
+
+
+```{r}
+# List of extinct species
+extinct_species <- c("cavagnaroi", "eschariferus", "lycodus", "olla", "planospira")
+
+# Species not in the phylogeny
+missing_in_phylogeny <- c("pinzonopsis")
+
+
+plot_custom_bipartite_network <- function(g, island_name) {
+  
+  # Extract node names
+  node_names <- V(g)$name
+  
+  # Assign default fill color (OTUs = grey70, Snails = grey30)
+  node_fill <- rep("grey70", length(node_names))  # Default OTU color
+  node_fill[V(g)$type] <- "grey30"  # Change Snails to grey30
+  
+  # Assign extinct species as black
+  node_fill[node_names %in% extinct_species] <- "black"
+  
+  # Assign missing species in phylogeny as white
+  node_fill[node_names %in% missing_in_phylogeny] <- "white"
+  
+  # Assign border color (only for missing species in phylogeny)
+  border_color <- rep("black", length(node_names))  # Default black border
+  border_color[node_names %in% missing_in_phylogeny] <- "black"  # Black border for missing species
+  
+  # Assign shape types (Snails vs. OTUs)
+  shape_type <- ifelse(V(g)$type, "Snail", "OTU")  # Shape mapping
+  
+  # Store attributes in the graph
+  V(g)$node_fill <- node_fill
+  V(g)$border_color <- border_color
+  V(g)$shape_type <- shape_type  # Store shape types for ggplot
+  
+  # **Ensure there are no missing values in node attributes**
+  node_data <- data.frame(
+    Name = node_names,
+    Type = shape_type,
+    Fill = node_fill,
+    Border = border_color
+  )
+  
+  # Remove any nodes with NA fill (debugging)
+  node_data <- node_data %>% drop_na(Fill)
+  
+  print(node_data)  # Check node attributes before plotting
+  
+  # Ensure edges don't have missing values
+  if (length(E(g)) == 0) {
+    cat("Warning: No edges present in the graph for island:", island_name, "\n")
+    return(NULL)  # Skip empty graphs
+  }
+  
+  # **Create the plot**
+  p <- ggraph(g, layout = "bipartite") +
+    
+    # Color edges based on island
+    geom_edge_link(aes(color = island), edge_alpha = 0.8, edge_width = 0.6) +
+    scale_edge_color_manual(values = island_colors, name = "Island") +  # Use island colors
+    
+    # Customize nodes
+    geom_node_point(aes(shape = shape_type, fill = node_fill, color = border_color), 
+                    size = 5, stroke = 1.2, alpha = 1.0, na.rm = TRUE) +  
+    
+    # **Fix color mapping**
+    scale_fill_manual(values = c("grey30" = "grey30", "black" = "black", "white" = "white")) +  
+    scale_color_manual(values = c("black" = "black")) +  
+    
+    # Customize node shapes: 16 = circle (OTUs), 17 = triangle (Snails)
+    scale_shape_manual(values = c("OTU" = 16, "Snail" = 17), labels = c("Nematode OTUs", "Naesiotus sp")) +
+    
+    labs(shape = "Guild") +  # Only show shape legend
+    
+    ggtitle(island_name) +  # Add the island name as a title
+    
+    theme_void() +  # Clean background with no axes or gridlines
+    theme(legend.position = "right",  # Adjust legend position
+          plot.title = element_text(hjust = 0.5))  # Center the title
+  
+  return(p)
+}
+
+plot_custom_bipartite_network <- function(g, island_name) {
+  
+  # Extract node names
+  node_names <- V(g)$name
+  
+  # Assign default colors (Snails = grey30, OTUs = grey70)
+  node_fill <- ifelse(V(g)$type, "grey30", "grey70")  
+  border_color <- rep(NA, length(node_names))  # Default: No border
+  
+  # Assign extinct species as black
+  node_fill[node_names %in% extinct_species] <- "black"
+  
+  # Assign missing species in phylogeny as white with black border
+  node_fill[node_names %in% missing_in_phylogeny] <- "white"
+  border_color[node_names %in% missing_in_phylogeny] <- "black"  # Black border
+  
+  # Assign shape types (Snails = 17, OTUs = 16)
+  shape_type <- ifelse(V(g)$type, "Snail", "OTU")  
+
+  # Store attributes in the graph object
+  V(g)$node_fill <- node_fill
+  V(g)$border_color <- border_color
+  V(g)$shape_type <- shape_type  
+
+  # Convert node attributes to a dataframe for debugging
+  node_data <- data.frame(
+    Name = node_names,
+    Type = shape_type,
+    Fill = node_fill,
+    Border = border_color
+  )
+  
+  print(node_data)  # Debugging: Ensure correct node attributes before plotting
+  
+  # **Handle cases where there are no edges**
+  if (length(E(g)) == 0) {
+    cat("⚠️ Warning: No edges present in the graph for island:", island_name, "\n")
+    return(NULL)  # Skip empty graphs
+  }
+  
+  # **Create the plot**
+  p <- ggraph(g, layout = "bipartite") +
+    
+    # Color edges based on island
+    geom_edge_link(aes(color = island), edge_alpha = 0.8, edge_width = 0.6) +
+    scale_edge_color_manual(values = island_colors, name = "Island") +  
+    
+    # Customize nodes
+    geom_node_point(aes(shape = shape_type, fill = node_fill, color = border_color), 
+                    size = 5, stroke = 1.2, alpha = 1.0, na.rm = TRUE) +  
+    
+    # Ensure colors are correctly mapped
+    scale_fill_identity() +  # Use the manually assigned fill colors
+    scale_color_identity() +  # Use manually assigned border colors
+    
+    # Customize node shapes: 16 = circle (OTUs), 17 = triangle (Snails)
+    scale_shape_manual(values = c("OTU" = 16, "Snail" = 17), labels = c("Nematode OTUs", "Naesiotus sp")) +
+    
+    labs(shape = "Guild") +  # Only show shape legend
+    
+    ggtitle(island_name) +  # Add the island name as a title
+    
+    theme_void() +  # Clean background with no axes or gridlines
+    theme(legend.position = "right",  
+          plot.title = element_text(hjust = 0.5))  
+
+  return(p)
+}
+
+
+
+```
+
+```{r}
+for (island in islands) {
+  g <- create_bipartite_network(island, merged_data_persnail)
+  p <- plot_custom_bipartite_network(g, island)
+  plots[[island]] <- p
+}
+
+# Step 5: Arrange the plots in a grid using ggarrange
+ggarrange(plotlist = plots, ncol = 2, nrow = ceiling(length(plots)/2),
+          common.legend = TRUE, legend = "none")
+
+#ggsave(here::here("output/figures/islandnetworks_bipartiteplot.png"), height = 12, width = 12)
+```
+
+
+
+
+
+## Plot a specific island:
+
+```{r}
+# List of extinct species
+# Define the target island
+# Define the target island
+island_name <- "Fernandina"
+
+# Step 1: Filter the data for the island
+island_data <- merged_data_persnail %>% filter(island == island_name)
+print(paste("Processing island:", island_name))  # Debugging print statement
+
+# Step 2: Reshape data to long format to create edges
+edges <- island_data %>%
+  pivot_longer(cols = starts_with("OTU"), names_to = "OTU", values_to = "count") %>%
+  filter(count > 0) %>%
+  dplyr::select(species_name, OTU) %>%
+  mutate(island = island_name)
+
+print(edges)  # Debugging: Check edges
+
+# Step 3: Create a bipartite graph
+g <- graph_from_data_frame(edges, directed = FALSE)
+
+# Step 4: Assign node types
+V(g)$type <- ifelse(V(g)$name %in% edges$species_name, TRUE, FALSE)
+
+# Step 5: Assign colors (ALL grey30)
+V(g)$node_fill <- "grey30"  # Fill = grey30
+V(g)$border_color <- "grey30"  # Border = grey30
+
+# Step 6: Create a custom layout to **reduce separation**
+layout_custom <- create_layout(g, layout = "bipartite")
+layout_custom$y <- ifelse(V(g)$type, 0, 0.5)  # Reduce separation (was 0 and 1)
+
+# Step 7: Generate the plot
+p <- ggraph(layout_custom) +
+  
+  # Color edges based on island
+  geom_edge_link(aes(color = factor(island)), edge_alpha = 0.6, edge_width = 0.6) +
+  scale_edge_color_manual(values = island_colors, name = "Island") +  
+  
+  # Ensure nodes are plotted with correct fill, border, and transparency
+  geom_node_point(aes(shape = factor(V(g)$type)),  
+                  fill = "grey30",  # All nodes filled with grey30
+                  color = "grey30",  # Border also grey30
+                  size = 5, stroke = 1.2, alpha = 0.6, na.rm = TRUE) +  
+
+  # Add labels only for Naesiotus species (Snail nodes)
+ # geom_node_text(aes(label = ifelse(V(g)$type == TRUE, V(g)$name, "")), 
+             #    hjust = -0.3, size = 4, fontface = "bold") +  
+
+  # Customize node shapes: 16 = circle (OTUs), 17 = triangle (Snails)
+  scale_shape_manual(values = c("FALSE" = 16, "TRUE" = 17), labels = c("Nematode OTUs", "Naesiotus sp")) +
+
+  labs(shape = "Guild") +  # Only show shape legend
+
+  ggtitle(island_name) +  # Add the island name as a title
+
+  theme_void() +  # Clean background with no axes or gridlines
+  theme(legend.position = "right",  
+        plot.title = element_text(hjust = 0.5))  
+
+# Step 8: Print plot
+print(p)
+
+
+
+ggsave(here::here("output/figures/fernandina.png"), height = 2, width = 3)
+
+```
+
+
+
+# network characteristics
+
+# Network-ages
+
+
+## island characteristics
+
+```{r}
+df_island <- read_excel(path = here::here("data/19july24_datalab.xlsx"), sheet = "island_characteristics")
+
+df_island$min_emergence <- as.numeric(df_island$min_emergence)
+df_island$max_emergence <- as.numeric(df_island$max_emergence)
+
+# Calculate the mean difference between min_emergence and max_emergence
+mean_diff <- df_island %>%
+  filter(!is.na(min_emergence) & !is.na(max_emergence)) %>%
+  mutate(diff = max_emergence - min_emergence) %>%
+  summarise(mean_diff = mean(diff, na.rm = TRUE)) %>%
+  pull(mean_diff)
+
+# Estimate max_emergence for Champion by adding the mean difference to its min_emergence
+df_island <- df_island %>%
+  mutate(max_emergence = ifelse(is.na(max_emergence), min_emergence + mean_diff, max_emergence))
+
+# Rename the column "mean_emergence" to "island_age" in df_island
+# add an ID column
+df_island <- df_island %>% dplyr::rename(island_area = area) |> 
+  mutate(island_code = as.numeric(as.factor(island)))
+
+
+# increase max. emergence of Sants Fe by a small amount - min. and max for this island are the same and this gives error in the model when trying to estimate the approximate age.
+
+df_island <- df_island |> 
+  dplyr::mutate(max_emergence = ifelse(island == "Santa_Fe", max_emergence + 0.1, max_emergence))
+
+
+df_island 
+```
+
+
+
+```{r}
+
+
+# Ensure species_names_df has unique mappings
+species_mapping <- species_names_df %>%
+  dplyr::select(species, species_name) %>%
+  distinct()
+
+# Replace naesiotus_sp values in merged_data_persnail with full species names
+otu_metadata <- otu_metadata %>%
+  left_join(species_mapping, by = c("naesiotus_sp" = "species")) %>%
+  mutate(naesiotus_sp = species_name) %>%  # Replace old codes with full names
+  dplyr::select(-species_name)  # Remove redundant column if needed
+
+
+# Apply transformations to clean species names in merged_data_persnail_corrected
+otu_metadata$naesiotus_sp <- otu_metadata$naesiotus_sp %>%
+  gsub("\\.", "", .) %>%  # Remove periods
+  gsub("_", "", .) %>% 
+  gsub(" ", "", .)        # Remove spaces
+```
+
+
+
+```{r}
+# Merge Gardner with Espanola
+otu_metadata <- otu_metadata %>%
+  mutate(island = ifelse(island == "Gardner", "Espanola", island))
+
+# Filter islands with at least two snail species
+valid_islands <- otu_metadata %>%
+  group_by(island) %>%
+  filter(n_distinct(naesiotus_sp) >= 2) %>%
+  pull(island) %>%
+  unique()
+
+# Prepare data frame to store results
+network_statistics <- data.frame()
+
+# Loop through each valid island
+for (island in valid_islands) {
+  print(paste("Processing island:", island))
+  
+  # Filter metadata for the current island
+  island_metadata <- otu_metadata %>% filter(island == !!island)
+  
+  # Get snail species for the island
+  island_snails <- unique(island_metadata$naesiotus_sp)
+  
+  # Subset bipartite matrix
+  island_matrix <- bipartite_matrix[rownames(bipartite_matrix) %in% island_snails, , drop = FALSE]
+  
+  # Skip invalid matrices
+  if (nrow(island_matrix) == 0 || ncol(island_matrix) == 0 || 
+      all(rowSums(island_matrix) == 0) || all(colSums(island_matrix) == 0)) {
+    message("Skipping island due to invalid matrix: ", island)
+    next
+  }
+  
+  # Create graph
+  g <- graph_from_biadjacency_matrix(island_matrix, directed = FALSE)
+  
+  # Compute modularity
+  compute_modularity <- function(g) {
+    mod_louvain <- cluster_louvain(g)$modularity
+    mod_walktrap <- modularity(cluster_walktrap(g))
+    mod_fast_greedy <- modularity(cluster_fast_greedy(g))
+    mod_leading_eigen <- cluster_leading_eigen(g)$modularity
+    mean_modularity <- mean(c(mod_louvain, mod_walktrap, mod_fast_greedy, mod_leading_eigen), na.rm = TRUE)
+    return(mean_modularity)
+  }
+  modularity <- compute_modularity(g)
+  
+  # Compute nestedness
+  nestedness <- nestednodf(island_matrix)$statistic["NODF"]
+  
+  # Compute H2 specialization
+  H2_specialization <- H2fun(island_matrix)
+  
+  # Compute mean and SD specialization (d) for snails and OTUs
+  snail_d <- dfun(island_matrix)$dprime
+  otu_d <- dfun(t(island_matrix))$dprime
+  
+  mean_snail_d <- mean(snail_d, na.rm = TRUE)
+  sd_snail_d <- sd(snail_d, na.rm = TRUE)
+  mean_otu_d <- mean(otu_d, na.rm = TRUE)
+  sd_otu_d <- sd(otu_d, na.rm = TRUE)
+  
+  # Append results to data frame
+  network_statistics <- rbind(network_statistics, data.frame(
+    island = island,
+    modularity = modularity,
+    nestedness = nestedness,
+    H2 = H2_specialization,
+    mean_snail_d = mean_snail_d,
+    sd_snail_d = sd_snail_d,
+    mean_otu_d = mean_otu_d,
+    sd_otu_d = sd_otu_d
+  ))
+}
+
+# Add island age and area to the statistics
+df_island <- df_island %>%
+  mutate(mean_age = (min_emergence + max_emergence) / 2)
+
+network_statistics <- network_statistics %>%
+  left_join(df_island %>% dplyr::select(island, mean_age, island_area), by = "island")
+
+network_statistics
+
+#saveRDS(network_statistics, here::here("output/tables/network_statistics.rds"))
+```
+
+
+
+
+```{r}
+library(scales)
+
+# Transform age and area in the data
+network_statistics <- network_statistics %>%
+  mutate(
+    sqrt_mean_age = sqrt(mean_age),
+    log_island_area = log(island_area)
+  )
+
+# Plot 1: Modularity vs. Network Age
+plot_age_modularity <- ggplot(network_statistics) +
+  geom_point(aes(x = sqrt_mean_age, y = modularity), shape = 16, color = "black") +
+  scale_x_continuous(
+    trans = "sqrt",
+    breaks = scales::trans_breaks("sqrt", function(x) x^2),
+    labels = scales::trans_format("sqrt", math_format(.x^2))
+  ) +
+  labs(
+    x = "Mean island age (My)",
+    y = "Modularity"
+  ) +
+  theme_minimal()
+
+# Plot 2: Modularity vs. Island Area
+plot_area_modularity <- ggplot(network_statistics) +
+  geom_point(aes(x = log_island_area, y = modularity), shape = 16, color = "black") +
+  scale_x_continuous(
+    trans = "log10",
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10", math_format(10^.x))
+  ) +
+  labs(
+    x = expression("Island area (km"^2*")"),
+    y = "Modularity"
+  ) +
+  theme_minimal()
+
+# Plot 3: Nestedness vs. Network Age
+plot_age_nestedness <- ggplot(network_statistics) +
+  geom_point(aes(x = sqrt_mean_age, y = nestedness), shape = 16, color = "black") +
+  scale_x_continuous(
+    trans = "sqrt",
+    breaks = scales::trans_breaks("sqrt", function(x) x^2),
+    labels = scales::trans_format("sqrt", math_format(.x^2))
+  ) +
+  labs(
+    x = "Mean island age (My)",
+    y = "Nestedness (NODF)"
+  ) +
+  theme_minimal()
+
+# Plot 4: Nestedness vs. Island Area
+plot_area_nestedness <- ggplot(network_statistics) +
+  geom_point(aes(x = log_island_area, y = nestedness), shape = 16, color = "black") +
+  scale_x_continuous(
+    trans = "log10",
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10", math_format(10^.x))
+  ) +
+  labs(
+    x = expression("Island area (km"^2*")"),
+    y = "Nestedness (NODF)"
+  ) +
+  theme_minimal()
+
+# Plot 5: H2 vs. Network Age
+plot_age_H2 <- ggplot(network_statistics) +
+  geom_point(aes(x = sqrt_mean_age, y = H2), shape = 16, color = "black") +
+  scale_x_continuous(
+    trans = "sqrt",
+    breaks = scales::trans_breaks("sqrt", function(x) x^2),
+    labels = scales::trans_format("sqrt", math_format(.x^2))
+  ) +
+  labs(
+    x = "Mean island age (My)",
+    y = "H2 specialization"
+  ) +
+  theme_minimal()
+
+# Plot 6: H2 vs. Island Area
+plot_area_H2 <- ggplot(network_statistics) +
+  geom_point(aes(x = log_island_area, y = H2), shape = 16, color = "black") +
+  scale_x_continuous(
+    trans = "log10",
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10", math_format(10^.x))
+  ) +
+  labs(
+    x = expression("Island area (km"^2*")"),
+    y = "H2 specialization"
+  ) +
+  theme_minimal()
+
+# Mean Specialization (d') vs. Mean Island Age 
+plot_age_mean_d <- ggplot(network_statistics) +
+  geom_point(aes(x = sqrt_mean_age, y = mean_snail_d), shape = 16, color = "#009E73") +  # Snails
+  # geom_ribbon(aes(x = sqrt_mean_age, ymin = mean_snail_d - sd_snail_d, ymax = mean_snail_d + sd_snail_d), 
+  #             fill = "#009E73", alpha = 0.3) +  # Ribbon for Snails
+  geom_point(aes(x = sqrt_mean_age, y = mean_otu_d), shape = 2, color = "#E69F00") +  # Nematodes
+  # geom_ribbon(aes(x = sqrt_mean_age, ymin = mean_otu_d - sd_otu_d, ymax = mean_otu_d + sd_otu_d), 
+  #             fill = "#E69F00", alpha = 0.3) +  # Ribbon for Nematodes
+  scale_x_continuous(
+    trans = "sqrt",
+    breaks = scales::trans_breaks("sqrt", function(x) x^2),
+    labels = scales::trans_format("sqrt", math_format(.x^2))
+  ) +
+  labs(
+    x = "Mean island age (My)",
+    y = "Mean specialization (d')"
+  ) +
+  theme_minimal()
+
+# Mean Specialization (d') vs. Island Area 
+plot_area_mean_d <- ggplot(network_statistics) +
+  geom_point(aes(x = log_island_area, y = mean_snail_d), shape = 16, color = "#009E73") +  # Snails
+  # geom_ribbon(aes(x = log_island_area, ymin = mean_snail_d - sd_snail_d, ymax = mean_snail_d + sd_snail_d), 
+  #             fill = "#009E73", alpha = 0.3) +  # Ribbon for Snails
+  geom_point(aes(x = log_island_area, y = mean_otu_d), shape = 2, color = "#E69F00") +  # Nematodes
+  # geom_ribbon(aes(x = log_island_area, ymin = mean_otu_d - sd_otu_d, ymax = mean_otu_d + sd_otu_d), 
+  #             fill = "#E69F00", alpha = 0.3) +  # Ribbon for Nematodes
+  scale_x_continuous(
+    trans = "log10",
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10", math_format(10^.x))
+  ) +
+  labs(
+    x = expression("Island area (km"^2*")"),
+    y = "Mean specialization (d')"
+  ) +
+  theme_minimal()
+
+
+
+ggarrange(
+  plot_age_modularity,
+  plot_area_modularity,
+  plot_age_nestedness,
+  plot_area_nestedness,
+  plot_age_H2,
+  plot_area_H2,
+  plot_age_mean_d,
+  plot_area_mean_d,
+  ncol = 2,
+  nrow = 4,
+  common.legend = TRUE,
+  labels = LETTERS[1:8]
+)
+
+
+ggsave(here::here("output/figures/network_characteristics.png"), height = 12, width = 8)
+```
+
+
+Specialization with area
+
+```{r}
+
+
+plot_area_mean_d <- ggplot(network_statistics) +
+  
+  # Error bars for Snails (Mean ± SD)
+  geom_errorbar(aes(x = log_island_area, 
+                    ymin = mean_snail_d - sd_snail_d, 
+                    ymax = mean_snail_d + sd_snail_d), 
+                color = "#009E73", width = 0.01, linewidth = 1.2,alpha = 0.2) +  
+  
+  # Error bars for Nematodes (Mean ± SD)
+  geom_errorbar(aes(x = log_island_area, 
+                    ymin = mean_otu_d - sd_otu_d, 
+                    ymax = mean_otu_d + sd_otu_d), 
+                color = "#E69F00", width = 0.01, linewidth = 1.2, alpha = 0.2) +  
+
+  # Snails Mean Specialization
+  geom_point(aes(x = log_island_area, y = mean_snail_d), 
+             shape = 16, color = "#009E73", size = 3) +  
+
+  # Nematodes Mean Specialization
+  geom_point(aes(x = log_island_area, y = mean_otu_d), 
+             shape = 17, color = "#E69F00", size = 3) +  
+  
+  # Smooth GAM line for Snails
+  geom_smooth(aes(x = log_island_area, y = mean_snail_d), 
+              method = "gam", color = "#009E73", se = FALSE, linewidth = 1) +  
+  
+  # Smooth GAM line for Nematodes
+  geom_smooth(aes(x = log_island_area, y = mean_otu_d), 
+              method = "gam", color = "#E69F00", se = FALSE, linewidth = 1, linetype = "dashed") +  
+
+  # Log-scaled x-axis
+  scale_x_continuous(
+    trans = "log10",
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10", math_format(10^.x))
+  ) +
+  
+labs(
+    x = expression("Island area (km"^2*")"),
+    y = expression("Mean specialization (d') " %+-% " SD")
+)+
+
+  
+  theme_minimal()
+
+# Print the plot
+print(plot_area_mean_d)
+
+
+
+ggsave(here::here("output/figures/specialization_localnets.png"), height = 3, width = 5)
+
+```
+
+
+
+distribution of specialization per island
+
+```{r}
+
+# Prepare data frame to store individual d' values
+specialization_data <- data.frame()
+
+# Loop through each valid island
+for (island in valid_islands) {
+  print(paste("Processing island:", island))
+  
+  # Filter metadata for the current island
+  island_metadata <- otu_metadata %>% filter(island == !!island)
+  
+  # Get snail species for the island
+  island_snails <- unique(island_metadata$naesiotus_sp)
+  
+  # Subset bipartite matrix
+  island_matrix <- bipartite_matrix[rownames(bipartite_matrix) %in% island_snails, , drop = FALSE]
+  
+  # Skip invalid matrices
+  if (nrow(island_matrix) == 0 || ncol(island_matrix) == 0 || 
+      all(rowSums(island_matrix) == 0) || all(colSums(island_matrix) == 0)) {
+    message("Skipping island due to invalid matrix: ", island)
+    next
+  }
+  
+  # Compute specialization (d')
+  snail_d <- dfun(island_matrix)$dprime
+  otu_d <- dfun(t(island_matrix))$dprime
+  
+  # Store individual d' values
+  snail_data <- data.frame(island = island, species = names(snail_d), specialization = snail_d, group = "Snails")
+  otu_data <- data.frame(island = island, species = names(otu_d), specialization = otu_d, group = "OTUs")
+  
+  # Merge snail and OTU data
+  specialization_data <- rbind(specialization_data, snail_data, otu_data)
+}
+
+# Convert island to factor for ordered plotting
+specialization_data$island <- factor(specialization_data$island, levels = unique(specialization_data$island))
+
+# Ensure network_statistics has only unique islands
+network_statistics_unique <- network_statistics %>%
+  distinct(island, .keep_all = TRUE)  # Keeps only one row per island
+
+# Now join without duplication issues
+specialization_data <- specialization_data %>%
+  left_join(network_statistics_unique %>% 
+              dplyr::select(island, mean_age, island_area, log_island_area), 
+            by = "island")
+
+
+
+# 🎨 **Plot the Distribution**
+plot_specialization_distribution <- ggplot(specialization_data, aes(x = factor(log_island_area), y = specialization, fill = group)) +
+  
+  # Boxplot
+  geom_boxplot(alpha = 0.6, outlier.shape = NA, position = position_dodge(width = 0.75)) +  
+
+  # Jitter points for visualization (fixing the error)
+  geom_jitter(aes(color = group), width = 0.2, alpha = 0.5, size = 2) +  
+
+  # Colors for Snails and OTUs
+  scale_fill_manual(values = c("Snails" = "#009E73", "OTUs" = "#E69F00")) +
+  scale_color_manual(values = c("Snails" = "#009E73", "OTUs" = "#E69F00")) +  
+
+  # Labels and Theme
+  labs(x = "Island (log Area)", y = "Specialization (d')", fill = "Group") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate labels
+
+# Print the plot
+print(plot_specialization_distribution)
+
+
+
+```
+

@@ -8,6 +8,7 @@ cf. albemarlensis,sp_nov_CerroAzul
 cf._albemarlensis,sp_nov_CerroAzul
 cf_albemarlensis',sp_nov_CerroAzul
 cf_albemarlensis,sp_nov_CerroAzul
+cfalbemarlensis,sp_nov_CerroAzul
 amastroides,amastroides
 AM,amastroides
 cf. amastroides',amastroides
@@ -115,6 +116,7 @@ X13,sp. nov. Pinta
 sp._nov._Pinta_2',sp. nov. Pinta
 sp._nov._Pinta_2,sp. nov. Pinta
 sp_nov_Pinta_2,sp. nov. Pinta
+spnovPinta2,sp. nov. Pinta
 spp14,sp_nov_Champion
 X14,sp_nov_Champion
 spp15,rugulosus
@@ -176,6 +178,7 @@ perrus 2,
 pinzonensis,pinzonensis
 pinzonopsis,pinzonopsis
 rugatinus,
+sp nov pinzon 1,sp. nov. Pinzon
 sp nov Pinzon,sp. nov. Pinzon
 unknownblack,
 Brantsnail Clade,
@@ -211,6 +214,7 @@ sp. nov. Pinta 2,sp. nov. Pinta
 sp-_nov-_Pinta_2,sp. nov. Pinta
 sp. nov. Volcan Wolf 1,
 sp. nov. Volcan Wolf 2,
+sp nov Volcan Wolf 3,sp. nov. Wolf
 sp. nov. Volcan Wolf 3,sp. nov. Wolf
 sp-_nov-_Volcan_Wolf_3,sp. nov. Wolf
 sp. nov. pinzon 1,sp. nov. Pinzon
@@ -221,3 +225,5 @@ cf_reibischi,reibischi
 cf._reibischi,reibischi
 sp_nov_CA,sp_nov_CerroAzul
 rugulosus,rugulosus
+spnovDarwin1,sp. nov. Darwin
+sp._nov._Darwin_1,sp. nov. Darwin

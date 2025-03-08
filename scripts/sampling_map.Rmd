@@ -77,8 +77,9 @@ species_names_df <- species_names_df |>
 
 ```{r}
 data_coord <- data_coord %>%
+  rename("species" = "spp") |> 
   left_join(species_names_df |> dplyr::select(species, species_name),
-            by = "species")
+            by = c("species"))
 ```
 
 
@@ -139,11 +140,12 @@ plot_coord_sites <- ggplot() +
   theme_minimal() +
   scale_x_continuous(labels = scales::number_format(scale = 1, accuracy = 1)) +  # Adjust x-axis labels
   scale_y_continuous(labels = function(x) { scales::number_format(scale = 1, accuracy = 1)(x + 10000000) }) +
-  theme(axis.title = element_blank())
+  theme(axis.title = element_blank(),
+        legend.position = "bottom")
 
 plot_coord_sites
 
-#ggsave(here::here("output/figures/plot_coord_sites.png"), height = 7, width = 8)
+ggsave(here::here("output/figures/plot_coord_sites.png"), height = 7, width = 8)
 
 ```
 

@@ -320,7 +320,7 @@ bipartite_long <- bipartite_matrix %>%
   filter(count > 0)  # Only keep connections with counts greater than 0
 
 # Create an edge list from the long data
-edge_list <- bipartite_long %>% select(species, OTU)
+edge_list <- bipartite_long %>% dplyr::select(species, OTU)
 
 # Create a bipartite graph
 bipartite_network <- graph_from_data_frame(edge_list, directed = FALSE)
@@ -355,12 +355,14 @@ summary(g)
 ```
 
 ```{r}
+
+phylo_tree_otus <- phylo_tree
 # Plot the phylogeny for nematode OTUs
-phylo_plot <- ggtree(phylo_tree, layout = "rectangular") +
+phylo_plot_otus <- ggtree(phylo_tree, layout = "rectangular") +
   geom_tiplab()  # Add tip labels (OTU names)
 
 # View the phylogeny
-phylo_plot
+phylo_plot_otus
 ```
 
 ```{r}
@@ -389,12 +391,19 @@ bipartite_plot <- ggraph(bipartite_network, layout = "bipartite") +
   theme(legend.position = "right")  # Adjust legend position
 
 # Plot the bipartite network
-bipartite_plot
+#bipartite_plot
 
 # Save the plot
 #ggsave(here::here("output/figures/metanetwork_bipartiteplot.png"), height = 3, width = 12)
 
 ```
+
+
+```{r}
+#saveRDS(bipartite_matrix, here::here("output/temporal_output/bipartite_matrix.rds"))
+```
+
+
 
 
 
@@ -403,13 +412,16 @@ bipartite_plot
 ```{r}
 # Step 1: Merge the two datasets by 'naesiotus_sp'
 merged_data <- aggregated_otu_data %>%
-  left_join(otu_metadata %>% select(naesiotus_sp, island), by = "naesiotus_sp")
+  left_join(otu_metadata %>% dplyr::select(naesiotus_sp, island), by = "naesiotus_sp")
 
 # Step 1.1: Aggregate the OTU data per snail species
 merged_data_persnail <- merged_data %>%
   group_by(naesiotus_sp, island) %>%  # Group by both snail species and island
   summarise(across(starts_with("OTU"), sum, na.rm = TRUE)) %>%  # Sum the OTU columns
   ungroup()
+
+
+#saveRDS(merged_data_persnail,here::here("output/temporal_output/merged_data_persnail.rds"))
 
 # Step 2: Function to create a bipartite network for each island
 create_bipartite_network <- function(island_name, data) {
@@ -420,7 +432,8 @@ create_bipartite_network <- function(island_name, data) {
   edges <- island_data %>%
     pivot_longer(cols = starts_with("OTU"), names_to = "OTU", values_to = "count") %>%
     filter(count > 0) %>%
-    select(naesiotus_sp, OTU)
+    dplyr::select(naesiotus_sp, OTU) %>%
+    mutate(island = island_name)  # Assign island to edges
   
   # Create a bipartite graph
   g <- graph_from_data_frame(edges, directed = FALSE)
@@ -434,15 +447,18 @@ create_bipartite_network <- function(island_name, data) {
   
   V(g)$island <- island_name # Add island as a node trait
   
+  # Assign island attribute to edges
+  E(g)$island <- edges$island
+
   return(g)
 }
 
-# Step 3: Function to plot the network with customized aesthetics
+# Step 3: Function to plot the network with island-colored links
 plot_custom_bipartite_network <- function(g, island_name) {
   ggraph(g, layout = "bipartite") +
-    # Customize edge color with a red gradient
-    geom_edge_link(aes(color = ..index..), edge_alpha = 0.8, edge_width = 0.6) +
-    scale_edge_color_gradient(low = "pink", high = "red4", guide = "none") +
+    # Color edges based on island
+    geom_edge_link(aes(color = island), edge_alpha = 0.8, edge_width = 0.6) +
+    scale_edge_color_manual(values = island_colors, name = "Island") +  # Use island colors
     
     # Customize nodes with specific colors, transparency, and black borders
     geom_node_point(aes(shape = factor(V(g)$type), 
@@ -450,7 +466,7 @@ plot_custom_bipartite_network <- function(g, island_name) {
                     size = 5, stroke = 1, alpha = 0.7, fill = "white") +
     
     # Customize node colors based on type: snails = #999900, nematodes = #00FFCC
-    scale_color_manual(values = c("TRUE" = "#999900", "FALSE" = "#999900"), guide = "none") +
+    scale_color_manual(values = c("TRUE" = "grey30", "FALSE" = "grey30"), guide = "none") +
     
     # Show shape legend only
     scale_shape_manual(values = c(16, 17), labels = c("Nematode OTUs", "Naesiotus sp")) +
@@ -468,6 +484,8 @@ plot_custom_bipartite_network <- function(g, island_name) {
 islands <- unique(merged_data_persnail$island)
 plots <- list()
 
+#saveRDS(islands,here::here("output/temporal_output/islands.rds"))
+
 for (island in islands) {
   g <- create_bipartite_network(island, merged_data_persnail)
   p <- plot_custom_bipartite_network(g, island)
@@ -483,6 +501,11 @@ ggarrange(plotlist = plots, ncol = 2, nrow = ceiling(length(plots)/2),
 ```
 
 Floreana has included the islet Champion -> I think the clear module I see in Floreana correpsonds to this Champion module.
+
+
+
+
+
 
 # COMPUTE CENTRALITY SNAILS
 
@@ -1027,7 +1050,7 @@ df_island <- df_island %>%
   mutate(mean_age = (min_emergence + max_emergence) / 2)
 
 network_statistics <- network_statistics %>%
-  left_join(df_island %>% select(island, mean_age, island_area), by = "island")
+  left_join(df_island %>% dplyr::select(island, mean_age, island_area), by = "island")
 
 network_statistics
 
