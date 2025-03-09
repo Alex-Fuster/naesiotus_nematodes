@@ -647,6 +647,12 @@ tree_data <- tree_data %>%
 tip_data <- left_join(tip_data, tree_data %>% dplyr::select(label, y), by = "label")
 ```
 
+
+
+
+
+
+
 ```{r}
 # Define a gradient for mean load
 load_colors <- scales::col_numeric(palette = viridis::viridis(100), domain = NULL)
@@ -679,14 +685,40 @@ load_colors <- scales::col_numeric(palette = viridis::viridis(100), domain = NUL
     mean_load = ifelse(is.na(mean_load), 0, mean_load),  # Replace NA loads with 0
     island = factor(island, levels = names(island_colors))  # Standardize island levels
   )
+```
+Add island information for unasessed species
 
-  
+```{r}
+missing_island_species <- read.csv(here::here("data/missing_island_species.csv"))
 
-plot_tree_load_fpd <- ggtree(tree) %<+% tree_plot_data +
+tree_plot_data1 <- tree_plot_data %>%
+  mutate(island = as.character(island))  # This prevents level mismatches
+
+# First, decode islands properly
+tree_plot_data1 <- tree_plot_data1 %>%
+  mutate(island = as.character(island)) %>%
+  left_join(missing_island_species, by = "label") %>%
+  mutate(island = ifelse(is.na(island.x), island.y, island.x)) %>%
+  select(-island.x, -island.y)
+
+# Restore factor levels to ensure consistency
+tree_plot_data1$island <- factor(tree_plot_data1$island, levels = unique(tree_plot_data1$island))
+
+# Check if any species are still missing an island
+tree_plot_data1 %>% filter(isTip == TRUE & is.na(island))
+
+tree_plot_data1 <- tree_plot_data1 %>%
+  mutate(label = ifelse(label == "littleBlackGarrapatero", "spnovGarrap", label))
+```
+
+
+
+```{r}
+plot_tree_load_fpd <- ggtree(tree) %<+% tree_plot_data1 +
   geom_tree(aes(color = island), size = 0.8) +  # Color branches by island
   
   # Explicitly use tree_plot_data for tip labels
-  geom_tiplab(data = tree_plot_data, aes(label = label), 
+  geom_tiplab(data = tree_plot_data1, aes(label = label), 
               color = "black",  # Force labels to be black
               align = TRUE,  # Align all labels
               offset = 0.01,  # Add space between branches and labels
@@ -702,7 +734,7 @@ plot_tree_load_fpd <- ggtree(tree) %<+% tree_plot_data +
   
   new_scale_color() +  # Allow a separate color scale for Faith PD
   geom_segment(
-    data = tree_plot_data %>% filter(faith_pd > 0),  # Only species with non-zero Faith PD
+    data = tree_plot_data1 %>% filter(faith_pd > 0),  # Only species with non-zero Faith PD
     aes(x = max(node.depth.edgelength(tree)) * 1.41,  # Start of the bar
         xend = max(node.depth.edgelength(tree)) * 1.46,  # End of the bar
         y = y, yend = y, color = faith_pd),  # Map Faith PD to color gradient
@@ -718,7 +750,7 @@ plot_tree_load_fpd <- ggtree(tree) %<+% tree_plot_data +
 
   new_scale_color() +  # Allow a separate color scale for Mean Load
   geom_segment(
-    data = tree_plot_data %>% filter(mean_load > 0),  # Only non-zero values
+    data = tree_plot_data1 %>% filter(mean_load > 0),  # Only non-zero values
     aes(x = max(node.depth.edgelength(tree)) * 1.35,  # Start of the bar
         xend = max(node.depth.edgelength(tree)) * 1.40,  # End of the bar
         y = y, yend = y, color = mean_load),  # Map Faith PD to color gradient
@@ -732,6 +764,68 @@ plot_tree_load_fpd <- ggtree(tree) %<+% tree_plot_data +
   theme(legend.position = "right")
 
 #ggsave(here::here("output/figures/phylo/phylo_faith_pd.png"), height = 10, width = 8)
+```
+
+```{r}
+plot_tree_load_fpd <- ggtree(tree) %<+% tree_plot_data1 +
+  geom_tree(aes(color = island), size = 0.8) +  # Color branches by island
+  
+  # Explicitly use tree_plot_data for tip labels
+  geom_tiplab(data = tree_plot_data1, aes(label = label), 
+              color = "black",  # Force labels to be black
+              align = TRUE,  # Align all labels
+              offset = 0.01,  # Add space between branches and labels
+              size = 2.5, show.legend = FALSE) +  # Label size
+  
+  geom_tippoint(aes(color = island), size = 3) +  # Add colored tip points
+  
+  # Island colors legend (TWO ROWS at the BOTTOM)
+  scale_color_manual(
+    values = island_colors, 
+    name = "Island",
+    guide = guide_legend(nrow = 2, order = 3)  # Set to two rows, order third
+  ) +
+  
+  theme_tree2() +
+  xlim(NA, max(node.depth.edgelength(tree)) * 1.6) +  # Extend space for mean load bars
+  theme(legend.position = "bottom") +  # Move Island legend to the bottom
+  
+
+  new_scale_color() +  # Allow a separate color scale for Faith PD
+  geom_segment(
+    data = tree_plot_data1 %>% filter(faith_pd > 0),  # Only species with non-zero Faith PD
+    aes(x = max(node.depth.edgelength(tree)) * 1.41,  
+        xend = max(node.depth.edgelength(tree)) * 1.46,  
+        y = y, yend = y, color = faith_pd),  
+    linewidth = 3  
+  ) +
+  scale_color_gradientn(
+    colors = viridis::turbo(100),  
+    name = "Faith PD",
+    guide = guide_colorbar(order = 2)  # Keep Faith PD legend on the right
+  ) + 
+  theme(legend.position = "right") +  # Keep Faith PD legend on the right
+  
+
+  new_scale_color() +  # Allow a separate color scale for Mean Load
+  geom_segment(
+    data = tree_plot_data1 %>% filter(mean_load > 0),  
+    aes(x = max(node.depth.edgelength(tree)) * 1.35,  
+        xend = max(node.depth.edgelength(tree)) * 1.40,  
+        y = y, yend = y, color = mean_load),  
+    linewidth = 3  
+  ) +
+  scale_color_gradientn(
+    colors = viridis::turbo(100),  
+    name = "Mean Load",
+    guide = guide_colorbar(order = 1)  # Keep Mean Load legend on the right
+  ) +
+  theme(legend.position = "right")  # Keep Mean Load legend on the right
+
+# Print the plot
+print(plot_tree_load_fpd)
+
+#ggsave(here::here("output/figures/phylo/delete.png"), height = 10, width = 8)
 ```
 
 
