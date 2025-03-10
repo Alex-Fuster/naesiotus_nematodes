@@ -18,6 +18,7 @@ library(ggpubr)
 library(phytools)
 library(ape)
 library(patchwork)
+library(ggridges)
 
 ```
 
@@ -640,7 +641,7 @@ load_data <- combined_data %>%
 # Ridge plot for **effects on Brightness**
 plot_brightness <- ggplot(brightness_data, aes(x = value, y = parameter, fill = type, alpha = type)) +
   geom_density_ridges(scale = 1.2, rel_min_height = 0.01) +
-  scale_fill_manual(values = c("Posterior" = "red4", "Prior" = "grey80")) +
+  scale_fill_manual(values = c("Posterior" = "grey20", "Prior" = "grey80")) +
   scale_alpha_manual(values = c("Posterior" = 1, "Prior" = 0.5)) +  # Less transparency for Prior
   theme_minimal() +
   labs(
@@ -648,7 +649,7 @@ plot_brightness <- ggplot(brightness_data, aes(x = value, y = parameter, fill = 
     x = "Coefficient Estimate (??)",
     y = ""  # Simplified y-axis labels
   ) +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
   theme(
     legend.position = "top",
     strip.text = element_text(size = 12, face = "bold"),
@@ -659,7 +660,7 @@ plot_brightness <- ggplot(brightness_data, aes(x = value, y = parameter, fill = 
 # Ridge plot for **effects on Load**
 plot_load <- ggplot(load_data, aes(x = value, y = parameter, fill = type, alpha = type)) +
   geom_density_ridges(scale = 1.2, rel_min_height = 0.01) +
-  scale_fill_manual(values = c("Posterior" = "red4", "Prior" = "grey80")) +
+  scale_fill_manual(values = c("Posterior" = "grey20", "Prior" = "grey80")) +
   scale_alpha_manual(values = c("Posterior" = 1, "Prior" = 0.5)) +  # Less transparency for Prior
   theme_minimal() +
   labs(
@@ -667,7 +668,7 @@ plot_load <- ggplot(load_data, aes(x = value, y = parameter, fill = type, alpha 
     x = "Coefficient Estimate (??)",
     y = ""  # Simplified y-axis labels
   ) +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
   theme(
     legend.position = "top",
     strip.text = element_text(size = 12, face = "bold"),
@@ -685,6 +686,8 @@ plot_load
 
 
 ```
+
+
 
 
 
@@ -1242,7 +1245,7 @@ diversity_data <- combined_data_div %>%
 # Ridge plot for **effects on Brightness**
 plot_brightness_div <- ggplot(brightness_data_div, aes(x = value, y = parameter, fill = type, alpha = type)) +
   geom_density_ridges(scale = 1.2, rel_min_height = 0.01) +
-  scale_fill_manual(values = c("Posterior" = "red4", "Prior" = "grey80")) +
+  scale_fill_manual(values = c("Posterior" = "grey20", "Prior" = "grey80")) +
   scale_alpha_manual(values = c("Posterior" = 1, "Prior" = 0.5)) +  # Less transparency for Prior
   theme_minimal() +
   labs(
@@ -1250,7 +1253,7 @@ plot_brightness_div <- ggplot(brightness_data_div, aes(x = value, y = parameter,
     x = "Coefficient Estimate (??)",
     y = ""  # Simplified y-axis labels
   ) +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
   theme(
     legend.position = "top",
     strip.text = element_text(size = 12, face = "bold"),
@@ -1261,17 +1264,17 @@ plot_brightness_div <- ggplot(brightness_data_div, aes(x = value, y = parameter,
 # Ridge plot for **effects on Load**
 plot_div <- ggplot(diversity_data, aes(x = value, y = parameter, fill = type, alpha = type)) +
   geom_density_ridges(scale = 1.2, rel_min_height = 0.01) +
-  scale_fill_manual(values = c("Posterior" = "red4", "Prior" = "grey80")) +
+  scale_fill_manual(values = c("Posterior" = "grey20", "Prior" = "grey80")) +
   scale_alpha_manual(values = c("Posterior" = 1, "Prior" = 0.5)) +  # Less transparency for Prior
   theme_minimal() +
   labs(
-    title = "Effects on encapsulations count",
+    title = "Effects on nematode Faith PD",
     x = "Coefficient Estimate (??)",
     y = ""  # Simplified y-axis labels
   ) +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
   theme(
-    legend.position = "top",
+    legend.position = "right",
     strip.text = element_text(size = 12, face = "bold"),
     axis.text.y = element_text(size = 12)
   ) +
@@ -1617,19 +1620,20 @@ ncol = 2,
 nrow = 1,
 
 common.legend = TRUE,
-labels = letters[1:2]
+labels = letters[1:2],
+legend = "right"
 )
 
 ggsave(here::here("output/figures/posterior_pars/figure_posteriors_load_diversity.png"),
        height = 7,
-       width = 10)
+       width = 11)
 ```
 ```{r}
-plot_brightness
+plot_brightness+theme(legend.position = "right")
 
 ggsave(here::here("output/figures/posterior_pars/figure_posteriors_brightness.png"),
        height = 7,
-       width = 5)
+       width = 6)
 ```
 
 -----------------------------------------------------------------

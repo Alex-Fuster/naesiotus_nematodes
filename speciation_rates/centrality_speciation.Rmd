@@ -126,8 +126,76 @@ for (i in seq_along(plot_pages)) {
 distribution of trait states in the tips and speciation rates. The colors of the symbols at the tips describe the trait state, while both the icon size and the plot to the right show the distribution of speciation rates estimated using CLaDS:
 
 ```{r}
-plot_ClaDS_phylo(CladsOutput$tree, CladsOutput$lambdai_map, lwd = 3)
-hist(CladsOutput$lambdatip_map)
+species_names_df <- read.csv(here::here("../data/species_names_checks.csv"))
+```
+
+
+```{r}
+species_mapping <- setNames(species_names_df$species_name, species_names_df$annotated_name)
+
+# Replace tree tip labels if they exist in the mapping
+CladsOutput$tree$tip.label <- ifelse(
+  CladsOutput$tree$tip.label %in% names(species_mapping),  # Check if the label is in annotated_name
+  species_mapping[CladsOutput$tree$tip.label],            # Replace with species_name
+  CladsOutput$tree$tip.label                              # Keep original if not found
+)
+
+# ???? Apply text formatting transformations
+CladsOutput$tree$tip.label <- CladsOutput$tree$tip.label %>%
+  gsub("_", "-", .) %>%  # Replace underscores with hyphens
+  gsub("\\.", "", .) %>% # Remove periods
+  gsub("-", "", .) %>%   # Remove hyphens
+  gsub(" ", "", .)       # Remove spaces
+
+# ???? Identify tips with missing or empty names
+tips_to_drop <- which(is.na(CladsOutput$tree$tip.label) | CladsOutput$tree$tip.label == "")
+
+# ???? Drop these tips from the tree
+if (length(tips_to_drop) > 0) {
+  CladsOutput$tree <- drop.tip(CladsOutput$tree, CladsOutput$tree$tip.label[tips_to_drop])
+}
+
+CladsOutput$tree$tip.label <- gsub("littleBlackGarrapatero", "spnovGarrap", CladsOutput$tree$tip.label)
+
+png(here::here("../output/figures/phylo/clads_tree.png"), width = 3600, height = 4900, res = 600)
+set.seed(42)
+plot_ClaDS_phylo(CladsOutput$tree, CladsOutput$lambdai_map,  outline = FALSE, lwd = 5, show.tip.label = TRUE,cex = 0.5,label.offset = 0.02)
+dev.off()
+```
+
+```{r}
+png(here::here("../output/figures/phylo/clads_hist.png"), width = 3500, height = 2200, res = 600)
+
+hist(CladsOutput$lambdatip_map, 
+     xlab = "Tip-specific diversification rates (??)", 
+     main = "")
+
+dev.off()
+
+```
+
+
+
+
+
+```{r}
+set.seed(42)
+
+map <- contMap(pruned.tree_load,meanload_filtered,
+        res = 800,
+        lwd = 4,
+        outline = FALSE,
+        sig = 0)
+
+# Adjust the color scale limits
+map$lims <- c(0, max(meanload_filtered, na.rm = TRUE)) 
+
+# Reverse the color scale
+map_load <- setMap(map, invert = TRUE,lwd = 4)
+
+png(here::here("output/figures/phylo/phylomap_load.png"), width = 3600, height = 4800, res = 600)
+plot(map_load,  outline = FALSE, lwd = 6)
+dev.off()
 ```
 
 distribution of trait states in the tips and speciation rates. The colors of the symbols at the tips describe the trait state, while both the icon size and the plot to the right show the distribution of speciation rates estimated using CLaDS:
@@ -160,14 +228,14 @@ tip.ind <- (max(br.ind)+1):(max(br.ind)+Ntip(CladsOutput$tree))
 dtt.ind <- (max(tip.ind)+2):length(CladsOutput$chains[[1]])
 
 
-## Checking parameter values
-samp.ind <- sample(1:length(tip.ind), 1)
-d_1 <- density(sapply(CladsOutput$chains,"[[", tip.ind[samp.ind])[251:1000,])
-hist(sapply(CladsOutput$chains,"[[", tip.ind[samp.ind])[251:1000,], freq = FALSE, ylim = c(0, 1), breaks = 50)
-lines(d_1)
-abline(v = d_1$x[which.max(d_1$y)], col = 2, lwd = 3)
-abline(v = CladsOutput$lambdatip_map[samp.ind], col = 3, lwd = 3)
-legend("topright", legend = c("MAP", "lambda_tip"), lwd = 3, col = c(2, 3), cex = 2)
+# ## Checking parameter values
+# samp.ind <- sample(1:length(tip.ind), 1)
+# d_1 <- density(sapply(CladsOutput$chains,"[[", tip.ind[samp.ind])[251:1000,])
+# hist(sapply(CladsOutput$chains,"[[", tip.ind[samp.ind])[251:1000,], freq = FALSE, ylim = c(0, 1), breaks = 50)
+# lines(d_1)
+# abline(v = d_1$x[which.max(d_1$y)], col = 2, lwd = 3)
+# abline(v = CladsOutput$lambdatip_map[samp.ind], col = 3, lwd = 3)
+# legend("topright", legend = c("MAP", "lambda_tip"), lwd = 3, col = c(2, 3), cex = 2)
 ```
 
 
@@ -212,11 +280,50 @@ sampled.rates_long <- tidyr::pivot_longer(
   values_to = "Rate"
 )
 
-ggplot(sampled.rates_long, aes(x = Rate)) +
-  geom_density(fill = "blue", alpha = 0.4) +
+species_names_df <- read.csv(here::here("../data/species_names_checks.csv"))
+
+# Ensure the mapping is correct by selecting the right columns
+species_mapping <- species_names_df %>%
+  dplyr::select(annotated_name, species_name) %>%
+  distinct()
+
+# Replace species names based on mapping, keeping original if no match
+sampled.rates_long_corrected <- sampled.rates_long %>%
+  mutate(species_name = coalesce(species_mapping$species_name[match(species_name, species_mapping$annotated_name)], species_name))
+
+# Check if there are still any NAs in species_name
+sum(is.na(sampled.rates_long_corrected$species_name))  # Should return 0
+
+
+sampled.rates_long_corrected <- sampled.rates_long_corrected %>%
+  mutate(
+    species_name = gsub("_", "-", species_name),    # Replace underscores with hyphens (if needed)
+   species_name = gsub("\\.", "", species_name),   # Remove periods
+    species_name = gsub("-", "", species_name),     # Remove hyphens after previous step (to fully remove)
+    species_name = gsub(" ", "", species_name)      # Remove spaces
+  )
+
+
+# "littleBlackGarrapatero" -> "spnovSC"
+# "Brantsnail" -> "spnovIsabela"
+# "Brownguys" -> "spnovFloreana"
+# "SC20070101" -> "spnovSC2"
+# "SF15020101" -> "spnovSF"
+# "SF15020103" -> "spnovSF2"
+# "SF15020104" -> "spnovSF3"
+# "invalidus2" -> "spnovinvalidus"
+# "perspectivus1" -> "spnovperspectivus"
+# "spnovVolcanWolf2" -> "spnovWolf3"
+# "spnovVolcanWolf1" -> "spnovWolf2"
+# "spnovAlcedo1" -> "spnovAlcedo"
+# "sculpturatus2" -> "spnovsculpturatus"
+# "sculpturatus3" -> "spnovsculpturatus2"
+# "simrothi2" -> "spnovsimrothi"
+
+ggplot(sampled.rates_long_corrected, aes(x = Rate)) +
+  geom_density(fill = "grey20", alpha = 0.4) +
   facet_wrap(~ species_name, scales = "free_y", ncol = 4) +  # Facet by species
   labs(
-    title = "Posterior Distributions of Tip-Specific Speciation Rates",
     x = "Speciation Rate",
     y = "Density"
   ) +
@@ -478,6 +585,26 @@ Match levels in ginverse
 # Ainv <- inverseA(CladsOutput$tree)$Ainv
 
 ```
+
+
+# new plot clads
+
+```{r}
+# Get the list of species to keep (those in both datasets)
+species_to_keep <- intersect(sp_island_guild_size_regional$species_name, CladsOutput$tree$tip.label)
+
+# Prune the tree to keep only these species
+CladsOutput$pruned_tree <- drop.tip(CladsOutput$tree, setdiff(CladsOutput$tree$tip.label, species_to_keep))
+
+png(here::here("../output/figures/phylo/clads_tree_prunned.png"), width = 3600, height = 4900, res = 600)
+set.seed(42)
+plot_ClaDS_phylo(CladsOutput$pruned_tree, CladsOutput$lambdai_map,  outline = FALSE, lwd = 5, show.tip.label = TRUE,cex = 0.5,label.offset = 0.02)
+dev.off()
+```
+
+
+
+
 
 
 ## CHECKS
@@ -1360,7 +1487,7 @@ saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/mod
 # REGIONAL
 
 #model.fit <- readRDS(here::here("../output/models/network_role_speciation/model1_sampled_spec_centrality_regional.rds"))
-#model.fit <- readRDS(here::here("../output/models/network_role_speciation/model1.2_mean_spec_centrality_regional.rds"))
+model.fit <- readRDS(here::here("../output/models/network_role_speciation/model1.2_mean_spec_centrality_regional.rds"))
 #model.fit <- readRDS(here::here("../output/models/network_role_speciation/model2_meanrate_d_regional.rds"))
 #model.fit <- readRDS(here::here("../output/models/network_role_speciation/model3_age_centrality_regional.rds"))
 #model.fit <- readRDS(here::here("../output/models/network_role_speciation/model4_age_d_regional.rds"))
@@ -1369,7 +1496,7 @@ saveRDS(full_model.fit, here::here("../output/models/network_role_speciation/mod
 
 #model.fit <- readRDS(here::here("../output/models/network_role_speciation/model1_sampled_spec_centrality_local.rds"))
 #model.fit <- readRDS(here::here("../output/models/network_role_speciation/model1.2_mean_spec_centrality_local.rds"))
-model.fit <- readRDS(here::here("../output/models/network_role_speciation/model2_meanrate_d_local.rds"))
+#model.fit <- readRDS(here::here("../output/models/network_role_speciation/model2_meanrate_d_local.rds"))
 #model.fit <- readRDS(here::here("../output/models/network_role_speciation/model3_age_centrality_local.rds"))
 #model.fit <- readRDS(here::here("../output/models/network_role_speciation/model4_age_d_local.rds"))
 
@@ -1560,9 +1687,117 @@ ggplot(posterior_long, aes(x = Value)) +
   )
 
 
-ggsave(here::here("../output/figures/posterior_pars/model2_pca_d_local.png"), height = 6, width = 4)
+#ggsave(here::here("../output/figures/posterior_pars/model2_pca_d_local.png"), height = 6, width = 4)
+
+```
+
+```{r}
+
+# Extract fixed effects posterior samples
+fixed_effects <- as.mcmc(model.fit$Sol)
+
+# Assign column names
+colnames(fixed_effects) <- c("(Intercept)", "species_speciation_rate", 
+                             "island_age", "island_area", "guild_size")
+
+# Convert posterior samples to a long format dataframe
+posterior_long <- as.data.frame(as.matrix(fixed_effects)) %>%
+  pivot_longer(cols = everything(), names_to = "Predictor", values_to = "Value") %>%
+  mutate(Type = "Posterior")  # Label as posterior
+
+# Generate Prior Distributions (normal with mean=0, variance=1/2)
+set.seed(123)  # For reproducibility
+n_prior_samples <- nrow(posterior_long)  # Match sample size
+priors <- tibble(
+  "(Intercept)" = rnorm(n_prior_samples, mean = 0, sd = sqrt(1/2)),
+  "species_speciation_rate" = rnorm(n_prior_samples, mean = 0, sd = sqrt(1/2)),
+  "island_age" = rnorm(n_prior_samples, mean = 0, sd = sqrt(1/2)),
+  "island_area" = rnorm(n_prior_samples, mean = 0, sd = sqrt(1/2)),
+  "guild_size" = rnorm(n_prior_samples, mean = 0, sd = sqrt(1/2))
+)
+
+# Convert prior samples to long format
+priors_long <- priors %>%
+  pivot_longer(cols = everything(), names_to = "Predictor", values_to = "Value") %>%
+  mutate(Type = "Prior")  # Label as prior
+
+# Combine prior and posterior samples
+combined_data <- bind_rows(posterior_long, priors_long)
+
+# Define new labels for predictors
+predictor_labels <- c(
+  "species_speciation_rate" = "Mean speciation rate",
+  "island_age" = "Island age",
+  "island_area" = "Island area",
+  "guild_size" = "N Island species",
+  "(Intercept)" = "(Intercept)"
+)
+
+# Set factor levels to control the y-axis order
+combined_data$Predictor <- factor(combined_data$Predictor, 
+                                  levels = rev(c("(Intercept)",
+                                                 "species_speciation_rate", 
+                                                 "island_age", 
+                                                 "island_area", 
+                                                 "guild_size")))
+
+# Remove the intercept from the dataset
+combined_data_filtered <- combined_data %>%
+  filter(Predictor != "(Intercept)")
+
+# Rename predictor labels (with line break for "Estimated mean sp speciation rate")
+predictor_labels <- c(
+  "species_speciation_rate" = "Estimated mean\nsp speciation rate",
+  "island_age" = "Island age",
+  "island_area" = "Island area",
+  "guild_size" = "Guild size"
+)
+
+# Set factor levels to control order in the plot
+combined_data_filtered$Predictor <- factor(combined_data_filtered$Predictor, 
+                                           levels = rev(c("species_speciation_rate", 
+                                                          "island_age", 
+                                                          "island_area", 
+                                                          "guild_size")),
+                                           labels = rev(unname(predictor_labels))) # Apply renamed labels
+
+my_theme<-theme(axis.text=element_text(size=12),
+        axis.title = element_text(size = 14),
+        legend.text=element_text(size=12),
+        legend.title = element_text(size=12),
+        plot.title = element_text(face="bold",size=14,margin=margin(0,0,20,0),hjust = 0.5),
+        axis.title.y = element_text(hjust = 0.5),
+        axis.title.x = element_text(hjust = 0.5))
+
+# Ridge Density Plot with Modifications
+# Ensure the highest ridge is not cut off by adding expansion in scale_y_discrete()
+ggplot(combined_data_filtered, aes(x = Value, y = Predictor, fill = Type, alpha = Type)) +
+  geom_density_ridges(scale = 0.8, rel_min_height = 0.01) +
+  scale_fill_manual(values = c("Posterior" = "grey20", "Prior" = "grey80")) +  
+  scale_alpha_manual(values = c("Posterior" = 1, "Prior" = 0.5)) +  
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +  
+  scale_y_discrete(expand = expansion(mult = c(0.05, 0.4))) +  # Expand top space
+  labs(
+    x = "Coefficient Estimate (??)",  
+    y = ""  
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",  
+    strip.text = element_text(size = 12, face = "bold"),
+    axis.text.x = element_text(size = 14),  
+    axis.text.y = element_text(size = 14)
+  ) +
+  my_theme
+
+ggsave(here::here("../output/figures/posterior_pars/speciation_centrality_regional.png"), height = 7, width = 8)
 
 ```
 
 
+```{r}
+
+
+
+```
 

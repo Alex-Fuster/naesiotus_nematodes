@@ -194,6 +194,11 @@ for (species in names(species_groups)) {
 # Combine the results from all species into one dataframe
 cumulative_df <- do.call(rbind, cumulative_list)
 
+# Rename species labels
+cumulative_df <- cumulative_df %>%
+  mutate(species = ifelse(species == "sp.nov.VolcanWolf_3", "spnovwolf3", species))
+
+# Create the plot with adjusted x-axis and renamed species
 ggplot(cumulative_df, aes(x = sample_num, y = cumulative_unique_otus, linetype = species)) +
   geom_line(size = 0.9) +
   geom_point(size = 2.3, shape = 21, fill = "black") + # Adds points for measurements
@@ -202,10 +207,12 @@ ggplot(cumulative_df, aes(x = sample_num, y = cumulative_unique_otus, linetype =
     y = "Cumulative nematode OTUs"
   ) +
   theme_minimal() +
-  scale_linetype_manual(values = c("solid", "dashed")) # Optional: specify line types
+  scale_linetype_manual(values = c("solid", "dashed")) + # Optional: specify line types
+  scale_x_continuous(breaks = seq(min(cumulative_df$sample_num), max(cumulative_df$sample_num), by = 1)) # Ensures x-axis is sequential
 
 
-#ggsave(here::here("output/figures/rarefract_otus.png"), height = 4, width = 6)
+
+#ggsave(here::here("../output/figures/rarefract_otus.png"), height = 4, width = 6)
 
 
 ```
@@ -571,7 +578,7 @@ naesiotus_centralities_regional_df <- naesiotus_centralities_regional_df %>%
 naesiotus_centralities_regional_df
 
 # Save the final data frame
-#saveRDS(naesiotus_centralities_regional_df, here::here("output/tables/naesiotus_centralities_regional_df.rds"))
+#saveRDS(naesiotus_centralities_regional_df, here::here("../output/tables/naesiotus_centralities_regional_df.rds"))
 
 ```
 
@@ -584,19 +591,47 @@ pca_model <- prcomp(naesiotus_centralities_regional_df[, c("degree_z", "closenes
 pca_summary <- summary(pca_model)
 explained_variance <- pca_summary$importance[2, ] * 100  # % variance for each PC
 
+
+# Define new variable labels
+variable_labels <- c("degree_z" = "Degree (z)",
+                     "closeness_z" = "Closeness (z)",
+                     "katz_z_z" = "Katz (z)")
+
+library(ggrepel)
 # Plot PCA
+# Define a scaling factor to shorten arrows
+arrow_scaling <- 0.4  # Adjust this value to shorten arrows
+
+# Modify PCA plot with adjusted loadings
 autoplot(pca_model, data = naesiotus_centralities_regional_df, 
-         loadings = TRUE, loadings.label = TRUE,
-         loadings.label.size = 3, color = 'black') +
+         loadings = FALSE,  # Disable default loadings to customize them manually
+         color = 'black') +
   labs(
     x = paste0("PC1 (", round(explained_variance[1], 1), "%)"),
     y = paste0("PC2 (", round(explained_variance[2], 1), "%)")
   ) +
-  theme_minimal()
+  theme_minimal() +
+  
+  # Modify loadings labels using ggrepel for better readability
+  geom_text_repel(data = as.data.frame(pca_model$rotation) %>% 
+                    rownames_to_column("variable") %>% 
+                    mutate(PC1 = PC1 * arrow_scaling, PC2 = PC2 * arrow_scaling),
+                  aes(x = PC1, y = PC2, label = variable_labels[variable]),
+                  color = "red3", size = 4, fontface = "bold") +
+
+  # Draw shorter arrows for loadings
+  geom_segment(data = as.data.frame(pca_model$rotation) %>% 
+                 rownames_to_column("variable") %>% 
+                 mutate(PC1 = PC1 * arrow_scaling, PC2 = PC2 * arrow_scaling),
+               aes(x = 0, y = 0, xend = PC1, yend = PC2),
+               arrow = arrow(length = unit(0.2, "cm")), 
+               color = "red3", linewidth = 1)
 
 #ggsave(here::here("../output/figures/pca_plot_naesiotus.png"), height = 4, width = 4)
 ```
 
+
+-----------------------------------------
 
 ## CENTRALITY IN THE LOCAL NETWORKS
 
@@ -706,7 +741,7 @@ for (island in valid_islands) {
 naesiotus_centralities_local_df <- bind_rows(island_centralities)
 
 # Save the results
-#saveRDS(naesiotus_centralities_local_df, here::here("output/tables/naesiotus_centralities_local_df.rds"))
+#saveRDS(naesiotus_centralities_local_df, here::here("../output/tables/naesiotus_centralities_local_df.rds"))
 
 # View the final dataframe
 head(naesiotus_centralities_local_df)

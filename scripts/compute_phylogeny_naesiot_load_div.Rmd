@@ -50,9 +50,9 @@ library(ggtree)
 #tree <- read.nexus(here::here("data/phylogeny_2024/Species_tree_labelled.nex"))
 tree <- read.newick(here::here("data/phylogeny_2024/tree2024.nwk"))
 df_rads <- read_excel(here::here("data/phylogeny_2024/New_tree_taxa_28Aug24.xlsx"))
-species_names_df_raw <- read.csv(here::here("data/species_names_checks.csv"))
+species_names_df <- read.csv(here::here("data/species_names_checks.csv"))
 
-species_names_df <- species_names_df_raw %>% 
+species_names_df <- species_names_df %>% 
   rename(species = annotated_name)  %>% 
   filter(species_name != "")
 
@@ -87,7 +87,7 @@ ggtree(tree) +
 
 ```{r}
 # Create a named vector where names are `annotated_name` and values are `species_name`
-name_mapping <- setNames(species_names_df_raw$species_name, species_names_df_raw$annotated_name)
+name_mapping <- setNames(species_names_df$species_name, species_names_df$annotated_name)
 
 # Initialize a logical vector to track which labels were changed
 changed_labels <- rep(FALSE, length(tree$tip.label))
@@ -490,11 +490,11 @@ p
 ### compute species code id
 
 ```{r}
-species_names_df_raw <- read.csv(here::here("data/species_names_checks.csv"))
+species_names_df <- read.csv(here::here("data/species_names_checks.csv"))
 
 # we're dropping the species with no name in this database. 
 # this indicates morphospecies which have no formal name
-species_names_df <- species_names_df_raw %>% 
+species_names_df <- species_names_df %>% 
   dplyr::rename(species = annotated_name)  %>% 
   filter(species_name != "") |> 
   mutate(species_code = as.numeric(factor(species_name)))
@@ -708,7 +708,7 @@ tree_plot_data1$island <- factor(tree_plot_data1$island, levels = unique(tree_pl
 tree_plot_data1 %>% filter(isTip == TRUE & is.na(island))
 
 tree_plot_data1 <- tree_plot_data1 %>%
-  mutate(label = ifelse(label == "littleBlackGarrapatero", "spnovGarrap", label))
+  mutate(label = ifelse(label == "littleBlackGarrapatero", "spnovSC", label))
 ```
 
 
